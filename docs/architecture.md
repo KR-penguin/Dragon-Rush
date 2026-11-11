@@ -1,7 +1,7 @@
 # 아키텍처 설계서 — 드래곤 러쉬 (Dragon Rush)
 
-> 상태: **구현 완료(P0~P7)**. 이 문서는 실제 코드 구조를 설명한다. 세부 구현은 각 패키지 소스가 정본이다.
-> 정본 분담: 규칙·수치 → [game-design.md](game-design.md) · 관측/행동/마스크/보상/env 프로토콜 → [ai-interface-spec.md](ai-interface-spec.md) · 일정·결정 사항 → [development-plan.md](development-plan.md) · 코딩 규칙 → [coding_convention.md](../coding_convention.md)
+> 상태: **구현 완료(P0~P7)**. 이 문서는 실제 코드 구조를 설명한다. 세부 구현은 각 패키지 소스가 정본이다. **§12(2차 실시간 전투 구조)는 구현 예정(in progress)** 이다.
+> 정본 분담: 규칙·수치 → [game-design.md](game-design.md) · 관측/행동/마스크/보상/env 프로토콜 → [ai-interface-spec.md](ai-interface-spec.md) · 실시간 전투 → [combat-design.md](combat-design.md) · 전투 AI → [combat-ai-spec.md](combat-ai-spec.md) · 화면·FX·오디오 → [art-direction.md](art-direction.md) · 일정·결정 사항 → [development-plan.md](development-plan.md) · 코딩 규칙 → [coding_convention.md](../coding_convention.md)
 
 ## 1. 설계 원칙
 | # | 원칙 | 의미 |
@@ -352,3 +352,43 @@ Python 프로세스 (사용자 트레이너 또는 python/examples/random_agent.
 - 골든: 고정 시드 + 행동 스크립트 → 이벤트 로그 스냅샷, `DEFAULT_RULES` ↔ 기획서 수치, `obs_v1` 인코딩 벡터, 모델 어댑터 패리티 샘플(허용 오차 내).
 - 통합: 인프로세스 서버 + socket.io-client로 방 생성→시작→봇 대전→종료, 재접속·타임아웃(연속 3회 대리·해제 포함)·`STALE_VERSION` 경합. env 서버 spawn + JSONL 왕복, Python 쪽은 pytest로 경량 검증.
 - E2E(선택, Playwright): 브라우저 컨텍스트 2개로 온라인 1게임, 그리고 핫시트 1게임을 끝까지 진행.
+
+## 12. 2차: 실시간 전투 구조 (구현 예정, in progress)
+> 이름·시그니처는 예정이며 구현 코드가 정본이다. 전투 규칙·수치는 [combat-design.md](combat-design.md)(구현 후 `DEFAULT_COMBAT_RULES`), 전투 AI 계약은 [combat-ai-spec.md](combat-ai-spec.md), 화면·FX는 [art-direction.md](art-direction.md).
+
+### 12.1 새 패키지와 의존 방향
+| 패키지 | 책임 | 의존 |
+|---|---|---|
+| `@dragon-rush/combat` | 결정적 실시간 전투 sim(60Hz, Q8, BAM): `createFight(setup, rules, seed)`, `stepFight(state, inputs[2]) → { state, events }`, `hashFight`, `DEFAULT_COMBAT_RULES`, 직업 키트, 용 스크립트, 보드 ↔ 전투 변환(`CombatRequest` → 전투 setup, 전투 결과 → `CombatResult`) | engine (타입만) |
+| `@dragon-rush/combat-ai` | `cobs_v1` 인코더, `cact_v1` 코덱·마스크, 스크립트 봇(dummy·rusher·kiter·turtle·random), 전투 `Policy`, TS MLP 런타임·`USER_COMBAT_WEIGHT_ADAPTER`·패리티 | combat, engine (타입) |
+| `@dragon-rush/sim` (확장) | `combat-env-server`(stdio JSONL, 보드 env와 별도 프로세스), 보드 env `combat_resolver`, 전투 데이터·스탯 분포 생성 | + combat, combat-ai |
+| `python/rpgboard_env` (확장) | `CombatVecEnv` | numpy만 |
+
+- 의존: `engine` ← `combat` ← `combat-ai` ← `sim`·`server`·`web`. `engine`은 여전히 아무것도 import하지 않는다. 엔진과 전투 sim은 서로를 호출하지 않고, 셸(서버·`LocalGameClient`·env)이 `CombatRequest`로 전투를 실행한 뒤 결과를 `applyCombatResult`로 넣는다.
+- `packages/combat` lint: 엔진 순수성 규칙 + 초월함수(`Math.sin/cos/tan/atan2/exp/log/pow/sqrt/hypot/cbrt`)·`**` 금지(브라우저 엔진 간 결정성). 웹 FX 계층은 sim 이벤트를 구독만 하고 자기 RNG(xorshift)를 쓴다.
+
+### 12.2 엔진 COMBAT phase 경계 (엔진 구현 진행 중)
+- `RulesConfig.combat.mode: 'dice' | 'external'`. `external`이면 전투 시작 시 `CombatStarted`를 내고 `pending = { actor: a, phase: 'COMBAT' }`, `state.combat = { kind: 'duel' | 'dragonFight', a, b }`에서 멈춘다. 이 phase의 `getLegalActions`는 `[]`.
+- 결과 입력: `applyCombatResult(state, { winner, hpA, hpB, indomitableUsedA?, indomitableUsedB?, timedOut? })`. 엔진이 검증(`InvalidCombatResultError`)하고 `CombatEnded`·탈락·전리품·승리 판정을 이어 간다. `resolveCombatWithDice(state)`는 대기 중인 전투를 주사위 규칙으로 정리한다(`dice` 리졸버·대체 경로).
+- 서버: `GameSession`이 `COMBAT`에 들어가면 턴 타이머를 멈추고 전투 방(`FightRoom`)을 연다. 전투 결과도 사람 입력과 같은 원칙으로 **단일 경로**(예: `GameSession.submitCombatResult(fightId, result)`)로만 들어오고 `stateVersion`·`fightId` 검사 후 적용한다. 로컬은 `LocalGameClient`가 브라우저 sim을 돌린 뒤 같은 엔진 함수를 호출한다.
+- 클라이언트가 `pending.phase = 'COMBAT'`을 새로 보게 되므로 `PROTOCOL_VERSION`을 2로 올린다. 보드 정책은 `COMBAT`에서 결정하지 않으므로 `obs_v1`/`act_v1`은 바뀌지 않는다.
+
+### 12.3 실시간 전투 메시지 (`packages/protocol`, 예정)
+| 방향 | 이름 | 페이로드 | 전송 |
+|---|---|---|---|
+| S→C | `fight:start` | `{ fightId, seed, setup, startTick, seats }` | 신뢰, 방 전체. 2.8초 스플래시·준비 동안 ack 왕복으로 RTT 측정 |
+| C→S | `fight:input` | 바이너리 `{ fightId u16, tick u32, 최근 4틱 마스크 u8×4 }` ≈ 10B | 매 틱(60/s), ack 없음, `compress(false)` |
+| S→C | `fight:state` | 바이너리 스냅샷: tick, `ackTick[2]`, `inputLate[2]`, 전투원 2 × ≈ 24B, 투사체 ≤ 16 × 10B, 이벤트 (≈ 60~250B) | 두 전투원 30Hz(volatile 아님), 관전자 20Hz `volatile` |
+| S→C | `fight:end` | `{ fightId, outcome }` | 신뢰. 이어서 `applyCombatResult` 결과가 `game:update`로 나감 |
+| S→C / C→S | `fight:sync` / `fight:requestSync` | 전체 전투 상태 / `{ fightId }` | (재)입장·갭 감지 시 |
+
+- 서버: 모든 전투를 도는 60Hz 루프 하나(hrtime 누산기, 따라잡기 ≤ 5스텝). 입력은 좌석별 틱 큐(이미 시뮬한 틱의 늦은 입력은 폐기, 누락은 마지막 마스크 반복, 4틱 넘게 쌓이면 가장 오래된 것 폐기). 끊긴 전투원은 전투 봇 Normal이 "AI 대행"하고, 재접속하면 `fight:sync` 후 다음 틱에 돌려준다.
+- 클라이언트: 스냅샷마다 권위 상태로 되돌린 뒤 현재 틱까지 재시뮬(상대 입력은 마지막 마스크, 최대 10틱). 오차 < 24px는 6틱에 섞고 그 이상은 스냅. 서버보다 `RTT/2 + 지터 + 1틱` 앞서 달리며 `inputLate`로 ±1틱 조정. 근거는 combat-design §9.
+- 경계 검증: 신뢰 메시지는 zod, 바이너리 메시지는 길이·범위를 검사하는 디코더로 진입 시 검증한다. 좌석은 소켓에서 정하므로 남의 전투원 입력은 보낼 수 없다.
+
+### 12.4 학습 프로세스
+```
+Python (사용자 트레이너) ─┬─ RPGBoardVecEnv ── stdio JSONL ──▶ env-server        (보드: obs_v1/act_v1, combat_resolver)
+                          └─ CombatVecEnv   ── stdio JSONL ──▶ combat-env-server (전투: cobs_v1/cact_v1)
+```
+- 두 env 서버는 별도 프로세스이고 각자 버전·`info`를 갖는다. 보드 env의 `outcome`·`sim` 리졸버는 고정된 outcome 파일·전투 모델을 읽기만 한다([combat-ai-spec.md §12](combat-ai-spec.md)).
