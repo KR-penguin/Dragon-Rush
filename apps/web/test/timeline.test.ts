@@ -4,7 +4,9 @@ import { applyEventToDisplay, describeEvent, eventDuration } from '../src/animat
 
 describe('event timeline', () => {
   it('describes every event of a full game without throwing and replays positions', () => {
-    let { state, events } = createGameWithEvents({ seats: [{ job: 'mage' }, { job: 'ninja' }, { job: 'archer' }] }, { ...DEFAULT_RULES, maxRounds: 30 }, 4);
+    const created = createGameWithEvents({ seats: [{ job: 'mage' }, { job: 'ninja' }, { job: 'archer' }] }, { ...DEFAULT_RULES, maxRounds: 30 }, 4);
+    let state = created.state;
+    const events = created.events;
     const all: GameEvent[] = [...events];
     let display = toPublicState(state);
     for (let i = 0; i < 3000 && state.pending; i++) {
