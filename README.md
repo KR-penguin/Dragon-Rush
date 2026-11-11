@@ -47,6 +47,7 @@
 |---|---|
 | [docs/game-design.md](docs/game-design.md) | 게임 기획서. 규칙·수치·턴 흐름의 정본 |
 | [docs/architecture.md](docs/architecture.md) | 아키텍처. 패키지 경계, 엔진 설계, 웹·서버 구조, 멀티플레이 프로토콜·동기화 |
+| [python/README.md](python/README.md) | **학습 가이드**. 관측 253개·행동 47개 인덱스표, 보상, env 옵션, 기준선, 모델 전달 방법 |
 | [docs/ai-interface-spec.md](docs/ai-interface-spec.md) | AI 인터페이스 명세. 관측·행동·마스크·보상, env 서버 프로토콜, Python API, 모델 통합 계약 |
 | [docs/development-plan.md](docs/development-plan.md) | 개발 계획서. Phase P0~P7, 사용자 결정 사항, 기술 스택, 에셋 요청 목록, 리스크 |
 | [coding_convention.md](coding_convention.md) | 꼭 지켜야 할 코딩 규칙 8개 |
@@ -117,6 +118,8 @@ docker build -t hero-dice . && docker run -p 3001:3001 hero-dice   # 컨테이�
 서버 설정(환경변수): `PORT`(3001), `TURN_TIMEOUT_MS`(60000), `RECONNECT_GRACE_MS`(60000), `BOT_ACTION_DELAY_MS`(700), `MODELS_DIR`(`models/`).
 
 ## AI 모델·학습 환경
+
+> 학습을 시작한다면 **[python/README.md](python/README.md)(학습 가이드)**부터 본다.
 
 | 담당 | 범위 |
 |---|---|
