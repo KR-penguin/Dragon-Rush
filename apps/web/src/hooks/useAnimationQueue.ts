@@ -20,7 +20,13 @@ export function useAnimationQueue(store: GameStore): void {
       }, ms);
     };
     const pump = () => {
-      if (running || store.getState().queue.length === 0) return;
+      if (running) return;
+      const s = store.getState();
+      if (s.queue.length === 0) {
+        // A remount (e.g. StrictMode) cleared the timer that would have finished this event.
+        if (s.current !== null) s.snap();
+        return;
+      }
       running = true;
       tick();
     };
