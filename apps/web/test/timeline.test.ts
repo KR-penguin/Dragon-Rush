@@ -1,4 +1,4 @@
-import { applyAction, createGameWithEvents, DEFAULT_RULES, getLegalActions, toPublicState, type GameEvent } from '@hero-dice/engine';
+import { applyAction, createGameWithEvents, DEFAULT_RULES, getLegalActions, toPublicState, type GameEvent } from '@dragon-rush/engine';
 import { describe, expect, it } from 'vitest';
 import { applyEventToDisplay, describeEvent, eventDuration } from '../src/animation/eventTimeline';
 

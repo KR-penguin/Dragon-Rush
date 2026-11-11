@@ -1,4 +1,4 @@
-import type { Action, GameEvent, Phase, PublicGameState, SeatId } from '@hero-dice/engine';
+import type { Action, GameEvent, Phase, PublicGameState, SeatId } from '@dragon-rush/engine';
 
 export type SeatKind = 'human' | 'bot' | 'model';
 

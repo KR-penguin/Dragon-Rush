@@ -1,4 +1,4 @@
-import { JOB_IDS, type JobDef, type JobId } from '@hero-dice/engine';
+import { JOB_IDS, type JobDef, type JobId } from '@dragon-rush/engine';
 import { JOB_ICON, JOB_LABEL } from '../../types/labels';
 import {
   BOT_OPTIONS,

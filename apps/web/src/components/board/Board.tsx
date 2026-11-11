@@ -1,4 +1,4 @@
-import type { JobId, SeatId, TileDef } from '@hero-dice/engine';
+import type { JobId, SeatId, TileDef } from '@dragon-rush/engine';
 import { useMemo, type CSSProperties, type ReactNode } from 'react';
 import { jobImagePath } from '../../types/assetPaths';
 import { RING_SIDE, ringCell, slotOffset, tokenSlots } from '../../types/boardLayout';

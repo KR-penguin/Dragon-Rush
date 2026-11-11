@@ -1,4 +1,4 @@
-import type { PublicGameState, SeatId } from '@hero-dice/engine';
+import type { PublicGameState, SeatId } from '@dragon-rush/engine';
 import { useMemo } from 'react';
 import { DragonConfirmDialog } from '../../components/dialogs/DragonConfirmDialog';
 import { HandoffDialog } from '../../components/dialogs/HandoffDialog';

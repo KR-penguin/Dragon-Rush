@@ -1,4 +1,4 @@
-import type { JobId } from '@hero-dice/engine';
+import type { JobId } from '@dragon-rush/engine';
 import {
   C2S,
   PROTOCOL_VERSION,
@@ -7,11 +7,11 @@ import {
   type RoomConfigureSeat,
   type RoomStateMsg,
   type SessionWelcomeMsg,
-} from '@hero-dice/protocol';
+} from '@dragon-rush/protocol';
 import { io, type Socket } from 'socket.io-client';
 import { OnlineGameClient } from './OnlineGameClient';
 
-const TOKEN_KEY = 'heroDice.sessionToken';
+const TOKEN_KEY = 'dragonRush.sessionToken';
 
 const readToken = (): string | undefined => {
   try {

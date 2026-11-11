@@ -1,5 +1,5 @@
-import { dragonProfile, profileOf, winProbability } from '@hero-dice/ai';
-import type { PublicGameState, SeatId } from '@hero-dice/engine';
+import { dragonProfile, profileOf, winProbability } from '@dragon-rush/ai';
+import type { PublicGameState, SeatId } from '@dragon-rush/engine';
 import { playerOf } from './playerView';
 
 export const ESTIMATE_SAMPLES = 320;

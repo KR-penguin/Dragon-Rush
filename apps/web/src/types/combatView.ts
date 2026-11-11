@@ -4,7 +4,7 @@ import type {
   GameEvent,
   PublicGameState,
   SeatId,
-} from '@hero-dice/engine';
+} from '@dragon-rush/engine';
 
 export type HitBadge = 'firstStrike' | 'rage' | 'breath' | 'evade' | 'indomitable';
 

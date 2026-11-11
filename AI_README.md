@@ -1,4 +1,4 @@
-# AI_README — Hero's Dice (working title)
+# AI_README — Dragon Rush
 
 > Workspace guide for AI coding agents. Read it before touching anything in this repo.
 > **Status: implemented (P0–P7).** Two items wait on the user: the weight JSON format (P6 adapter) and real art/audio + a hosting target (P7).
@@ -38,7 +38,7 @@ Reading order for any task: this file → `coding_convention.md` → canonical d
 | Area | Choice | Notes |
 |---|---|---|
 | Language | TypeScript 5.9 `strict` + `noUncheckedIndexedAccess` | `any` is forbidden |
-| Monorepo | pnpm 10 workspaces | scope `@hero-dice/*`; workspace packages export `src/index.ts` directly (no per-package build) |
+| Monorepo | pnpm 10 workspaces | scope `@dragon-rush/*`; workspace packages export `src/index.ts` directly (no per-package build) |
 | Runtime | Node 22 | server, sim, env server |
 | Rules engine | zero-dependency TS + own **sfc32** PRNG | copy-on-write working copy per action (no Immer) |
 | Validation | zod 4 | protocol schemas, env commands |
@@ -55,13 +55,13 @@ Brief the user with a reason before adding any library that is not in this table
 ```
 /
 ├─ apps/
-│  ├─ web/           # @hero-dice/web: React + Vite client (local + online play, lobby, board UI)
-│  └─ server/        # @hero-dice/server: Fastify + Socket.IO authoritative server
+│  ├─ web/           # @dragon-rush/web: React + Vite client (local + online play, lobby, board UI)
+│  └─ server/        # @dragon-rush/server: Fastify + Socket.IO authoritative server
 ├─ packages/
-│  ├─ engine/        # @hero-dice/engine: pure deterministic rules engine (ONLY rules source) + DEFAULT_RULES
-│  ├─ protocol/      # @hero-dice/protocol: C<->S message types, zod schemas, error codes, PROTOCOL_VERSION
-│  ├─ ai/            # @hero-dice/ai: obs encoder, action codec/mask, Policy, bots, ModelPolicy, parity, adapters
-│  └─ sim/           # @hero-dice/sim: batch runner, metrics, `pnpm sim` CLI, env server (stdio JSONL)
+│  ├─ engine/        # @dragon-rush/engine: pure deterministic rules engine (ONLY rules source) + DEFAULT_RULES
+│  ├─ protocol/      # @dragon-rush/protocol: C<->S message types, zod schemas, error codes, PROTOCOL_VERSION
+│  ├─ ai/            # @dragon-rush/ai: obs encoder, action codec/mask, Policy, bots, ModelPolicy, parity, adapters
+│  └─ sim/           # @dragon-rush/sim: batch runner, metrics, `pnpm sim` CLI, env server (stdio JSONL)
 ├─ python/           # rpgboard_env (numpy client), examples/random_agent.py, tests/ (pytest), pyproject.toml
 ├─ models/           # user weight JSON (models/<id>.json); parity samples in models/parity/
 ├─ docs/             # game-design, architecture, ai-interface-spec, development-plan
@@ -78,7 +78,7 @@ Brief the user with a reason before adding any library that is not in this table
 **Dependency direction** (one way): `engine` ← `protocol`, `ai` ← `sim`, `server`, `web`. Engine imports nothing. Runtime only: web ↔ server via Socket.IO; Python ↔ sim via subprocess stdio.
 
 ## 6. Architecture invariants — MUST NOT break
-1. **Engine purity & determinism.** No `Math.random`, `Date`, I/O, `node:*`, `@hero-dice/*` imports in `packages/engine` (ESLint). Same `(setup, rules, seed, actions)` → same state and events. Inputs are never mutated (`applyAction` works on a clone). Randomness only from `state.rng`.
+1. **Engine purity & determinism.** No `Math.random`, `Date`, I/O, `node:*`, `@dragon-rush/*` imports in `packages/engine` (ESLint). Same `(setup, rules, seed, actions)` → same state and events. Inputs are never mutated (`applyAction` works on a clone). Randomness only from `state.rng`.
 2. **Single rules source.** Only the engine decides legality and outcomes. UI buttons come from `legalActions`. `GameEvent`s carry result values, so UI and logs never recompute rules.
 3. **`RulesConfig` is the only place for numbers.** `DEFAULT_RULES` must equal `docs/game-design.md` (golden test `packages/engine/test/rules.test.ts`).
 4. **Server authoritative.** Clients send `Action` + `stateVersion` only; the server derives the seat from the socket. Every input (human, timer, bot, model, proxy) goes through `GameSession.submit()`. Decisions key on `pending.actor`. RNG state never leaves the server.
@@ -106,12 +106,12 @@ Brief the user with a reason before adding any library that is not in this table
 
 ## 8. Key interfaces
 ```ts
-// @hero-dice/engine
+// @dragon-rush/engine
 createGame(setup: GameSetup, rules: RulesConfig, seed: number): GameState   // createGameWithEvents also returns opening events
 getLegalActions(state: PublicGameState): Action[]   // for pending.actor, fixed order (timeouts take the first)
 applyAction(state: GameState, action: Action): { state; events }   // IllegalActionError
 toPublicState(state): PublicGameState; isLegalAction(state, action); actionKey(action)
-// @hero-dice/ai
+// @dragon-rush/ai
 encodeObservation(view, seat): Float32Array(253); encodeAction/decodeAction; maskFromLegal; ACTION_NAMES
 interface Policy { id; decide(ctx: DecisionContext): Action }   // ctx = { view, seat, legal, random }
 interface PolicyModel { meta: ModelMeta; forward(obs): Float32Array(47); value?(obs): number }
@@ -172,7 +172,7 @@ interface GameClient { mode; subscribe(cb): () => void; submit(action, stateVers
 ## 13. Glossary (KO ↔ code)
 | Korean | Code | Korean | Code |
 |---|---|---|---|
-| 용사의 주사위 | Hero's Dice | 칸 / 보드 | `Tile` / `Board` |
+| 드래곤 러쉬 | Dragon Rush | 칸 / 보드 | `Tile` / `Board` |
 | 검사 / 궁수 / 마법사 | `swordsman` / `archer` / `mage` | 용 | `Dragon` |
 | 닌자 / 광전사 | `ninja` / `berserker` | 전투 (PvP / 용전) | `duel` / `dragonFight` |
 | 공격력 / 방어력 | `atk` / `def` | 라운드 / 턴 / 단계 | `round` / `turn` / `phase` |

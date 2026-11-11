@@ -1,5 +1,5 @@
 {
-  "name": "@hero-dice/web",
+  "name": "@dragon-rush/web",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,9 +10,9 @@
     "typecheck": "tsc --noEmit -p ."
   },
   "dependencies": {
-    "@hero-dice/ai": "workspace:*",
-    "@hero-dice/engine": "workspace:*",
-    "@hero-dice/protocol": "workspace:*",
+    "@dragon-rush/ai": "workspace:*",
+    "@dragon-rush/engine": "workspace:*",
+    "@dragon-rush/protocol": "workspace:*",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "socket.io-client": "^4.8.4",

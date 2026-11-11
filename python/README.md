@@ -1,6 +1,6 @@
 # 학습 가이드 — `rpgboard_env`
 
-numpy Actor-Critic으로 "용사의 주사위"를 학습시키기 위한 안내서다. 이 문서는 실제 코드 기준의 요약본이고, 계약의 정본은 [docs/ai-interface-spec.md](../docs/ai-interface-spec.md)다(관측 §3, 행동 §4, 마스크 §5, 보상 §6, env 프로토콜 §7, Python API §8, 모델 통합 §9).
+numpy Actor-Critic으로 "드래곤 러쉬"를 학습시키기 위한 안내서다. 이 문서는 실제 코드 기준의 요약본이고, 계약의 정본은 [docs/ai-interface-spec.md](../docs/ai-interface-spec.md)다(관측 §3, 행동 §4, 마스크 §5, 보상 §6, env 프로토콜 §7, Python API §8, 모델 통합 §9).
 
 - 관측: `obs_v1`, float32 **253개**
 - 행동: `act_v1`, 이산 **47개** + 행동 마스크

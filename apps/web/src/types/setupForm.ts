@@ -1,4 +1,4 @@
-import { JOB_IDS, type JobDef, type JobId } from '@hero-dice/engine';
+import { JOB_IDS, type JobDef, type JobId } from '@dragon-rush/engine';
 
 export const MIN_SEATS = 2;
 export const MAX_SEATS = 4;

@@ -1,4 +1,4 @@
-import type { UpgradeStat } from '@hero-dice/engine';
+import type { UpgradeStat } from '@dragon-rush/engine';
 import type { ActionGroups } from '../../types/actionGroups';
 import type { StatOption } from '../../types/decisionView';
 import { DRAGON_ICON, ITEM_ICON } from '../../types/labels';

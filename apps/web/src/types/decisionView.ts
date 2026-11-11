@@ -9,7 +9,7 @@ import {
   type SeatId,
   type TileId,
   type UpgradeStat,
-} from '@hero-dice/engine';
+} from '@dragon-rush/engine';
 import type { MoveDelta } from './actionGroups';
 import { playerOf } from './playerView';
 

@@ -1,4 +1,4 @@
-import { JOB_IDS } from '@hero-dice/engine';
+import { JOB_IDS } from '@dragon-rush/engine';
 import { DRAGON_IMAGE_PATH } from '../types/assetPaths';
 import { DRAGON_ICON, JOB_ICON } from '../types/labels';
 import { AssetImage } from '../components/common/AssetImage';
@@ -18,7 +18,7 @@ export function HomePage({ onLocal, onOnline }: HomePageProps) {
           fallback={DRAGON_ICON}
           alt="용"
         />
-        <h1 className="home-title">용사의 주사위</h1>
+        <h1 className="home-title">드래곤 러쉬</h1>
         <p className="home-tagline">주사위를 굴려 강해지고, 결투에서 살아남아, 용을 쓰러뜨려라.</p>
         <div className="home-jobs" aria-hidden="true">
           {JOB_IDS.map((j) => (

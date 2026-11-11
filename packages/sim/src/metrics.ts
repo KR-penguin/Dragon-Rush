@@ -1,4 +1,4 @@
-import { ITEM_IDS, JOB_IDS, type JobId } from '@hero-dice/engine';
+import { ITEM_IDS, JOB_IDS, type JobId } from '@dragon-rush/engine';
 import type { GameRecord } from './runner';
 
 export interface Metrics {

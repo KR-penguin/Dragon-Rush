@@ -1,4 +1,4 @@
-import type { ItemId, JobId, TileId } from '@hero-dice/engine';
+import type { ItemId, JobId, TileId } from '@dragon-rush/engine';
 
 /** Asset paths are relative to `public/assets/`. */
 export const jobImagePath = (job: JobId): string => `images/jobs/${job}.png`;

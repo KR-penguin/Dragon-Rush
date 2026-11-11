@@ -1,5 +1,5 @@
-import { JOB_IDS } from '@hero-dice/engine';
-import { BOT_NAMES } from '@hero-dice/ai';
+import { JOB_IDS } from '@dragon-rush/engine';
+import { BOT_NAMES } from '@dragon-rush/ai';
 import { z } from 'zod';
 
 const seatList = z.array(z.number().int().min(0).max(3));

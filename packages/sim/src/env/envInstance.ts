@@ -13,7 +13,7 @@ import {
   type JobId,
   type RulesConfig,
   type SeatId,
-} from '@hero-dice/engine';
+} from '@dragon-rush/engine';
 import {
   createPolicyByName,
   createPolicyRandom,
@@ -21,7 +21,7 @@ import {
   encodeObservation,
   legalIndices,
   type Policy,
-} from '@hero-dice/ai';
+} from '@dragon-rush/ai';
 import { deriveSeed, randomJobs } from '../runner';
 import type { EnvConfig } from './config';
 

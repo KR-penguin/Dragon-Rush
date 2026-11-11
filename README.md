@@ -1,4 +1,4 @@
-# 용사의 주사위 (Hero's Dice) *(가제)*
+# 드래곤 러쉬 (Dragon Rush)
 
 > 부루마블처럼 이어진 24칸 보드를 주사위로 돌며 코인을 모아 강해지고, 같은 칸에 멈춘 상대와 1:1로 결투하고, 충분히 강해졌을 때 용에 도전하는 웹 RPG 보드게임. 로컬·온라인 멀티플레이, AI 좌석, AI 학습 환경을 함께 제공한다.
 
@@ -84,7 +84,7 @@
 
 | 영역 | 기술 |
 |---|---|
-| 언어·모노레포 | TypeScript (strict) + pnpm workspaces. 패키지 스코프 `@hero-dice/*` |
+| 언어·모노레포 | TypeScript (strict) + pnpm workspaces. 패키지 스코프 `@dragon-rush/*` |
 | 규칙 엔진 (`engine`) | 의존성 없는 순수 TS. 결정적(seeded PRNG sfc32를 state 안에 보관), 불변 state, 순수 함수 API |
 | 프로토콜 (`protocol`) | 클라이언트↔서버 메시지 타입 + zod 스키마 |
 | AI (`ai`) | 관측 인코더, 행동 코덱·마스크, `Policy`(Strategy 패턴), 내장 봇, 가중치 JSON 어댑터(Adapter 패턴) |
@@ -112,7 +112,7 @@ pnpm env-server              # 학습용 env 서버(stdio) 단독 실행. 먼저
 pip install -e python/                     # Python 학습 환경 클라이언트 설치 (선행: pnpm install && pnpm build)
 python python/examples/random_agent.py     # 무작위 에이전트 예제
 python -m pytest python/tests              # Python 클라이언트 테스트
-docker build -t hero-dice . && docker run -p 3001:3001 hero-dice   # 컨테이너 배포 (선택)
+docker build -t dragon-rush . && docker run -p 3001:3001 dragon-rush   # 컨테이너 배포 (선택)
 ```
 
 서버 설정(환경변수): `PORT`(3001), `TURN_TIMEOUT_MS`(60000), `RECONNECT_GRACE_MS`(60000), `BOT_ACTION_DELAY_MS`(700), `MODELS_DIR`(`models/`).

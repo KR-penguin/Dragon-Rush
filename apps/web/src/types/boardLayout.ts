@@ -1,4 +1,4 @@
-import type { SeatId } from '@hero-dice/engine';
+import type { SeatId } from '@dragon-rush/engine';
 
 /** The board is drawn as the border of a square grid of this many cells per side. */
 export const RING_SIDE = 7;

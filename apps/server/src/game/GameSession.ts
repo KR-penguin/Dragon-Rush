@@ -10,9 +10,9 @@ import {
   type JobId,
   type RulesConfig,
   type SeatId,
-} from '@hero-dice/engine';
-import { createHeuristicBot, createPolicyRandom, type Policy } from '@hero-dice/ai';
-import type { GameSnapshotMsg, GameUpdateMsg, OnlineSeatInfo, SeatStatusMsg } from '@hero-dice/protocol';
+} from '@dragon-rush/engine';
+import { createHeuristicBot, createPolicyRandom, type Policy } from '@dragon-rush/ai';
+import type { GameSnapshotMsg, GameUpdateMsg, OnlineSeatInfo, SeatStatusMsg } from '@dragon-rush/protocol';
 import { ProtocolError } from '../errors';
 import { timeoutAction } from './timeoutAction';
 import { TurnTimer } from './TurnTimer';

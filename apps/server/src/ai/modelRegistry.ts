@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { ACT_VERSION, OBS_VERSION, type PolicyModel, type WeightAdapter } from '@hero-dice/ai';
-import type { ModelInfo } from '@hero-dice/protocol';
+import { ACT_VERSION, OBS_VERSION, type PolicyModel, type WeightAdapter } from '@dragon-rush/ai';
+import type { ModelInfo } from '@dragon-rush/protocol';
 
 const FILE_PATTERN = /^[a-z0-9_-]+\.json$/;
 const MAX_BYTES = 20 * 1024 * 1024;

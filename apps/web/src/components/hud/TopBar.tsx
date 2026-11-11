@@ -26,7 +26,7 @@ export function TopBar({
   return (
     <header className="top-bar">
       <div className="brand">
-        <span className="brand-mark">🎲</span> 용사의 주사위
+        <span className="brand-mark">🎲</span> 드래곤 러쉬
       </div>
       <div className="round-chip">{round}라운드</div>
       <div className="top-controls">

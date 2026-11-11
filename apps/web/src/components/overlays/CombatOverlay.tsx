@@ -1,4 +1,4 @@
-import type { CombatantRef, JobId } from '@hero-dice/engine';
+import type { CombatantRef, JobId } from '@dragon-rush/engine';
 import type { CSSProperties } from 'react';
 import { DRAGON_IMAGE_PATH, jobImagePath } from '../../types/assetPaths';
 import { HIT_BADGE_LABEL, type CombatView, type HitView } from '../../types/combatView';

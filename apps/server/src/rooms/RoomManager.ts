@@ -1,5 +1,5 @@
 import { randomInt } from 'node:crypto';
-import { ROOM_CODE_ALPHABET } from '@hero-dice/protocol';
+import { ROOM_CODE_ALPHABET } from '@dragon-rush/protocol';
 import { Room } from './Room';
 
 export class RoomManager {

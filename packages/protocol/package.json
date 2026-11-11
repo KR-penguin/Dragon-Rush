@@ -1,5 +1,5 @@
 {
-  "name": "@hero-dice/protocol",
+  "name": "@dragon-rush/protocol",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit -p ."
   },
   "dependencies": {
-    "@hero-dice/engine": "workspace:*",
+    "@dragon-rush/engine": "workspace:*",
     "zod": "^4.6.7"
   }
 }

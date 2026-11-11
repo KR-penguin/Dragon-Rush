@@ -1,4 +1,4 @@
-import type { Action } from '@hero-dice/engine';
+import type { Action } from '@dragon-rush/engine';
 import { createHeuristicBot } from '../bots/heuristic/heuristicBot';
 import { ACTION_DIM, decodeAction, maskFromLegal } from '../codec/actions';
 import { encodeObservation } from '../obs/encode';

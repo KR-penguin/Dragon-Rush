@@ -11,7 +11,7 @@ import {
   type PublicGameState,
   type SeatId,
   type UpgradeStat,
-} from '@hero-dice/engine';
+} from '@dragon-rush/engine';
 import type { DecisionContext, Policy } from '../../policy';
 import { dragonProfile, profileOf, race, winProbability, type Profile } from './estimate';
 

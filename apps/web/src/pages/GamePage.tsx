@@ -1,4 +1,4 @@
-import type { CombatantRef, SeatId } from '@hero-dice/engine';
+import type { CombatantRef, SeatId } from '@dragon-rush/engine';
 import { useCallback, useMemo, useState } from 'react';
 import { Board, type TokenView } from '../components/board/Board';
 import { DragonLair } from '../components/board/DragonLair';

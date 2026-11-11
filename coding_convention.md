@@ -1,4 +1,4 @@
-# 코딩 컨벤션 — 용사의 주사위 (Hero's Dice)
+# 코딩 컨벤션 — 드래곤 러쉬 (Dragon Rush)
 
 > 꼭 지켜야 할 규칙 8개만 둔다. 들여쓰기·따옴표·import 순서 같은 포매팅은 **Prettier + ESLint(flat config)** 가 정하므로 여기서 다루지 않는다.
 > 설계 배경은 [docs/architecture.md](docs/architecture.md), AI 계약은 [docs/ai-interface-spec.md](docs/ai-interface-spec.md)를 본다. 규칙을 어겨야 할 사정이 있으면 커밋 본문(원격이 생기면 PR 설명)에 근거를 적고, 착수 전에 사용자에게 브리핑해 승인받는다.

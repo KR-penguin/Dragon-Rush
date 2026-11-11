@@ -5,7 +5,7 @@ import type {
   JobId,
   PublicGameState,
   SeatId,
-} from '@hero-dice/engine';
+} from '@dragon-rush/engine';
 import { DRAGON_NAME, OUTCOME_LABEL } from './labels';
 
 export interface EliminationRecord {

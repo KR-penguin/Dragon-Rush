@@ -1,4 +1,4 @@
-import type { GameEvent, PublicGameState } from '@hero-dice/engine';
+import type { GameEvent, PublicGameState } from '@dragon-rush/engine';
 import { useEffect, useState } from 'react';
 
 export interface DiceView {

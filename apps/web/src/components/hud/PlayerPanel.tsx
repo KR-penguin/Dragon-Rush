@@ -1,4 +1,4 @@
-import { ITEM_IDS } from '@hero-dice/engine';
+import { ITEM_IDS } from '@dragon-rush/engine';
 import type { CSSProperties } from 'react';
 import { jobImagePath } from '../../types/assetPaths';
 import { COIN_ICON, ITEM_ICON, ITEM_LABEL, JOB_ICON, JOB_LABEL } from '../../types/labels';

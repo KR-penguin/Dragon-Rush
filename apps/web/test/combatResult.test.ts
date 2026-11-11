@@ -5,7 +5,7 @@ import {
   toPublicState,
   type GameEvent,
   type PublicGameState,
-} from '@hero-dice/engine';
+} from '@dragon-rush/engine';
 import { describe, expect, it } from 'vitest';
 import { applyEventToDisplay } from '../src/animation/eventTimeline';
 import { reduceCombat, type CombatView } from '../src/types/combatView';

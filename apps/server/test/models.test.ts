@@ -1,8 +1,8 @@
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { ACTION_DIM, ModelFormatError, OBS_DIM, type WeightAdapter } from '@hero-dice/ai';
-import { C2S, PROTOCOL_VERSION, S2C, type Ack, type GameUpdateMsg, type RoomStateMsg } from '@hero-dice/protocol';
+import { ACTION_DIM, ModelFormatError, OBS_DIM, type WeightAdapter } from '@dragon-rush/ai';
+import { C2S, PROTOCOL_VERSION, S2C, type Ack, type GameUpdateMsg, type RoomStateMsg } from '@dragon-rush/protocol';
 import { io as connectClient } from 'socket.io-client';
 import { describe, expect, it } from 'vitest';
 import { loadModelRegistry } from '../src/ai/modelRegistry';

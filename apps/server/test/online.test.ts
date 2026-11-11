@@ -1,5 +1,5 @@
-import type { Action } from '@hero-dice/engine';
-import { C2S, PROTOCOL_VERSION, S2C, type Ack, type GameUpdateMsg, type RoomStateMsg, type SeatStatusMsg, type SessionWelcomeMsg } from '@hero-dice/protocol';
+import type { Action } from '@dragon-rush/engine';
+import { C2S, PROTOCOL_VERSION, S2C, type Ack, type GameUpdateMsg, type RoomStateMsg, type SeatStatusMsg, type SessionWelcomeMsg } from '@dragon-rush/protocol';
 import { io as connectClient, type Socket } from 'socket.io-client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { startServer, type ServerHandle } from '../src/app';

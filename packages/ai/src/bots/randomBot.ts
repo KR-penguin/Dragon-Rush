@@ -1,4 +1,4 @@
-import type { Action } from '@hero-dice/engine';
+import type { Action } from '@dragon-rush/engine';
 import type { DecisionContext, Policy } from '../policy';
 
 const pick = <T>(xs: readonly T[], random: () => number): T => xs[Math.floor(random() * xs.length)] as T;

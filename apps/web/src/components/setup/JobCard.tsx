@@ -1,4 +1,4 @@
-import type { JobDef, JobId } from '@hero-dice/engine';
+import type { JobDef, JobId } from '@dragon-rush/engine';
 import { jobImagePath } from '../../types/assetPaths';
 import { JOB_ICON, JOB_LABEL, JOB_PASSIVE } from '../../types/labels';
 import { AssetImage } from '../common/AssetImage';

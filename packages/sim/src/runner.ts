@@ -12,8 +12,8 @@ import {
   type OutcomeKind,
   type RulesConfig,
   type SeatId,
-} from '@hero-dice/engine';
-import { createPolicyByName, createPolicyRandom, type Policy } from '@hero-dice/ai';
+} from '@dragon-rush/engine';
+import { createPolicyByName, createPolicyRandom, type Policy } from '@dragon-rush/ai';
 import { loadModelPolicy } from './modelLoader';
 
 export interface GameRecord {

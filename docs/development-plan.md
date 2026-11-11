@@ -1,4 +1,4 @@
-# 개발 계획서 — 용사의 주사위 (Hero's Dice)
+# 개발 계획서 — 드래곤 러쉬 (Dragon Rush)
 
 > 상태: **P0~P7 구현 완료 (2026-11-11)**. 사용자 입력 대기: D4(가중치 포맷 → P6 어댑터), D8(에셋), D9(배포 대상).
 >
@@ -34,7 +34,7 @@
 | D7 | 지원 화면 | 데스크톱 브라우저 우선, 태블릿 가로까지. 모바일 세로는 범위 밖 | P4 | UI 레이아웃 작업량 |
 | D8 | 에셋 제공 (§4.2 목록, 사용권을 확보한 파일) | 플레이스홀더(CSS/SVG 도형, 무음)로 개발. 플레이스홀더 상태로도 출시 가능 | P7 시작 전 | 완성도·연출 |
 | D9 | 배포 대상(호스팅)·도메인 | WebSocket 장기 연결을 지원하는 단일 Node 호스트 1대(VPS, 또는 Render·Fly.io 같은 PaaS). 서버리스 함수형 호스팅은 인메모리 방과 맞지 않아 부적합 | P7 (P5 중 결정 권장) | 비용·HTTPS·운영 방식 |
-| D10 | 게임 이름 | 가제 "용사의 주사위 (Hero's Dice)" 유지 | P7 | 타이틀·로고 에셋 |
+| D10 | 게임 이름 | **결정됨: "드래곤 러쉬 (Dragon Rush)"** (2026-11-12) | P7 | 타이틀·로고 에셋 |
 | D11 | 밸런스 프로토타입 보관 (저장소 구조 변경이라 승인 필요) | 승인되면 `docs/balance/`에 `hero_sim.py`·`configs.py`·`final_metrics.json`을 참고 자료(코드 아님)로 보관. 승인 전까지는 ai-interface-spec §10 봇 요약과 기획서 §15 지표가 기준 | P0 | P3에서 프로토타입과 직접 비교할 수 있는지 |
 
 ### 2.1 규칙 열린 질문 한 줄 요약 (R1~R5·R7 상세는 기획서 §16, R6은 기획서 §15)
@@ -107,7 +107,7 @@ P6의 어댑터·패리티 부분은 `engine`·`ai`에만 의존한다. 포맷�
 #### P0 — 모노레포·툴링 스캐폴딩
 - **목표**: 빈 패키지 6개와 Python 패키지 골격이 빌드·린트·테스트 파이프라인을 통과한다.
 - **산출물**: `pnpm-workspace.yaml`, 루트 스크립트(`dev`/`test`/`lint`/`typecheck`/`build`/`sim`/`env-server`), `tsconfig.base.json`(strict, `noUncheckedIndexedAccess`), ESLint flat config, Prettier, Vitest 루트 설정, 패키지별 smoke 테스트, `python/pyproject.toml`.
-- **엔진 순수성 lint**: `packages/engine`에서 `Math.random`·`Date`·`node:*`/`fs` import·다른 `@hero-dice/*` import를 금지한다.
+- **엔진 순수성 lint**: `packages/engine`에서 `Math.random`·`Date`·`node:*`/`fs` import·다른 `@dragon-rush/*` import를 금지한다.
 - **DoD**: `pnpm install && pnpm lint && pnpm typecheck && pnpm test && pnpm build`가 성공한다. 엔진에 `Math.random()`을 넣으면 lint가 실패하는지 확인한다. `pnpm dev`로 빈 웹 페이지가 뜨고 서버 `/health`가 응답한다.
 - **확인**: D1(원격 저장소).
 
