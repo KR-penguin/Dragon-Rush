@@ -1,0 +1,8 @@
+**/node_modules
+**/dist
+.git
+.claude
+coverage
+python/.venv
+**/__pycache__
+prompt.md
