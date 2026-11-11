@@ -1,6 +1,6 @@
 # 아키텍처 설계서 — 용사의 주사위 (Hero's Dice)
 
-> 상태: **설계 단계 (코드 없음)**. 경로·명령·시그니처는 모두 "예정"이며 인터페이스 수준까지만 다룬다.
+> 상태: **구현 완료(P0~P7)**. 이 문서는 실제 코드 구조를 설명한다. 세부 구현은 각 패키지 소스가 정본이다.
 > 정본 분담: 규칙·수치 → [game-design.md](game-design.md) · 관측/행동/마스크/보상/env 프로토콜 → [ai-interface-spec.md](ai-interface-spec.md) · 일정·결정 사항 → [development-plan.md](development-plan.md) · 코딩 규칙 → [coding_convention.md](../coding_convention.md)
 
 ## 1. 설계 원칙
@@ -60,7 +60,8 @@ interface GameState {                      // 실제 코드는 전 필드 readon
   current: SeatId; round: number; seatOrigin: number[];  // 좌석 번호 = 턴 순서(createGame이 시드로 셔플 후 재번호), seatOrigin[s] = GameSetup 좌석 인덱스
   phase: Phase;
   pending: PendingDecision | null;         // { actor, phase, ctx? } ctx = 방어막 질의 순서, PvP 후보 등. null ⇔ 종료
-  turnCtx: TurnContext;                    // rolled, dice, teleportsUsed(횟수), thiefUsed, landedOnShop(canBuy) 등 턴 한정 값
+  turn: TurnContext;                       // resting, rolled, dice, teleportsUsed, thiefUsed, canBuy 등 턴 한정 값
+  pvp: PvpContext | null;                  // 진행 중 PvP: arriver, candidates, target, 방어막 질의 단계
   rng: RngState;                           // 유일한 비공개 정보
   outcome: GameOutcome | null;             // { kind: 'dragon' | 'lastSurvivor' | 'draw'; winner?: SeatId }
 }
@@ -123,7 +124,7 @@ type Action =                                                     // UpgradeStat
   | { type: 'ADJUST_MOVE'; delta: -1 | 0 | 1 } | { type: 'SHIELD_DECISION'; use: boolean };
 ```
 - 엔진 `Action`의 대상은 **절대 좌석**(`SeatId`). `act_v1`의 상대 좌석(1~3) 표현은 `packages/ai` 코덱이 변환한다.
-- `GameEvent`는 `type` 판별 유니온(PascalCase): `TurnStarted`, `TurnSkipped`, `DiceRolled`, `MoveAdjusted`, `Moved{from,to,path,via}`, `StartBonus`, `TileResolved`, `StatUpgraded`, `ItemBought`, `ItemUsed`, `CoinsStolen`, `ShieldUsed`, `CombatStarted{kind:'duel'|'dragonFight'}`, `CombatHit{attacker,defender,damage,evaded,breath,hpAfter}`, `PassiveTriggered`, `PlayerEliminated`, `LootTransferred`, `TurnEnded`, `GameEnded{outcome}`.
+- `GameEvent`는 `type` 판별 유니온(PascalCase): `RoundStarted`, `TurnStarted`, `TurnSkipped`, `DiceRolled`, `MoveAdjusted`, `Moved{from,to,steps,via}`, `StartBonus`, `TileResolved`, `MysteryCardDrawn`, `EffectApplied`, `StatUpgraded`, `ItemBought`, `ItemUsed`, `CoinsStolen`, `PvpTriggered`, `PvpTargetChosen`, `ShieldUsed`, `CombatStarted{kind:'duel'|'dragonFight'}`, `CombatHit{attacker,defender,roll,damage,evaded,breath,rage,firstStrike,hpAfter}`, `PassiveTriggered`, `CombatEnded`, `PlayerEliminated`, `LootTransferred`, `TurnEnded`, `GameEnded{outcome}`. 정의는 `packages/engine/src/types.ts`.
 - 이벤트는 **결과값을 담는다**(`hpAfter`, `coinsAfter` 등). UI·로그는 규칙을 재계산하지 않고 이벤트만으로 연출한다. 이벤트에 RNG 상태는 없다.
 
 ### 3.5 RulesConfig (밸런스 수치 단일 출처)
@@ -155,10 +156,10 @@ interface RulesConfig {
 
 | 계층 | 모듈 | 책임 |
 |---|---|---|
-| 진입 | `index.ts`, `reducer.ts`, `legal.ts`, `public.ts` | 공개 API export, phase × action 핸들러 표, phase별 합법 행동 생성기, `toPublicState` |
+| 진입 | `index.ts`, `reducer.ts`, `legal.ts`, `public.ts`, `state.ts` | 공개 API export, action 디스패치와 단일 합법 행동 자동 적용, phase별 합법 행동 생성기(`LEGAL_BY_PHASE`), `toPublicState`, `createGame`·`cloneState` |
 | 흐름 | `turn.ts`, `movement.ts`, `duel.ts`, `dragon.ts`, `items.ts` | 턴 시작/종료·라운드·승리 판정 / 주사위 이동·닌자 보정·텔레포트·착지 / PvP 대상·전리품·탈락 / 용전·브레스 / 구매·도둑·방어막 질의 순서 |
-| 규칙 부품 | `combat.ts`, `jobs.ts`, `economy.ts`, `tiles/`, `board.ts` | 공통 전투 루프(선공·교환·상한) / 패시브 훅 맵 / 강화 비용·코인 증감 / 효과 핸들러 맵·미지의 동굴 / 링 좌표·출발 칸 통과 |
-| 기반 | `rng.ts`, `rules/`, `types/` | sfc32·`rollDie`·`shuffle` / `DEFAULT_RULES`·`validateRules` / 상태·행동·이벤트·규칙 타입 |
+| 규칙 부품 | `combat.ts`, `jobs.ts`, `economy.ts`, `tiles.ts`, `board.ts` | 공통 전투 루프(선공·교환·상한) / 패시브 훅 맵(`PASSIVES`) / 강화 비용·코인 증감 / 효과 핸들러 맵·미지의 동굴 / 링 좌표·출발 칸 통과 |
+| 기반 | `ctx.ts`, `rng.ts`, `rules/`, `types.ts` | 작업 사본 `Ctx`·`roll` / sfc32·`rollDie`·`shuffle` / `DEFAULT_RULES`·`validateRules` / 상태·행동·이벤트·규칙 타입 |
 
 ## 4. 적용 디자인 패턴
 | 영역 | 패턴 | 선택 이유 |
@@ -169,7 +170,7 @@ interface RulesConfig {
 | `Action` | Command (직렬화 가능한 데이터) | 네트워크 전송, 검증, 로그, 리플레이를 하나의 형태로 처리 |
 | `GameEvent` | 이벤트 로그 | 애니메이션 큐, 게임 로그 UI, 리플레이, 디버깅의 공통 원천 |
 | 칸 이벤트 | 데이터 주도 테이블 + 효과 핸들러 맵 | 수치는 `RulesConfig`, 동작은 `Record<EffectKind, EffectHandler>`. 새 칸 = 데이터 추가(OCP) |
-| 직업 패시브 | 훅 맵 (데이터로서의 Strategy) | `combat.ts`에 `if (job === …)` 분기 금지. 훅: initiative, modifyAttack, modifyDefense, onIncomingHit, onFatalDamage |
+| 직업 패시브 | 훅 맵 (데이터로서의 Strategy) | `combat.ts`에 `if (job === …)` 분기 금지. 훅(`jobs.ts`의 `PASSIVES`): `alwaysFirst`, `firstStrikeBonus`, `effectiveAtk`, `pierce`, `evadeDie`, `indomitable`, `moveAdjust` |
 | `Policy` | Strategy | RandomBot / HeuristicBot / ModelPolicy를 좌석 컨트롤러가 구분 없이 사용 |
 | 가중치 JSON | Adapter | 사용자 포맷 → 내부 `PolicyModel`. 포맷이 바뀌면 어댑터만 교체 |
 | `GameClient` | 공통 인터페이스(Ports & Adapters, DIP) | UI는 로컬/온라인을 모른다. `LocalGameClient` / `OnlineGameClient` 교체 가능 |
@@ -206,6 +207,8 @@ interface GameUpdate {
   pending: { actor: SeatId; phase: Phase; timeLeftMs: number | null } | null;
   controllableSeats: readonly SeatId[];    // 핫시트 = 사람 좌석 전부, 온라인 = 내 좌석
   legalActions: readonly Action[];         // pending.actor ∈ controllableSeats 일 때만
+  seats: readonly SeatInfo[];              // 좌석별 표시 이름·종류·연결·제어 주체(엔진 밖 세션 정보)
+  snapshot: boolean;                       // true면 애니메이션 없이 즉시 스냅
 }
 ```
 
@@ -218,11 +221,11 @@ interface GameUpdate {
 ## 6. 서버 구조 (`apps/server`)
 ```
 apps/server/src/
-├─ main.ts, config.ts   # 부트스트랩 / PORT, TURN_TIMEOUT_MS, RECONNECT_GRACE_MS, BOT_ACTION_DELAY_MS, MODELS_DIR
-├─ http/, socket/       # GET /health·/api/models / 핸드셰이크·메시지 라우터(zod 파싱 → 핸들러)
+├─ main.ts, app.ts, config.ts, errors.ts   # 부트스트랩 / Fastify+Socket.IO 조립(/health, /api/models, 정적 웹) / 환경변수 / ProtocolError
+├─ socket/              # gateway.ts: 핸드셰이크·zod 파싱·핸들러·브로드캐스트, rateLimit.ts
 ├─ rooms/, session/     # RoomManager.ts, Room.ts / SessionStore.ts
-├─ game/                # GameSession.ts, TurnTimer.ts, SeatController.ts, timeoutAction.ts
-└─ ai/                  # PolicyRunner.ts, modelRegistry.ts
+├─ game/                # GameSession.ts(좌석 제어·정책 실행 포함), TurnTimer.ts, timeoutAction.ts
+└─ ai/                  # modelRegistry.ts (가중치 어댑터는 @hero-dice/ai)
 ```
 
 | 구성요소 | 책임 |
@@ -231,8 +234,8 @@ apps/server/src/
 | `Room` | 로비 상태: 호스트(이탈 시 다음 사람에게 이양), 좌석 2~4(human/bot/model), 직업 중복 금지, 준비, 시작 |
 | `GameSession` | `GameState`(rng 포함)·`version`·이벤트 로그 보유. **모든 입력(사람·타이머·정책)이 `submit({ seat, action, stateVersion, source })` 하나로 수렴** → 동일한 검증·버전 검사 |
 | `TurnTimer` | 사람 좌석 결정 대기 시간(`TURN_TIMEOUT_MS`). `(actor, phase)`가 바뀔 때만 재시작(같은 phase 내 연속 행동으로 연장 불가). 만료 시 `timeoutAction` 제출. 좌석별 연속 시간 초과 카운터(사람 입력 시 0, 3회면 대리 전환, §8.3) |
-| `SeatController` | 좌석별 제어 주체: `human`(소켓 입력, 끊김·연속 시간 초과 시 대리 Policy) / `bot`(Random·Heuristic) / `model`(ModelPolicy) |
-| `PolicyRunner` | `pending.actor`가 정책 제어면 `BOT_ACTION_DELAY_MS` 후 `policy.decide()` → `submit()`. 예외·시간 초과 시 HeuristicBot 결과로 대체하고 로그 |
+| 좌석 제어 (`GameSession` 내부) | 좌석별 제어 주체: `human`(소켓 입력, 끊김·연속 시간 초과 시 대리 Policy) / `bot`(Random·Heuristic) / `model`(ModelPolicy) |
+| 정책 실행 (`GameSession.runPolicy`) | `pending.actor`가 정책 제어면 `BOT_ACTION_DELAY_MS` 후 `policy.decide()` → `submit()`. 예외·불법 행동이면 HeuristicBot 결과로 대체 |
 | `SessionStore` | `sessionToken` ↔ (playerId, roomCode, seat) 매핑. 재접속 시 좌석 복귀(§8.3) |
 | `modelRegistry` | `MODELS_DIR` 허용 파일만 로드·어댑터 검증·캐시(§9) |
 
@@ -248,21 +251,21 @@ apps/server/src/
 | C→S | `room:leave` | `{}` | 퇴장 |
 | C→S | `room:configure` | `{ maxRounds: number \| null }` | 호스트 전용, 로비에서만. 방 옵션(기본 `null` = 무제한) |
 | C→S | `room:configureSeat` | `{ seat, kind, botLevel?, modelId? }` | 호스트 전용. kind = human/bot/model/empty |
-| C→S | `room:selectJob` | `{ job, seat? }` | 직업 선택(중복 불가). `seat`는 호스트가 AI 좌석을 지정할 때만 |
+| C→S | `room:selectJob` | `{ job \| null, seat? }` | 직업 선택(중복 불가, null = 해제). `seat`는 호스트가 AI 좌석을 지정할 때만 |
 | C→S | `room:setReady` | `{ ready }` | 준비 토글 |
 | C→S | `room:start` | `{}` | 호스트 전용. 2명 이상 + 사람 전원 준비 |
 | C→S | `game:action` | `{ action, stateVersion }` | 행동 의도 |
 | C→S | `game:requestSnapshot` | `{}` | 버전 갭 감지 시 전체 상태 재요청 |
 | S→C | `session:welcome` | `{ sessionToken, playerId, resume? }` | 연결 직후. `resume`이면 기존 방·좌석으로 복귀 |
 | S→C | `room:state` | `{ roomCode, hostId, status, options, seats[] }` | 로비/진행/종료 상태 전체 (변경 시마다) |
-| S→C | `game:update` | `{ version, publicState, events, pending, legalActions? }` | 행동 적용 결과. `legalActions`는 수신자가 actor일 때만 |
-| S→C | `game:snapshot` | `{ version, publicState, pending, legalActions? }` | 시작·재접속·갭 복구 (이벤트 없음) |
+| S→C | `game:update` | `{ version, publicState, events, pending, seats, yourSeat, legalActions? }` | 행동 적용 결과. `legalActions`는 수신자가 actor일 때만 |
+| S→C | `game:snapshot` | `{ version, publicState, pending, seats, yourSeat, legalActions? }` | 재접속·갭 복구 (이벤트 없음) |
 | S→C | `seat:status` | `{ seat, connected, controlledBy, graceMsLeft? }` | 연결 끊김·대리 플레이·복귀 표시 |
 | S→C | `error` | `{ code, message }` | ack가 없는 비동기 오류 |
 
 - `pending` = `{ actor, phase, timeLeftMs }`. 시계 동기화 없이 남은 시간만 보낸다. 게임 종료는 `GameEnded` 이벤트 + `room:state.status = 'finished'`.
 - **zod 검증**: 서버는 모든 수신 페이로드를 `safeParse`, 실패 시 `INVALID_PAYLOAD`. 타입은 `z.infer`로 생성하고, `z.infer<typeof ActionSchema>`와 엔진 `Action`의 동일성을 타입 테스트로 고정한다. 송신 검증은 dev/test에서만.
-- **오류 코드**: `PROTOCOL_MISMATCH`, `INVALID_PAYLOAD`, `SESSION_INVALID`, `ROOM_NOT_FOUND`, `ROOM_FULL`, `ROOM_IN_PROGRESS`, `NOT_HOST`, `JOB_TAKEN`, `NOT_READY`, `NOT_YOUR_TURN`, `STALE_VERSION`, `ILLEGAL_ACTION`, `MODEL_NOT_FOUND`, `RATE_LIMITED`, `INTERNAL`.
+- **오류 코드**: `PROTOCOL_MISMATCH`, `INVALID_PAYLOAD`, `SESSION_INVALID`, `ROOM_NOT_FOUND`, `ROOM_FULL`, `ROOM_IN_PROGRESS`, `NOT_IN_ROOM`, `NOT_HOST`, `SEAT_OCCUPIED`, `JOB_TAKEN`, `NOT_READY`, `NOT_YOUR_TURN`, `STALE_VERSION`, `ILLEGAL_ACTION`, `MODEL_NOT_FOUND`, `RATE_LIMITED`, `INTERNAL`.
 - **stateVersion**: 게임 시작 시 0, 행동 1건 적용마다 +1(단조 증가). 제출 시 `stateVersion !== session.version`이면 `STALE_VERSION`. 더블클릭 중복 제출, 타이머 기본 행동과 늦은 사람 입력의 경합, 대리 봇과 복귀한 사람의 경합을 모두 "먼저 도착한 하나만 적용"으로 해결한다. 클라이언트는 `version ≤ 현재`인 update를 무시하고, `version > 현재 + 1`이면 `game:requestSnapshot`.
 
 ## 8. 동기화
@@ -307,7 +310,7 @@ sequenceDiagram
 ## 9. AI 좌석 실행 위치와 모델 파일
 | 모드 | Policy 실행 위치 | 모델 소스 |
 |---|---|---|
-| 로컬 (핫시트·vs 봇) | 브라우저 (`LocalGameClient`가 직접 호출) | 서버 `GET /api/models` 목록, 또는 브라우저 파일 선택(메모리에서만 사용, 서버로 전송하지 않음) |
+| 로컬 (핫시트·vs 봇) | 브라우저 (`LocalGameClient`가 직접 호출) | 어댑터 구현 후 활성화(현재 "준비 중") |
 | 온라인 | 서버 (`PolicyRunner`) | `MODELS_DIR`(기본 `models/`)의 허용 파일만. 호스트가 `modelId`로 선택 |
 
 ```ts
@@ -318,7 +321,7 @@ type WeightAdapter = (raw: unknown) => PolicyModel;                             
 ```
 - 정책 입력은 항상 `PublicGameState` → 봇도 RNG를 볼 수 없고, `encodeObservation(view, seat)` 결과가 env·서버·브라우저에서 동일하다.
 - `ModelPolicy` = `encodeObservation` → `PolicyModel.forward` → 마스크 적용(불법 행동 제외) → argmax 또는 샘플링 → 코덱으로 `Action` 복원.
-- **가중치 JSON 포맷은 사용자가 정의**한다. 어댑터는 포맷 수령 후 구현하며, 그 전까지 model 좌석은 UI에서 "준비 중"으로 비활성화한다. 통합에 필요한 정보(네트워크 구조, 활성화, 행렬 배치, 입력 정규화, actor 출력이 logits/확률 중 무엇인지, 패리티 샘플) 요청은 [ai-interface-spec.md](ai-interface-spec.md)에 정리한다.
+- **가중치 JSON 포맷은 사용자가 정의**한다. 어댑터 자리는 `packages/ai/src/model/adapters/index.ts`(`USER_WEIGHT_ADAPTER`, 현재 `null`)이며 서버 `modelRegistry`와 `pnpm sim --bots model:<id>`가 이것을 쓴다. 포맷 수령 후 구현하며, 그 전까지 model 좌석은 UI에서 "준비 중"으로 비활성화한다. 통합에 필요한 정보(네트워크 구조, 활성화, 행렬 배치, 입력 정규화, actor 출력이 logits/확률 중 무엇인지, 패리티 샘플) 요청은 [ai-interface-spec.md](ai-interface-spec.md)에 정리한다.
 - `modelRegistry`: 서버 시작 시 `MODELS_DIR`만 스캔, 파일명 `^[a-z0-9_-]+\.json$`, 크기 상한, `JSON.parse`만 사용(eval 없음), 어댑터 검증 통과 + 메타에 `obs_v1`/`act_v1` 표기가 있으면 일치 확인 후 등록. 실패 파일은 제외하고 로그만 남긴다.
 - 모델 **업로드는 범위 밖(향후)**. 서버에 모델을 추가하려면 운영자가 `models/`에 파일을 둔다.
 
