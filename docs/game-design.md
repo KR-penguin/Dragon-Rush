@@ -1,4 +1,4 @@
-# 게임 기획서 — 용사의 주사위 (Hero's Dice)
+# 게임 기획서 — 드래곤 러쉬 (Dragon Rush)
 
 > 상태: **기획 단계 (코드 없음)**. 이 문서는 **게임 규칙·수치의 정본**이다. 엔진의 `DEFAULT_RULES`(`RulesConfig`)는 이 문서와 같아야 하며, 일치 여부는 골든 테스트로 보장한다.
 > 관련 문서: 구조·멀티플레이 프로토콜 [architecture.md](architecture.md) · 관측/행동/보상/학습 env [ai-interface-spec.md](ai-interface-spec.md) · 일정·결정 [development-plan.md](development-plan.md)
@@ -7,7 +7,7 @@
 ## 1. 개요
 | 항목 | 내용 |
 |---|---|
-| 가제 | 용사의 주사위 (Hero's Dice) |
+| 이름 | 드래곤 러쉬 (Dragon Rush) |
 | 장르 | 웹 턴제 주사위 보드게임 + 경량 RPG(성장·1:1 결투·보스) |
 | 인원 | 2~4명. 사람·봇·사용자 AI 모델을 자유롭게 조합 |
 | 플레이 모드 | 로컬 핫시트, vs AI, 온라인 멀티플레이 (§13) |

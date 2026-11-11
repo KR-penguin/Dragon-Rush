@@ -1,4 +1,4 @@
-import type { ItemId, JobId, OutcomeKind, Phase, TileId, UpgradeStat } from '@hero-dice/engine';
+import type { ItemId, JobId, OutcomeKind, Phase, TileId, UpgradeStat } from '@dragon-rush/engine';
 
 export const JOB_LABEL: Record<JobId, string> = {
   swordsman: '검사',

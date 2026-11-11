@@ -1,4 +1,4 @@
-import type { Action, Phase, PublicGameState, SeatId } from '@hero-dice/engine';
+import type { Action, Phase, PublicGameState, SeatId } from '@dragon-rush/engine';
 import { assertNever } from './assertNever';
 
 /** The parts of a GameUpdate that decide whether this screen may act. */

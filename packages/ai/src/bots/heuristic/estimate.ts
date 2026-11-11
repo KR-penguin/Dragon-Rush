@@ -1,4 +1,4 @@
-import { createRng, nextFloat, resolveCombat, type Fighter, type JobId, type PlayerState, type RngState, type RulesConfig } from '@hero-dice/engine';
+import { createRng, nextFloat, resolveCombat, type Fighter, type JobId, type PlayerState, type RngState, type RulesConfig } from '@dragon-rush/engine';
 import { hashString } from '../../policy';
 
 /** Compact combat profile: what matters for estimating a fight. */

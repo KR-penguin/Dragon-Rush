@@ -1,4 +1,4 @@
-import { BOARD_SIZE } from '@hero-dice/engine';
+import { BOARD_SIZE } from '@dragon-rush/engine';
 import { describe, expect, it } from 'vitest';
 import {
   RING_SIDE,

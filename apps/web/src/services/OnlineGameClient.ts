@@ -1,5 +1,5 @@
-import type { Action } from '@hero-dice/engine';
-import { C2S, S2C, type GameSnapshotMsg, type GameUpdateMsg, type SeatStatusMsg } from '@hero-dice/protocol';
+import type { Action } from '@dragon-rush/engine';
+import { C2S, S2C, type GameSnapshotMsg, type GameUpdateMsg, type SeatStatusMsg } from '@dragon-rush/protocol';
 import type { GameClient, GameUpdate, SeatInfo, SubmitResult } from './gameClient';
 import type { OnlineSession } from './onlineSession';
 

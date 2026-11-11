@@ -1,4 +1,4 @@
-import { BOARD_SIZE, ITEM_IDS, UPGRADE_STATS, type Action, type PublicGameState, type SeatId } from '@hero-dice/engine';
+import { BOARD_SIZE, ITEM_IDS, UPGRADE_STATS, type Action, type PublicGameState, type SeatId } from '@dragon-rush/engine';
 
 export const ACT_VERSION = 'act_v1';
 export const ACTION_DIM = 47;

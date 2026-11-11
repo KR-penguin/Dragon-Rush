@@ -1,4 +1,4 @@
-import type { TileDef } from '@hero-dice/engine';
+import type { TileDef } from '@dragon-rush/engine';
 import { tileImagePath } from '../../types/assetPaths';
 import { TILE_ICON, TILE_LABEL } from '../../types/labels';
 import type { TileTone } from '../../types/tileView';

@@ -1,5 +1,5 @@
-import { JOB_IDS, type JobId } from '@hero-dice/engine';
-import type { LobbySeat, RoomConfigureSeat, RoomOptions, RoomStateMsg, RoomStatus } from '@hero-dice/protocol';
+import { JOB_IDS, type JobId } from '@dragon-rush/engine';
+import type { LobbySeat, RoomConfigureSeat, RoomOptions, RoomStateMsg, RoomStatus } from '@dragon-rush/protocol';
 import { ProtocolError } from '../errors';
 import type { GameSession } from '../game/GameSession';
 

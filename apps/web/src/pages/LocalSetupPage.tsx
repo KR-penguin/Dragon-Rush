@@ -1,4 +1,4 @@
-import { DEFAULT_RULES } from '@hero-dice/engine';
+import { DEFAULT_RULES } from '@dragon-rush/engine';
 import { SeatEditor } from '../components/setup/SeatEditor';
 import { useLocalSetup } from '../hooks/useLocalSetup';
 import {

@@ -1,4 +1,4 @@
-import type { TileDef } from '@hero-dice/engine';
+import type { TileDef } from '@dragon-rush/engine';
 
 export type TileTone = 'safe' | 'special' | 'good' | 'bad';
 

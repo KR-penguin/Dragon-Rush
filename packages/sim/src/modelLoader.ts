@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { createModelPolicy, getWeightAdapter, type Policy } from '@hero-dice/ai';
+import { createModelPolicy, getWeightAdapter, type Policy } from '@dragon-rush/ai';
 
 const cache = new Map<string, Policy>();
 

@@ -1,5 +1,5 @@
 {
-  "name": "hero-dice",
+  "name": "dragon-rush",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@10.34.5",
@@ -7,7 +7,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "dev": "pnpm --parallel --filter @hero-dice/web --filter @hero-dice/server run dev",
+    "dev": "pnpm --parallel --filter @dragon-rush/web --filter @dragon-rush/server run dev",
     "build": "pnpm -r run build",
     "start": "node apps/server/dist/main.js",
     "test": "vitest run",

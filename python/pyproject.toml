@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "rpgboard-env"
 version = "0.1.0"
-description = "numpy-only Python client for the Hero's Dice training environment"
+description = "numpy-only Python client for the Dragon Rush training environment"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = ["numpy>=1.24"]

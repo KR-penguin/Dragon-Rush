@@ -1,4 +1,4 @@
-import { BOARD_SIZE, type GameEvent, type SeatId } from '@hero-dice/engine';
+import { BOARD_SIZE, type GameEvent, type SeatId } from '@dragon-rush/engine';
 import { useEffect, useRef, useState } from 'react';
 import { eventDuration } from '../animation/eventTimeline';
 import { stepPath } from '../types/boardLayout';

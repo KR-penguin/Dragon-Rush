@@ -1,4 +1,4 @@
-import type { ErrorCode } from '@hero-dice/protocol';
+import type { ErrorCode } from '@dragon-rush/protocol';
 
 export class ProtocolError extends Error {
   constructor(

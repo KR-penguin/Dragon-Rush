@@ -1,6 +1,6 @@
 import { randomInt } from 'node:crypto';
-import { DEFAULT_RULES, withRules, type GameEvent } from '@hero-dice/engine';
-import { createModelPolicy, createPolicyByName } from '@hero-dice/ai';
+import { DEFAULT_RULES, withRules, type GameEvent } from '@dragon-rush/engine';
+import { createModelPolicy, createPolicyByName } from '@dragon-rush/ai';
 import {
   C2S,
   fail,
@@ -19,7 +19,7 @@ import {
   RoomStartSchema,
   S2C,
   type Ack,
-} from '@hero-dice/protocol';
+} from '@dragon-rush/protocol';
 import type { Server, Socket } from 'socket.io';
 import type { ZodType } from 'zod';
 import type { ModelRegistry } from '../ai/modelRegistry';

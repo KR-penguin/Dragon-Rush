@@ -1,4 +1,4 @@
-import type { GameEvent, PublicGameState, SeatId, TileId } from '@hero-dice/engine';
+import type { GameEvent, PublicGameState, SeatId, TileId } from '@dragon-rush/engine';
 import { ITEM_LABEL, JOB_LABEL, STAT_LABEL, TILE_LABEL, cardLabel } from '../types/labels';
 
 export type NameOf = (seat: SeatId) => string;

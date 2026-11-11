@@ -1,4 +1,4 @@
-import type { Action, ItemId, SeatId, UpgradeStat } from '@hero-dice/engine';
+import type { Action, ItemId, SeatId, UpgradeStat } from '@dragon-rush/engine';
 import { assertNever } from './assertNever';
 
 export type MoveDelta = -1 | 0 | 1;

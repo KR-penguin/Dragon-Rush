@@ -1,4 +1,4 @@
-import type { ItemId } from '@hero-dice/engine';
+import type { ItemId } from '@dragon-rush/engine';
 import { itemImagePath } from '../../types/assetPaths';
 import type { ShopRow } from '../../types/decisionView';
 import { COIN_ICON, ITEM_DESC, ITEM_ICON, ITEM_LABEL } from '../../types/labels';

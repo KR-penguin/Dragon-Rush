@@ -1,4 +1,4 @@
-import type { Action, GameEvent, JobId, Phase, PublicGameState, SeatId } from '@hero-dice/engine';
+import type { Action, GameEvent, JobId, Phase, PublicGameState, SeatId } from '@dragon-rush/engine';
 
 export type LobbySeatKind = 'human' | 'bot' | 'model' | 'empty';
 export type RoomStatus = 'lobby' | 'playing' | 'finished';

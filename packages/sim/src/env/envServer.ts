@@ -1,5 +1,5 @@
-import { DEFAULT_RULES } from '@hero-dice/engine';
-import { ACT_VERSION, ACTION_DIM, ACTION_NAMES, BOT_NAMES, OBS_DIM, OBS_V1_LAYOUT, OBS_VERSION } from '@hero-dice/ai';
+import { DEFAULT_RULES } from '@dragon-rush/engine';
+import { ACT_VERSION, ACTION_DIM, ACTION_NAMES, BOT_NAMES, OBS_DIM, OBS_V1_LAYOUT, OBS_VERSION } from '@dragon-rush/ai';
 import { RequestSchema, ResetParamsSchema, StepParamsSchema, type ResetParams } from './config';
 import { buildRules, EnvError, EnvInstance, type Transition } from './envInstance';
 

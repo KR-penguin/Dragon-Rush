@@ -21,7 +21,7 @@ function assetManifest(): Plugin {
   const id = 'virtual:asset-manifest';
   const resolved = `\0${id}`;
   return {
-    name: 'hero-dice-asset-manifest',
+    name: 'dragon-rush-asset-manifest',
     resolveId: (source) => (source === id ? resolved : null),
     load: (source) =>
       source === resolved ? `export default ${JSON.stringify(listFiles(ASSETS_DIR))};` : null,

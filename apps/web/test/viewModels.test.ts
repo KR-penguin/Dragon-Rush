@@ -1,4 +1,4 @@
-import { dragonProfile, profileOf, winProbability } from '@hero-dice/ai';
+import { dragonProfile, profileOf, winProbability } from '@dragon-rush/ai';
 import {
   createGame,
   DEFAULT_RULES,
@@ -6,7 +6,7 @@ import {
   upgradeCost,
   type PlayerState,
   type PublicGameState,
-} from '@hero-dice/engine';
+} from '@dragon-rush/engine';
 import { describe, expect, it } from 'vitest';
 import { moveOptions, opponentSummaries, shopRows, statOptions } from '../src/types/decisionView';
 import {

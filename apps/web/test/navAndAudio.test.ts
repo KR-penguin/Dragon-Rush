@@ -1,4 +1,4 @@
-import type { GameEvent } from '@hero-dice/engine';
+import type { GameEvent } from '@dragon-rush/engine';
 import { describe, expect, it } from 'vitest';
 import { sfxForEvent } from '../src/animation/eventSfx';
 import { LocalGameClient } from '../src/services/LocalGameClient';

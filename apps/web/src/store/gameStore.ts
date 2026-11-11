@@ -1,4 +1,4 @@
-import type { Action, GameEvent, PublicGameState, SeatId } from '@hero-dice/engine';
+import type { Action, GameEvent, PublicGameState, SeatId } from '@dragon-rush/engine';
 import { createStore } from 'zustand/vanilla';
 import { applyEventToDisplay, describeEvent, eventDuration } from '../animation/eventTimeline';
 import type { GameClient, GameUpdate, SubmitResult } from '../services/gameClient';

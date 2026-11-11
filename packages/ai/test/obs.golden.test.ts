@@ -1,4 +1,4 @@
-import { applyAction, getLegalActions, toPublicState } from '@hero-dice/engine';
+import { applyAction, getLegalActions, toPublicState } from '@dragon-rush/engine';
 import { describe, expect, it } from 'vitest';
 import { encodeObservation, OBS_VERSION } from '../src/index';
 import { newGame } from './helpers';

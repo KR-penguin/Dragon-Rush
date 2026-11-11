@@ -2,7 +2,7 @@ import { bgmPath, sfxPath, type BgmName, type SfxName } from '../types/assetPath
 import { assetUrl, hasAsset } from './assets';
 import { readStorage, writeStorage } from './storage';
 
-const MUTE_KEY = 'hero-dice:muted';
+const MUTE_KEY = 'dragon-rush:muted';
 const SFX_VOLUME = 0.7;
 const BGM_VOLUME = 0.35;
 

@@ -5,7 +5,7 @@ import {
   toPublicState,
   type Action,
   type PublicGameState,
-} from '@hero-dice/engine';
+} from '@dragon-rush/engine';
 import { describe, expect, it } from 'vitest';
 import { groupActions } from '../src/types/actionGroups';
 import {

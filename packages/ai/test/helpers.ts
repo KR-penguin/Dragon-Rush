@@ -8,7 +8,7 @@ import {
   withRules,
   type GameState,
   type JobId,
-} from '@hero-dice/engine';
+} from '@dragon-rush/engine';
 
 export function newGame(n: number, seed: number, maxRounds: number | null = 30): GameState {
   const jobs = [...JOB_IDS].slice(0, n) as JobId[];

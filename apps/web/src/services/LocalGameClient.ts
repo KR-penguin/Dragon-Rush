@@ -11,8 +11,8 @@ import {
   type GameState,
   type JobId,
   type SeatId,
-} from '@hero-dice/engine';
-import { createPolicyByName, createPolicyRandom, type Policy } from '@hero-dice/ai';
+} from '@dragon-rush/engine';
+import { createPolicyByName, createPolicyRandom, type Policy } from '@dragon-rush/ai';
 import type { GameClient, GameUpdate, SeatInfo, SubmitResult } from './gameClient';
 
 export interface LocalSeatConfig {

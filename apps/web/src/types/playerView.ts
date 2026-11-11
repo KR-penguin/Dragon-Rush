@@ -1,4 +1,4 @@
-import { PASSIVES, type PlayerState, type PublicGameState, type SeatId } from '@hero-dice/engine';
+import { PASSIVES, type PlayerState, type PublicGameState, type SeatId } from '@dragon-rush/engine';
 import { botLabel, seatColor } from './labels';
 
 export type BadgeKind =

@@ -1,4 +1,4 @@
-import type { UpgradeStat } from '@hero-dice/engine';
+import type { UpgradeStat } from '@dragon-rush/engine';
 import type { StatOption } from '../../types/decisionView';
 import { STAT_ICON, STAT_LABEL } from '../../types/labels';
 import { Modal } from '../common/Modal';

@@ -21,7 +21,7 @@ export default tseslint.config(
       ],
       'no-restricted-imports': [
         'error',
-        { patterns: ['node:*', 'fs', 'path', 'crypto', '@hero-dice/*'] },
+        { patterns: ['node:*', 'fs', 'path', 'crypto', '@dragon-rush/*'] },
       ],
     },
   },

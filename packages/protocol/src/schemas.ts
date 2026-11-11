@@ -1,4 +1,4 @@
-import { ITEM_IDS, JOB_IDS, UPGRADE_STATS, type Action } from '@hero-dice/engine';
+import { ITEM_IDS, JOB_IDS, UPGRADE_STATS, type Action } from '@dragon-rush/engine';
 import { z } from 'zod';
 
 const seatId = z.number().int().min(0).max(3);

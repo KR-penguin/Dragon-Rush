@@ -1,4 +1,4 @@
-import { getLegalActions, type Action, type PublicGameState } from '@hero-dice/engine';
+import { getLegalActions, type Action, type PublicGameState } from '@dragon-rush/engine';
 
 /** Default action when a human decision times out (docs/architecture.md §8.2). */
 export function timeoutAction(state: PublicGameState): Action {

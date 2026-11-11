@@ -1,4 +1,4 @@
-import type { SeatId } from '@hero-dice/engine';
+import type { SeatId } from '@dragon-rush/engine';
 import type { OpponentSummary } from '../../types/decisionView';
 import { formatPercent } from '../../types/estimates';
 import { Modal } from '../common/Modal';

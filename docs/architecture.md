@@ -1,4 +1,4 @@
-# 아키텍처 설계서 — 용사의 주사위 (Hero's Dice)
+# 아키텍처 설계서 — 드래곤 러쉬 (Dragon Rush)
 
 > 상태: **구현 완료(P0~P7)**. 이 문서는 실제 코드 구조를 설명한다. 세부 구현은 각 패키지 소스가 정본이다.
 > 정본 분담: 규칙·수치 → [game-design.md](game-design.md) · 관측/행동/마스크/보상/env 프로토콜 → [ai-interface-spec.md](ai-interface-spec.md) · 일정·결정 사항 → [development-plan.md](development-plan.md) · 코딩 규칙 → [coding_convention.md](../coding_convention.md)
@@ -18,23 +18,23 @@
 
 | 패키지 | 책임 | 의존 |
 |---|---|---|
-| `@hero-dice/engine` | 상태 전이, 합법 행동, `DEFAULT_RULES`, PRNG | 없음 |
-| `@hero-dice/protocol` | 메시지 타입·zod 스키마, `PROTOCOL_VERSION`, 오류 코드 | engine(타입), zod |
-| `@hero-dice/ai` | `encodeObservation`, 행동 코덱·마스크, `Policy`, RandomBot/HeuristicBot, `ModelPolicy`·가중치 어댑터 | engine, zod(가중치 어댑터 입력 검증) |
-| `@hero-dice/sim` | 대량 시뮬레이션·밸런스 CLI, env 서버(stdio JSONL) | engine, ai, zod(env 명령 검증) |
-| `@hero-dice/server` | 방·좌석·타이머·재접속·서버측 AI 좌석, 정적 웹 제공 | engine, protocol, ai, Fastify, Socket.IO |
-| `@hero-dice/web` | UI, 로컬 모드(브라우저 엔진), 온라인 클라이언트 | engine, protocol, ai, React, Zustand, Socket.IO client |
+| `@dragon-rush/engine` | 상태 전이, 합법 행동, `DEFAULT_RULES`, PRNG | 없음 |
+| `@dragon-rush/protocol` | 메시지 타입·zod 스키마, `PROTOCOL_VERSION`, 오류 코드 | engine(타입), zod |
+| `@dragon-rush/ai` | `encodeObservation`, 행동 코덱·마스크, `Policy`, RandomBot/HeuristicBot, `ModelPolicy`·가중치 어댑터 | engine, zod(가중치 어댑터 입력 검증) |
+| `@dragon-rush/sim` | 대량 시뮬레이션·밸런스 CLI, env 서버(stdio JSONL) | engine, ai, zod(env 명령 검증) |
+| `@dragon-rush/server` | 방·좌석·타이머·재접속·서버측 AI 좌석, 정적 웹 제공 | engine, protocol, ai, Fastify, Socket.IO |
+| `@dragon-rush/web` | UI, 로컬 모드(브라우저 엔진), 온라인 클라이언트 | engine, protocol, ai, React, Zustand, Socket.IO client |
 | `python/rpgboard_env` | env 서버를 subprocess로 띄우는 Gymnasium 스타일 래퍼 | numpy만 (TS와는 stdio로만 통신) |
 | `models/` | 사용자 가중치 JSON 보관 (예: `models/my-agent.json`) | — |
 
 ```mermaid
 flowchart BT
-  engine["@hero-dice/engine (무의존)"]
-  protocol["@hero-dice/protocol"] --> engine
-  ai["@hero-dice/ai"] --> engine
-  sim["@hero-dice/sim"] --> ai & engine
-  server["@hero-dice/server"] --> protocol & ai & engine
-  web["@hero-dice/web"] --> protocol & ai & engine
+  engine["@dragon-rush/engine (무의존)"]
+  protocol["@dragon-rush/protocol"] --> engine
+  ai["@dragon-rush/ai"] --> engine
+  sim["@dragon-rush/sim"] --> ai & engine
+  server["@dragon-rush/server"] --> protocol & ai & engine
+  web["@dragon-rush/web"] --> protocol & ai & engine
   web -.->|"Socket.IO (런타임)"| server
   py["python/rpgboard_env (numpy)"] -.->|"subprocess + stdio JSONL"| sim
   models["models/*.json (사용자 가중치)"] -.->|"허용 목록 로드"| server
@@ -225,7 +225,7 @@ apps/server/src/
 ├─ socket/              # gateway.ts: 핸드셰이크·zod 파싱·핸들러·브로드캐스트, rateLimit.ts
 ├─ rooms/, session/     # RoomManager.ts, Room.ts / SessionStore.ts
 ├─ game/                # GameSession.ts(좌석 제어·정책 실행 포함), TurnTimer.ts, timeoutAction.ts
-└─ ai/                  # modelRegistry.ts (가중치 어댑터는 @hero-dice/ai)
+└─ ai/                  # modelRegistry.ts (가중치 어댑터는 @dragon-rush/ai)
 ```
 
 | 구성요소 | 책임 |

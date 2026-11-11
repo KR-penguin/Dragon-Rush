@@ -1,4 +1,4 @@
-import type { Action, SeatId } from '@hero-dice/engine';
+import type { Action, SeatId } from '@dragon-rush/engine';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { GameUpdate } from '../services/gameClient';
 import type { GameStore } from '../store/gameStore';

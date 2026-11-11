@@ -1,5 +1,5 @@
 {
-  "name": "@hero-dice/sim",
+  "name": "@dragon-rush/sim",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -11,8 +11,8 @@
     "build": "tsup"
   },
   "dependencies": {
-    "@hero-dice/ai": "workspace:*",
-    "@hero-dice/engine": "workspace:*",
+    "@dragon-rush/ai": "workspace:*",
+    "@dragon-rush/engine": "workspace:*",
     "zod": "^4.6.7"
   }
 }

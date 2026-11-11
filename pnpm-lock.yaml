@@ -41,18 +41,18 @@ importers:
 
   apps/server:
     dependencies:
+      '@dragon-rush/ai':
+        specifier: workspace:*
+        version: link:../../packages/ai
+      '@dragon-rush/engine':
+        specifier: workspace:*
+        version: link:../../packages/engine
+      '@dragon-rush/protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
       '@fastify/static':
         specifier: ^8.3.0
         version: 8.3.0
-      '@hero-dice/ai':
-        specifier: workspace:*
-        version: link:../../packages/ai
-      '@hero-dice/engine':
-        specifier: workspace:*
-        version: link:../../packages/engine
-      '@hero-dice/protocol':
-        specifier: workspace:*
-        version: link:../../packages/protocol
       fastify:
         specifier: ^5.12.8
         version: 5.12.8
@@ -69,13 +69,13 @@ importers:
 
   apps/web:
     dependencies:
-      '@hero-dice/ai':
+      '@dragon-rush/ai':
         specifier: workspace:*
         version: link:../../packages/ai
-      '@hero-dice/engine':
+      '@dragon-rush/engine':
         specifier: workspace:*
         version: link:../../packages/engine
-      '@hero-dice/protocol':
+      '@dragon-rush/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
       react:
@@ -106,7 +106,7 @@ importers:
 
   packages/ai:
     dependencies:
-      '@hero-dice/engine':
+      '@dragon-rush/engine':
         specifier: workspace:*
         version: link:../engine
       zod:
@@ -117,7 +117,7 @@ importers:
 
   packages/protocol:
     dependencies:
-      '@hero-dice/engine':
+      '@dragon-rush/engine':
         specifier: workspace:*
         version: link:../engine
       zod:
@@ -126,10 +126,10 @@ importers:
 
   packages/sim:
     dependencies:
-      '@hero-dice/ai':
+      '@dragon-rush/ai':
         specifier: workspace:*
         version: link:../ai
-      '@hero-dice/engine':
+      '@dragon-rush/engine':
         specifier: workspace:*
         version: link:../engine
       zod:

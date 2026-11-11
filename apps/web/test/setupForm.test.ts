@@ -1,4 +1,4 @@
-import { DEFAULT_RULES, JOB_IDS } from '@hero-dice/engine';
+import { DEFAULT_RULES, JOB_IDS } from '@dragon-rush/engine';
 import { describe, expect, it } from 'vitest';
 import {
   defaultSetup,

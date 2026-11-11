@@ -10,7 +10,7 @@ import {
   type PlayerState,
   type PublicGameState,
   type SeatId,
-} from '@hero-dice/engine';
+} from '@dragon-rush/engine';
 import { GLOBAL_OFFSET, OBS_DIM, OBS_V1_SCALES as S, OPP_BLOCK, SELF_BLOCK } from './layout';
 
 const n = (x: number, scale: number): number => Math.min(2, Math.max(0, x / scale));

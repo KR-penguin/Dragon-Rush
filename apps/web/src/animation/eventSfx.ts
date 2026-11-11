@@ -1,4 +1,4 @@
-import type { GameEvent, SeatId } from '@hero-dice/engine';
+import type { GameEvent, SeatId } from '@dragon-rush/engine';
 import type { SfxName } from '../types/assetPaths';
 
 /** Sound effect for an event as it is shown, or null. Movement steps are voiced by the board itself. */

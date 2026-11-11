@@ -1,4 +1,4 @@
-"""Gymnasium-style clients for the Hero's Dice env server (numpy only)."""
+"""Gymnasium-style clients for the Dragon Rush env server (numpy only)."""
 from __future__ import annotations
 
 import base64

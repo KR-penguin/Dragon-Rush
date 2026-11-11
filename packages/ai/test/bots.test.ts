@@ -1,4 +1,4 @@
-import { actionKey, applyAction, getLegalActions, toPublicState, type GameState } from '@hero-dice/engine';
+import { actionKey, applyAction, getLegalActions, toPublicState, type GameState } from '@dragon-rush/engine';
 import { describe, expect, it } from 'vitest';
 import {
   ACTION_DIM,
