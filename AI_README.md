@@ -2,6 +2,7 @@
 
 > Workspace guide for AI coding agents. Read it before touching anything in this repo.
 > **Status: implemented (P0–P7).** Two items wait on the user: the weight JSON format (P6 adapter) and real art/audio + a hosting target (P7).
+> **2nd round (Phase R1–R8, 2026-11-12) in progress:** "Ember Table" board redesign, FX/audio, and real-time 2D combat for duels and the dragon with a separate combat AI model (development-plan §5).
 > Language: this file is English. `docs/*`, `README.md` and `coding_convention.md` are Korean (identifiers in English).
 
 ## 1. Purpose & reading order
@@ -13,7 +14,10 @@ This file is the workspace map: structure, libraries, patterns, stack. It does n
 | Module boundaries, engine internals, patterns, multiplayer protocol, security, deploy | `docs/architecture.md` |
 | `obs_v1`, `act_v1`, mask, reward, env server protocol, Python API, model contract, bots | `docs/ai-interface-spec.md` |
 | Training quick reference for the user (Korean, index tables) | `python/README.md` (must match the spec and `OBS_V1_LAYOUT`) |
-| Phases, DoD, open decisions (D1–D11, R1–R7), risks, asset request list | `docs/development-plan.md` |
+| Phases (P0–P7 done, 2nd round R1–R8), open decisions (D1–D16, rule questions R1–R7), risks, **asset request list (§4.2)** | `docs/development-plan.md` |
+| Board look, layout, camera, FX catalog (shake, hitstop, flashes), audio rules, accessibility settings (in progress) | `docs/art-direction.md` |
+| Real-time combat: sim constants, controls, frame data, damage, job kits, duel/dragon rules, board seam, netcode (in progress; `DEFAULT_COMBAT_RULES` wins once built) | `docs/combat-design.md` |
+| Combat AI: `cobs_v1`, `cact_v1`, masks, reward, `combat-env-server`, `CombatVecEnv`, `combat_resolver`, combat model contract (in progress) | `docs/combat-ai-spec.md` |
 | The 8 must-follow code rules | `coding_convention.md` |
 
 Reading order for any task: this file → `coding_convention.md` → canonical doc(s) for the area you touch → the code.
@@ -22,6 +26,7 @@ Reading order for any task: this file → `coding_convention.md` → canonical d
 ## 2. Project status
 - Done: engine (P1), AI interface + training env (P2), balance re-verified on the TS engine (P3), local web play (P4), online multiplayer (P5), model-integration plumbing (P6), deploy files (P7: Dockerfile, CI workflow).
 - Waiting on the user: `USER_WEIGHT_ADAPTER` in `packages/ai/src/model/adapters/index.ts` stays `null` until the weight JSON format and parity samples arrive (model seats show "준비 중"). Assets are placeholders (emoji/CSS) until files arrive at the paths in development-plan §4.2.
+- In progress (2nd round): `packages/combat` (deterministic 60 Hz combat sim, `DEFAULT_COMBAT_RULES`), `packages/combat-ai` (`cobs_v1`/`cact_v1` encoder, codec, masks, scripted bots, TS MLP runtime), `combat-env-server` + `CombatVecEnv`, and the engine `COMBAT` phase (`RulesConfig.combat.mode: 'dice' | 'external'`, `applyCombatResult`). None of these are canonical until merged; check the code first. Board and combat models are separate models with separate envs.
 - Approved simulation-driven rules: early PvP grace (rounds 1–3, `pvpGraceRounds`), starting shield (`startingItems`), ninja move-adjust cooldown. A rest turn only blocks movement. Teleport has no per-turn limit (`teleport.perTurnLimit = null`, open question R2); thief is once per turn (R3).
 
 ## 3. Product in ~10 lines
@@ -61,10 +66,12 @@ Brief the user with a reason before adding any library that is not in this table
 │  ├─ engine/        # @dragon-rush/engine: pure deterministic rules engine (ONLY rules source) + DEFAULT_RULES
 │  ├─ protocol/      # @dragon-rush/protocol: C<->S message types, zod schemas, error codes, PROTOCOL_VERSION
 │  ├─ ai/            # @dragon-rush/ai: obs encoder, action codec/mask, Policy, bots, ModelPolicy, parity, adapters
-│  └─ sim/           # @dragon-rush/sim: batch runner, metrics, `pnpm sim` CLI, env server (stdio JSONL)
-├─ python/           # rpgboard_env (numpy client), examples/random_agent.py, tests/ (pytest), pyproject.toml
-├─ models/           # user weight JSON (models/<id>.json); parity samples in models/parity/
-├─ docs/             # game-design, architecture, ai-interface-spec, development-plan
+│  ├─ combat/        # (in progress) @dragon-rush/combat: deterministic real-time combat sim, DEFAULT_COMBAT_RULES
+│  ├─ combat-ai/     # (in progress) @dragon-rush/combat-ai: cobs_v1/cact_v1, masks, scripted bots, combat model runtime
+│  └─ sim/           # @dragon-rush/sim: batch runner, metrics, `pnpm sim` CLI, env server (stdio JSONL); + combat-env-server (in progress)
+├─ python/           # rpgboard_env (numpy client; + CombatVecEnv in progress), examples/random_agent.py, tests/ (pytest), pyproject.toml
+├─ models/           # user weight JSON (models/<id>.json); parity samples in models/parity/; combat models in models/combat/ (planned)
+├─ docs/             # game-design, architecture, ai-interface-spec, development-plan, art-direction, combat-design, combat-ai-spec
 ├─ Dockerfile, .github/workflows/ci.yml
 └─ README.md  AI_README.md  coding_convention.md  CLAUDE.md
 ```
@@ -76,6 +83,7 @@ Brief the user with a reason before adding any library that is not in this table
 - Assets: `apps/web/public/assets/{images,audio}/...` (list in development-plan §4.2); only files that exist are used.
 
 **Dependency direction** (one way): `engine` ← `protocol`, `ai` ← `sim`, `server`, `web`. Engine imports nothing. Runtime only: web ↔ server via Socket.IO; Python ↔ sim via subprocess stdio.
+Planned (architecture §12): `engine` ← `combat` ← `combat-ai` ← `sim`, `server`, `web`; the combat sim also bans transcendental `Math.*` and `**` for cross-browser determinism.
 
 ## 6. Architecture invariants — MUST NOT break
 1. **Engine purity & determinism.** No `Math.random`, `Date`, I/O, `node:*`, `@dragon-rush/*` imports in `packages/engine` (ESLint). Same `(setup, rules, seed, actions)` → same state and events. Inputs are never mutated (`applyAction` works on a clone). Randomness only from `state.rng`.
