@@ -1,6 +1,6 @@
 # AI 인터페이스 명세 — 드래곤 러쉬 (Dragon Rush)
 
-> 상태: **설계 단계 (코드 없음)**. 경로·명령·시그니처는 모두 "예정"이다.
+> 상태: **구현 완료**. 코드(`packages/ai`, `packages/sim`, `python/rpgboard_env`)가 정본이며 이 문서는 계약을 설명한다.
 > 이 문서가 **관측(`obs_v1`)·행동(`act_v1`)·마스크·보상·env 서버 프로토콜·Python 클라이언트 API·모델 통합 계약의 정본**이다.
 > 규칙·수치 정본은 [game-design.md](game-design.md)(이하 "기획서", 근거는 절 번호로 인용), 모듈 경계는 [architecture.md](architecture.md).
 
