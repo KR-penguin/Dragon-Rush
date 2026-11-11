@@ -1,1 +1,41 @@
-export const PROTOCOL_VERSION = 1;
+export { PROTOCOL_VERSION, C2S, S2C } from './events';
+export { ERROR_CODES, type ErrorCode, type Ack, ok, fail } from './errors';
+export {
+  ActionSchema,
+  RoomCreateSchema,
+  RoomJoinSchema,
+  RoomLeaveSchema,
+  RoomConfigureSchema,
+  RoomConfigureSeatSchema,
+  RoomSelectJobSchema,
+  RoomSetReadySchema,
+  RoomStartSchema,
+  GameActionSchema,
+  GameRequestSnapshotSchema,
+  HandshakeAuthSchema,
+  NicknameSchema,
+  ROOM_CODE_ALPHABET,
+  type RoomCreate,
+  type RoomJoin,
+  type RoomConfigure,
+  type RoomConfigureSeat,
+  type RoomSelectJob,
+  type RoomSetReady,
+  type GameActionPayload,
+  type HandshakeAuth,
+} from './schemas';
+export type {
+  LobbySeat,
+  LobbySeatKind,
+  RoomOptions,
+  RoomStatus,
+  RoomStateMsg,
+  SessionWelcomeMsg,
+  OnlineSeatInfo,
+  PendingMsg,
+  GameUpdateMsg,
+  GameSnapshotMsg,
+  SeatStatusMsg,
+  ErrorMsg,
+  ModelInfo,
+} from './messages';
