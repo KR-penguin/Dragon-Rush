@@ -1,8 +1,17 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { App } from './App';
+import './styles/base.css';
+import './styles/layout.css';
+import './styles/board.css';
+import './styles/dialogs.css';
+import './styles/setup.css';
 
-createRoot(document.getElementById('root')!).render(
+const root = document.getElementById('root');
+if (!root) throw new Error('missing #root element');
+
+createRoot(root).render(
   <StrictMode>
-    <h1>용사의 주사위</h1>
+    <App />
   </StrictMode>,
 );
