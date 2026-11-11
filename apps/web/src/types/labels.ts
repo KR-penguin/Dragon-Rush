@@ -106,6 +106,7 @@ export const PHASE_LABEL: Record<Phase, string> = {
   SHIELD_DECISION: '방어막 결정',
   TRAINING_CHOICE: '수련장 스탯 선택',
   POST_MOVE: '이동 후 행동',
+  COMBAT: '전투',
 };
 
 /** Player colors by engine seat (turn order). */

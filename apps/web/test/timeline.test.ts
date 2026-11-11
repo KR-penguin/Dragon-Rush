@@ -4,7 +4,9 @@ import { applyEventToDisplay, describeEvent, eventDuration } from '../src/animat
 
 describe('event timeline', () => {
   it('describes every event of a full game without throwing and replays positions', () => {
-    const created = createGameWithEvents({ seats: [{ job: 'mage' }, { job: 'ninja' }, { job: 'archer' }] }, { ...DEFAULT_RULES, maxRounds: 30 }, 4);
+    // Dice mode resolves fights inside applyAction (same events the temporary client-side resolver produces).
+    const rules = { ...DEFAULT_RULES, maxRounds: 30, combat: { ...DEFAULT_RULES.combat, mode: 'dice' as const } };
+    const created = createGameWithEvents({ seats: [{ job: 'mage' }, { job: 'ninja' }, { job: 'archer' }] }, rules, 4);
     let state = created.state;
     const events = created.events;
     const all: GameEvent[] = [...events];

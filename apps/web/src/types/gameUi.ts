@@ -68,6 +68,9 @@ export function activeDialog(i: DialogInputs): DialogKind | null {
       if (i.request === 'shop') return i.shopAvailable ? 'shop' : null;
       if (i.request) return i.request;
       return i.phase === 'POST_MOVE' && i.shopAvailable && !i.shopDismissed ? 'shop' : null;
+    case 'COMBAT':
+      // Not a board decision; clients settle it immediately for now (temporary dice resolver).
+      return null;
     default:
       return assertNever(i.phase);
   }
