@@ -43,6 +43,9 @@ const DRAGON_SAMPLES = 320;
 const DEATH_PENALTY = 60;
 const KILL_BONUS = 12;
 const NINJA_MIN_GAIN = 2;
+// Stall breaker: lower the dragon threshold once a game runs past ~1.7x the average length (rush-1: ~10 rounds).
+const LATE_GAME_ROUND = 18;
+const LATE_GAME_DECAY = 0.02;
 
 class Planner {
   private readonly rules;
@@ -117,7 +120,7 @@ class Planner {
 
   private dragonThreshold(): number {
     let thr = this.s.dragonThreshold;
-    if (this.view.round > 40) thr -= 0.01 * (this.view.round - 40);
+    if (this.view.round > LATE_GAME_ROUND) thr -= LATE_GAME_DECAY * (this.view.round - LATE_GAME_ROUND);
     const opps = this.opponents();
     if (opps.length === 1 && this.dragonPlan(opps[0]).wp >= 0.5) thr -= 0.12;
     return Math.max(thr, 0.35);

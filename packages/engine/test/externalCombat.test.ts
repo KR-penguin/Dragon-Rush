@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DEFAULT_RULES,
   applyAction,
   applyCombatResult,
   getLegalActions,
@@ -111,7 +112,9 @@ describe('external combat: applyCombatResult for duels', () => {
       { type: 'PlayerEliminated', seat: 1, by: 0, round: 4 },
       { type: 'TileResolved', seat: 0, tile: 9, tileId: 'TREASURE' },
     ]);
-    expect(r.state.players[0]).toMatchObject({ hp: 7, coins: 9 + 6 + 6, items: { teleport: 0, shield: 0, thief: 2 } });
+    const treasure = DEFAULT_RULES.board[9]!.effects.find((e) => e.kind === 'coins');
+    const treasureCoins = treasure && treasure.kind === 'coins' ? treasure.amount : 0;
+    expect(r.state.players[0]).toMatchObject({ hp: 7, coins: 9 + 6 + treasureCoins, items: { teleport: 0, shield: 0, thief: 2 } });
     expect(r.state.players[1]).toMatchObject({ alive: false, hp: 0, coins: 0 });
     expect(r.state.combat).toBeNull();
     expect(r.state.pending).toEqual({ actor: 0, phase: 'POST_MOVE' });
@@ -223,7 +226,7 @@ describe('external combat: dragon results', () => {
 });
 
 describe('external combat: validation', () => {
-  const duel = () => duelScenario(['mage', 'berserker', 'swordsman']).state; // mage maxHp 38, berserker 49
+  const duel = () => duelScenario(['mage', 'berserker', 'swordsman']).state;
   const dragon = () => dragonScenario(['archer', 'mage', 'ninja']).state; // archer maxHp 39
 
   it.each<[string, () => GameState, unknown]>([
@@ -241,7 +244,7 @@ describe('external combat: validation', () => {
   });
 
   it('accepts boundary hp values', () => {
-    expect(() => applyCombatResult(duel(), { winner: 'a', hpA: 38, hpB: 49 })).not.toThrow();
+    expect(() => applyCombatResult(duel(), { winner: 'a', hpA: DEFAULT_RULES.jobs.mage.hp, hpB: DEFAULT_RULES.jobs.berserker.hp })).not.toThrow();
     expect(() => applyCombatResult(duel(), { winner: 'b', hpA: -100, hpB: 1 })).not.toThrow();
   });
 

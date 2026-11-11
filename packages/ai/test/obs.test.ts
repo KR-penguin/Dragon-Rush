@@ -56,12 +56,12 @@ describe('obs_v1', () => {
     const s = newGame(2, 1);
     const obs = encodeObservation(view(s), 0);
     expect(obs[field('self.pos').offset]).toBe(1);
-    expect(obs[field('self.coins').offset]).toBeCloseTo(5 / 50);
+    expect(obs[field('self.coins').offset]).toBeCloseTo(10 / 50);
     expect(obs[field('opp1.present').offset]).toBe(1);
     expect(obs[field('opp2.present').offset]).toBe(0);
     expect(obs[field('g.phase').offset]).toBe(1);
     expect(obs[field('g.turnPlayer').offset]).toBe(1);
     expect(obs[field('g.numPlayers').offset]).toBe(1);
-    expect(obs[field('g.graceLeft').offset]).toBe(1);
+    expect(obs[field('g.graceLeft').offset]).toBeCloseTo(2 / 3);
   });
 });

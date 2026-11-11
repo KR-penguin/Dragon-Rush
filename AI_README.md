@@ -26,8 +26,8 @@ Reading order for any task: this file → `coding_convention.md` → canonical d
 ## 2. Project status
 - Done: engine (P1), AI interface + training env (P2), balance re-verified on the TS engine (P3), local web play (P4), online multiplayer (P5), model-integration plumbing (P6), deploy files (P7: Dockerfile, CI workflow).
 - Waiting on the user: `USER_WEIGHT_ADAPTER` in `packages/ai/src/model/adapters/index.ts` stays `null` until the weight JSON format and parity samples arrive (model seats show "준비 중"). Assets are placeholders (emoji/CSS) until files arrive at the paths in development-plan §4.2.
-- In progress (2nd round): `packages/combat` (deterministic 60 Hz combat sim, `DEFAULT_COMBAT_RULES`), `packages/combat-ai` (`cobs_v1`/`cact_v1` encoder, codec, masks, scripted bots, TS MLP runtime), `combat-env-server` + `CombatVecEnv`, and the engine `COMBAT` phase (`RulesConfig.combat.mode: 'dice' | 'external'`, `applyCombatResult`). None of these are canonical until merged; check the code first. Board and combat models are separate models with separate envs.
-- Approved simulation-driven rules: early PvP grace (rounds 1–3, `pvpGraceRounds`), starting shield (`startingItems`), ninja move-adjust cooldown. A rest turn only blocks movement. Teleport has no per-turn limit (`teleport.perTurnLimit = null`, open question R2); thief is once per turn (R3).
+- In progress (2nd round): `packages/combat` (deterministic 60 Hz combat sim, `DEFAULT_COMBAT_RULES`), `packages/combat-ai` (`cobs_v1`/`cact_v1` encoder, codec, masks, scripted bots, TS MLP runtime), `combat-env-server` + `CombatVecEnv`. The engine `COMBAT` phase is merged (`RulesConfig.combat.mode: 'dice' | 'external'`, `applyCombatResult`, `resolveCombatWithDice`; callers temporarily auto-resolve with dice). Check the code first. Board and combat models are separate models with separate envs.
+- Approved simulation-driven rules: early PvP grace (rounds 1–2, `pvpGraceRounds`), starting shield (`startingItems`), ninja move-adjust cooldown. A rest turn only blocks movement. Teleport has no per-turn limit (`teleport.perTurnLimit = null`, open question R2); thief is once per turn (R3).
 
 ## 3. Product in ~10 lines
 - Web dice board game with light RPG growth. 2–4 seats in any mix of human, bot and user model.
@@ -91,7 +91,7 @@ Planned (architecture §12): `engine` ← `combat` ← `combat-ai` ← `sim`, `s
 3. **`RulesConfig` is the only place for numbers.** `DEFAULT_RULES` must equal `docs/game-design.md` (golden test `packages/engine/test/rules.test.ts`).
 4. **Server authoritative.** Clients send `Action` + `stateVersion` only; the server derives the seat from the socket. Every input (human, timer, bot, model, proxy) goes through `GameSession.submit()`. Decisions key on `pending.actor`. RNG state never leaves the server.
 5. **zod at boundaries.** Socket payloads and env-server stdin are parsed at entry. `z.infer<typeof ActionSchema>` equals the engine `Action` (compile-time check in `protocol/src/schemas.ts`). Model files: `JSON.parse` only.
-6. **Versioned specs.** `OBS_VERSION "obs_v1"`/`OBS_DIM 253`, `ACT_VERSION "act_v1"`/`ACTION_DIM 47`, `ENV_PROTOCOL "rpgboard-env/1"`, `PROTOCOL_VERSION 1`, `RulesConfig.version "final-1"`. Layout/meaning change → version bump + spec + golden snapshot update in the same change.
+6. **Versioned specs.** `OBS_VERSION "obs_v1"`/`OBS_DIM 253`, `ACT_VERSION "act_v1"`/`ACTION_DIM 47`, `ENV_PROTOCOL "rpgboard-env/1"`, `PROTOCOL_VERSION 1`, `RulesConfig.version "rush-1"`. Layout/meaning change → version bump + spec + golden snapshot update in the same change.
 7. **Encoder, codec and mask live only in TS.** Python never re-implements them. Policies only see `PublicGameState`.
 8. **Python client is numpy-only**; env server stdout is protocol-only, logs go to stderr.
 9. **No trainer in this repo**, and **the user owns the weight JSON format** — implement `USER_WEIGHT_ADAPTER` only from their format and verify with `checkParity`.

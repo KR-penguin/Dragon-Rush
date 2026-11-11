@@ -22,7 +22,7 @@ describe('game setup', () => {
     expect(new Set(s.players.map((p) => p.job)).size).toBe(4);
     for (const p of s.players) {
       expect(p.position).toBe(0);
-      expect(p.coins).toBe(5);
+      expect(p.coins).toBe(10);
       expect(p.items).toEqual({ teleport: 0, shield: 1, thief: 0 });
       expect(p.hp).toBe(p.maxHp);
     }
@@ -59,7 +59,7 @@ describe('movement and tiles', () => {
     const { state, events } = act(s, { type: 'USE_TELEPORT', tile: 9 });
     expect(eventsOf(events, 'StartBonus')).toHaveLength(0);
     expect(state.players[0]!.position).toBe(9);
-    expect(state.players[0]!.coins).toBe(5 + 6);
+    expect(state.players[0]!.coins).toBe(10 + 12);
     expect(state.players[0]!.items.teleport).toBe(0);
   });
 
@@ -130,7 +130,7 @@ describe('pvp', () => {
   };
 
   it('does not fight during the grace rounds', () => {
-    const { events, state } = act(duelSetup(0, 0, 3), { type: 'USE_TELEPORT', tile: 9 });
+    const { events, state } = act(duelSetup(0, 0, 2), { type: 'USE_TELEPORT', tile: 9 });
     expect(eventsOf(events, 'CombatStarted')).toHaveLength(0);
     expect(state.players.every((p) => p.alive)).toBe(true);
   });
@@ -144,7 +144,7 @@ describe('pvp', () => {
     expect(eventsOf(r3.events, 'ShieldUsed')).toEqual([{ type: 'ShieldUsed', seat: 1, against: 0 }]);
     expect(r3.state.players[1]!.items.shield).toBe(0);
     expect(r3.state.players.every((p) => p.alive)).toBe(true);
-    expect(r3.state.players[0]!.coins).toBe(5 + 6);
+    expect(r3.state.players[0]!.coins).toBe(10 + 12);
   });
 
   it('resolves a duel: loser eliminated, winner takes half coins and all items', () => {
@@ -183,14 +183,14 @@ describe('pvp', () => {
 });
 
 describe('items', () => {
-  it('thief steals up to 7 coins once per turn', () => {
+  it('thief steals up to 10 coins once per turn', () => {
     let s = newGame(['swordsman', 'archer'], 5);
     s = patch(s, (d) => {
       d.players[0]!.items.thief = 2;
-      d.players[1]!.coins = 10;
+      d.players[1]!.coins = 13;
     });
     const r = act(s, { type: 'USE_THIEF', target: 1 });
-    expect(r.state.players[0]!.coins).toBe(12);
+    expect(r.state.players[0]!.coins).toBe(20);
     expect(r.state.players[1]!.coins).toBe(3);
     expect(getLegalActions(r.state).some((a) => a.type === 'USE_THIEF')).toBe(false);
   });

@@ -29,7 +29,7 @@ export const ITEM_ICON: Record<ItemId, string> = { teleport: '🌀', shield: '�
 export const ITEM_DESC: Record<ItemId, string> = {
   teleport: '원하는 칸으로 즉시 이동 (일회용)',
   shield: '결투가 성립할 때 전투를 취소 (일회용)',
-  thief: '상대 1명의 코인 최대 7개를 훔침 (일회용, 턴당 1회)',
+  thief: '상대 1명의 코인 최대 10개를 훔침 (일회용, 턴당 1회)',
 };
 
 export const STAT_LABEL: Record<UpgradeStat | 'atk' | 'def', string> = { atk: '공격력', def: '방어력', maxHp: '최대 HP' };
