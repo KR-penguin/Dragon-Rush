@@ -2,7 +2,7 @@ import fastifyStatic from '@fastify/static';
 import Fastify from 'fastify';
 import { Server } from 'socket.io';
 import { loadModelRegistry, type ModelRegistry } from './ai/modelRegistry';
-import { getWeightAdapter } from './ai/adapters';
+import { getWeightAdapter } from '@hero-dice/ai';
 import type { ServerConfig } from './config';
 import { RoomManager } from './rooms/RoomManager';
 import { SessionStore } from './session/SessionStore';
