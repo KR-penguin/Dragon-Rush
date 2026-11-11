@@ -6,13 +6,21 @@ import {
   JOB_IDS,
   toPublicState,
   withRules,
+  type CombatMode,
   type GameState,
   type JobId,
 } from '@dragon-rush/engine';
 
-export function newGame(n: number, seed: number, maxRounds: number | null = 30): GameState {
+/** Dice mode keeps fights inside applyAction, so walks only visit board decisions (same states as before COMBAT existed). */
+export function newGame(
+  n: number,
+  seed: number,
+  maxRounds: number | null = 30,
+  mode: CombatMode = 'dice',
+): GameState {
   const jobs = [...JOB_IDS].slice(0, n) as JobId[];
-  return createGame({ seats: jobs.map((job) => ({ job })) }, withRules({ maxRounds }, DEFAULT_RULES), seed);
+  const rules = withRules({ maxRounds, combat: { ...DEFAULT_RULES.combat, mode } }, DEFAULT_RULES);
+  return createGame({ seats: jobs.map((job) => ({ job })) }, rules, seed);
 }
 
 /** Visits states reached by a pseudo-random legal walk. */

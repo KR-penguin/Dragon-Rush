@@ -94,6 +94,13 @@ function writeOpponent(w: Writer, me: PlayerState, q: PlayerState | undefined): 
 
 const relative = (seat: SeatId, other: SeatId, count: number) => (other - seat + count) % count;
 
+/** obs_v1 one-hots the six board phases; COMBAT (appended after them) is not a board decision and stays all zero. */
+const OBS_V1_PHASES = 6;
+const boardPhaseIndex = (view: PublicGameState): number => {
+  if (!view.pending || view.pending.phase === 'COMBAT') return -1;
+  return PHASES.indexOf(view.pending.phase);
+};
+
 function writeGlobal(w: Writer, view: PublicGameState, seat: SeatId): void {
   const r = view.rules;
   const count = view.players.length;
@@ -105,7 +112,7 @@ function writeGlobal(w: Writer, view: PublicGameState, seat: SeatId): void {
   w.put(view.round > r.pvpGraceRounds);
   w.oneHot(count - 2, 3);
   w.put(view.players.filter((p) => p.alive).length / 4);
-  w.oneHot(view.pending ? PHASES.indexOf(view.pending.phase) : -1, 6);
+  w.oneHot(boardPhaseIndex(view), OBS_V1_PHASES);
   w.oneHot(view.pending ? relative(seat, view.current, count) : -1, 4);
   w.oneHot(view.turn.dice !== null ? view.turn.dice - 1 : -1, 6);
   w.put(view.turn.canBuy);
