@@ -1,4 +1,4 @@
-import type { ItemId, JobId, Phase, TileId, UpgradeStat } from '@hero-dice/engine';
+import type { ItemId, JobId, OutcomeKind, Phase, TileId, UpgradeStat } from '@hero-dice/engine';
 
 export const JOB_LABEL: Record<JobId, string> = {
   swordsman: '검사',
@@ -33,6 +33,7 @@ export const ITEM_DESC: Record<ItemId, string> = {
 };
 
 export const STAT_LABEL: Record<UpgradeStat | 'atk' | 'def', string> = { atk: '공격력', def: '방어력', maxHp: '최대 HP' };
+export const STAT_ICON: Record<UpgradeStat, string> = { atk: '⚔️', def: '🛡️', maxHp: '❤️' };
 
 export const TILE_LABEL: Record<TileId, string> = {
   START: '출발',
@@ -109,3 +110,26 @@ export const PHASE_LABEL: Record<Phase, string> = {
 
 /** Player colors by engine seat (turn order). */
 export const SEAT_COLORS = ['#e8564a', '#3d9be9', '#4cc26b', '#e9b83d'] as const;
+
+export const seatColor = (seat: number): string => SEAT_COLORS[seat % SEAT_COLORS.length]!;
+
+export const OUTCOME_LABEL: Record<OutcomeKind, string> = {
+  dragon: '용 처치',
+  lastSurvivor: '최후 생존',
+  draw: '무승부',
+};
+
+export const BOT_LABEL: Record<string, string> = {
+  heuristic: '무작위',
+  'heuristic:aggro': '공격형',
+  'heuristic:growth': '성장형',
+  'heuristic:rush': '용 러시형',
+  random: '무작위 정책',
+  'random:uniform': '완전 무작위',
+};
+
+export const botLabel = (name: string | undefined): string => (name ? (BOT_LABEL[name] ?? name) : '봇');
+
+export const DRAGON_NAME = '용';
+export const DRAGON_ICON = '🐉';
+export const COIN_ICON = '🪙';
