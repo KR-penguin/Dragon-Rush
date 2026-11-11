@@ -25,7 +25,10 @@ export interface ModelMeta {
 
 export interface PolicyModel {
   readonly meta: ModelMeta;
+  /** Actor output for one observation: ACTION_DIM logits or probabilities (see meta.output). */
   forward(obs: Float32Array): Float32Array;
+  /** Critic value; optional, only used by parity checks. */
+  value?(obs: Float32Array): number;
 }
 
 export type WeightAdapter = (raw: unknown, id: string) => PolicyModel;

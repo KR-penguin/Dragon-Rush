@@ -14,6 +14,7 @@ import {
   type SeatId,
 } from '@hero-dice/engine';
 import { createPolicyByName, createPolicyRandom, type Policy } from '@hero-dice/ai';
+import { loadModelPolicy } from './modelLoader';
 
 export interface GameRecord {
   seed: number;
@@ -137,7 +138,10 @@ export function runBatch(opts: BatchOptions): GameRecord[] {
     const random = createPolicyRandom(deriveSeed(opts.baseSeed, g, 1));
     const jobs = randomJobs(opts.players, random);
     const names = opts.bots.split(',');
-    const policies = jobs.map((_, i) => createPolicyByName(names[i % names.length]!, random));
+    const policies = jobs.map((_, i) => {
+      const name = names[i % names.length]!;
+      return name.startsWith('model:') ? loadModelPolicy(name.slice('model:'.length)) : createPolicyByName(name, random);
+    });
     out.push(playGame({ jobs, seed, policies, random, ...(opts.rules ? { rules: opts.rules } : {}) }));
   }
   return out;

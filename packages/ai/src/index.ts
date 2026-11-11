@@ -30,3 +30,11 @@ export {
 export { winProbability, race, profileOf, dragonProfile, type Profile } from './bots/heuristic/estimate';
 export { createModelPolicy, type ModelPolicyOptions } from './model/modelPolicy';
 export { createPolicyByName, BOT_NAMES } from './bots/registry';
+export {
+  checkParity,
+  DEFAULT_PARITY_TOLERANCE,
+  type ParitySample,
+  type ParityReport,
+  type ParityTolerance,
+} from './model/parity';
+export { getWeightAdapter, USER_WEIGHT_ADAPTER } from './model/adapters';
