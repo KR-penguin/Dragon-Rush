@@ -1,6 +1,14 @@
 # 개발 계획서 — 용사의 주사위 (Hero's Dice)
 
-> 상태: **기획 완료, 코드 없음** → P0부터 시작. 경로·명령은 모두 "예정"이다.
+> 상태: **P0~P7 구현 완료 (2026-11-11)**. 사용자 입력 대기: D4(가중치 포맷 → P6 어댑터), D8(에셋), D9(배포 대상).
+>
+> | Phase | 결과 |
+> |---|---|
+> | P0~P2 | 모노레포·엔진·AI 인터페이스·env 서버·Python 클라이언트 완료. env 처리량: 64 env 배치 셀프플레이 약 21,000 step/s |
+> | P3 | TS 엔진 재검증 완료(기획서 §15 표). 4인 지표 전부 충족 |
+> | P4·P5 | 로컬 웹 플레이, 온라인 서버·로비·재접속·타이머 완료 |
+> | P6 | 어댑터 자리·모델 레지스트리·sim `model:<id>`·패리티 도구 준비. **사용자 포맷 수령 후 어댑터만 구현하면 됨** |
+> | P7 | Dockerfile·CI 워크플로·문서 갱신 완료. 실제 에셋·배포는 D8·D9 대기 |
 > 정본 분담: 규칙·수치 → [game-design.md](game-design.md) · 구조·프로토콜 → [architecture.md](architecture.md) · 관측/행동/env/모델 계약 → [ai-interface-spec.md](ai-interface-spec.md) · 코딩 규칙 → [coding_convention.md](../coding_convention.md) · 워크스페이스 안내 → [README.md](../README.md), [AI_README.md](../AI_README.md)
 
 ## 1. 전체 전략

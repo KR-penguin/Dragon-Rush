@@ -4,10 +4,9 @@
 
 ## 현재 상태
 
-- **기획 단계로, 아직 코드가 없다.** 저장소에는 문서와 설정 파일(`.gitignore`, `.gitattributes`, `.editorconfig`)만 있다. 아래의 경로·명령어는 모두 **예정**이다.
-- 개발은 Phase 단위로 진행한다: P0 스캐폴딩 → P1 엔진 → P2 AI·학습 env → P3 밸런스 → P4 로컬 웹 → P5 온라인 → P6 사용자 모델 통합 → P7 에셋·배포. 다음 작업은 **P0**이다.
-- P2가 끝나면 관측·행동 스펙(`obs_v1`/`act_v1`)을 동결하고 학습 env를 제공한다. 그때부터 P3~P5와 **병행해서 학습**할 수 있다(본격 학습은 P3 수치 확정 후 권장).
-- 확인이 필요한 사항(규칙 열린 질문, 스펙 동결 검토, 가중치 JSON 포맷 등)은 [개발 계획서 §2](docs/development-plan.md)와 [기획서 §16](docs/game-design.md)에 정리되어 있다. 답이 없으면 기본안으로 진행하되, ★ 체크포인트(예: P2의 obs/act 동결 검토)는 답을 받아야 넘어간다.
+- **P0~P7 구현 완료.** 규칙 엔진, 학습 환경(env 서버 + Python 클라이언트), 밸런스 시뮬, 웹 로컬 플레이, 온라인 멀티플레이 서버가 동작한다.
+- **남은 것은 사용자 입력이 필요한 두 가지**: ① 가중치 JSON 포맷과 패리티 샘플을 받으면 모델 어댑터를 구현해 모델 좌석을 켠다(P6). ② 실제 에셋(이미지·음악)과 배포 대상을 받으면 적용한다(P7). 그 전까지 모델 좌석은 "준비 중"이고 에셋은 이모지·CSS 플레이스홀더로 대체된다.
+- 관측·행동 스펙(`obs_v1`/`act_v1`)은 구현·테스트되어 있어 지금 바로 학습을 시작할 수 있다. 확인이 필요한 사항은 [개발 계획서 §2](docs/development-plan.md)와 [기획서 §16](docs/game-design.md)에 있다.
 
 ## 게임 한눈에 보기
 
@@ -32,7 +31,7 @@
 
 직업은 게임 시작 전에 고르며 중복할 수 없다.
 
-## 주요 기능 (예정)
+## 주요 기능
 
 | 기능 | 내용 |
 |---|---|
@@ -54,7 +53,7 @@
 | [AI_README.md](AI_README.md) | AI 에이전트용 워크스페이스 가이드(영어). 구조·라이브러리·아키텍처 패턴·기술 스택 |
 | [CLAUDE.md](CLAUDE.md) | Claude Code 진입점. `AI_README.md`와 `coding_convention.md`를 불러온다 |
 
-## 저장소 구조 (예정)
+## 저장소 구조
 
 ```
 /
@@ -94,23 +93,28 @@
 | Python | Python 3.13 + numpy만 사용(gymnasium 의존성 없음). 테스트는 pytest |
 | 테스트·품질 | Vitest + fast-check(속성 테스트), Playwright E2E(선택), ESLint(flat config) + Prettier |
 
-## 실행 방법 (예정, 아직 동작하지 않음)
+## 실행 방법
 
-필요 환경: Node 22, pnpm 10, Python 3.13 + numpy.
+필요 환경: Node 22, pnpm 10, Python 3.10+ + numpy.
 
 ```bash
 pnpm install                 # 의존성 설치
-pnpm dev                     # web(Vite) + server 동시 실행
-pnpm test                    # 전체 Vitest
+pnpm dev                     # web(Vite, http://localhost:5173) + server(:3001) 동시 실행
+pnpm test                    # 전체 Vitest (엔진·AI·sim·서버·웹 서비스)
 pnpm lint                    # ESLint
 pnpm typecheck               # 타입 검사
-pnpm build                   # 프로덕션 빌드 (단일 Node 서비스가 웹 정적 파일 + Socket.IO 제공)
-pnpm sim --games 10000 --players 4 --bots heuristic   # 헤드리스 밸런스 시뮬
-pnpm env-server              # 학습용 env 서버(stdio) 단독 실행. 먼저 pnpm build 필요, 보통은 Python 클라이언트가 자동 실행
+pnpm build                   # 프로덕션 빌드
+pnpm start                   # 빌드 후 단일 Node 서비스 실행 (웹 정적 파일 + Socket.IO, :3001)
+pnpm sim --games 10000 --players 4 --bots heuristic   # 헤드리스 밸런스 시뮬 (CPU 코어 수만큼 병렬)
+pnpm env-server              # 학습용 env 서버(stdio) 단독 실행. 먼저 pnpm build, 보통은 Python 클라이언트가 자동 실행
 
 pip install -e python/                     # Python 학습 환경 클라이언트 설치 (선행: pnpm install && pnpm build)
 python python/examples/random_agent.py     # 무작위 에이전트 예제
+python -m pytest python/tests              # Python 클라이언트 테스트
+docker build -t hero-dice . && docker run -p 3001:3001 hero-dice   # 컨테이너 배포 (선택)
 ```
+
+서버 설정(환경변수): `PORT`(3001), `TURN_TIMEOUT_MS`(60000), `RECONNECT_GRACE_MS`(60000), `BOT_ACTION_DELAY_MS`(700), `MODELS_DIR`(`models/`).
 
 ## AI 모델·학습 환경
 
@@ -135,7 +139,7 @@ obs, reward, terminated, truncated, info = env.step(action)   # action: 마스�
 env.close()
 ```
 
-- **게임에 모델 넣기**: 가중치 파일을 `models/<name>.json`(예: `models/my-agent.json`)에 둔다. 게임은 관측 인코딩 → 순수 TS forward → 마스크 적용 → argmax/샘플링으로 행동을 고른다(critic 출력은 쓰지 않음). 업로드 기능은 없다. 로컬 모드에서는 브라우저 파일 선택도 가능하며, 이 파일은 서버로 보내지 않는다.
+- **게임에 모델 넣기**: 가중치 파일을 `models/<name>.json`(예: `models/my-agent.json`)에 둔다. 게임은 관측 인코딩 → 순수 TS forward → 마스크 적용 → argmax/샘플링으로 행동을 고른다(critic 출력은 쓰지 않음). 업로드 기능은 없다. 어댑터가 구현되면 온라인 방의 모델 좌석과 `pnpm sim --bots model:<name>,heuristic`으로 평가할 수 있다.
 - **어댑터 구현 전에 필요한 정보**: 네트워크 구조, 활성화 함수, 행렬 배치 규칙, 입력 정규화, actor 출력이 logits인지 확률인지, critic 출력 형태, JSON 예시 파일, **패리티 샘플**(obs 5개 이상 + 행동 마스크 → numpy actor(마스크 전)/critic 출력, `models/parity/<name>.json`). 모델 메타데이터에 `obs_v1`/`act_v1` 표기를 권장한다. 상세 양식은 [ai-interface-spec.md §9](docs/ai-interface-spec.md).
 
 ## 기여 규칙
