@@ -82,7 +82,7 @@ describe('resolveCombat', () => {
   });
 
   it('decides capped duels by hp ratio and capped dragon fights against the challenger', () => {
-    const rules = { ...R, combat: { maxExchanges: 1, dieSides: 6 } };
+    const rules = { ...R, combat: { ...R.combat, maxExchanges: 1 } };
     const a = fighter(0, 'mage', 100, 0, 50);
     const b = fighter(1, 'berserker', 100, 0, 50, { hp: 90 });
     const duel = resolveCombat(rules, a, b, { kind: 'duel', defaultFirst: 'a', capTieWinner: 'b' }, scripted([1, 1]));

@@ -106,7 +106,7 @@ export const DEFAULT_RULES: RulesConfig = deepFreeze({
   thiefStealAmount: 7,
   board: BOARD,
   mysteryDeck: MYSTERY_DECK,
-  combat: { maxExchanges: 100, dieSides: 6 },
+  combat: { maxExchanges: 100, dieSides: 6, mode: 'external' },
   dragon: { hp: 115, atk: 10, def: 6, breathEvery: 3 },
 });
 

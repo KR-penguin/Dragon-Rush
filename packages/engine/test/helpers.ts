@@ -9,10 +9,15 @@ import {
   type JobId,
   type PlayerState,
   type RulesConfig,
+  withRules,
 } from '../src/index';
 import { cloneState } from '../src/state';
 
-export function newGame(jobs: JobId[], seed = 1, rules: RulesConfig = DEFAULT_RULES): GameState {
+/** Board flow tests assert dice-resolved fights inside applyAction (pre-external behaviour). */
+export const DICE_RULES: RulesConfig = withRules({ combat: { ...DEFAULT_RULES.combat, mode: 'dice' } });
+export const EXTERNAL_RULES: RulesConfig = withRules({ combat: { ...DEFAULT_RULES.combat, mode: 'external' } });
+
+export function newGame(jobs: JobId[], seed = 1, rules: RulesConfig = DICE_RULES): GameState {
   return createGame({ seats: jobs.map((job) => ({ job })) }, rules, seed);
 }
 

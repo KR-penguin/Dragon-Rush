@@ -22,7 +22,7 @@ import {
   legalIndices,
   type Policy,
 } from '@dragon-rush/ai';
-import { deriveSeed, randomJobs } from '../runner';
+import { autoResolveCombat, deriveSeed, randomJobs } from '../runner';
 import type { EnvConfig } from './config';
 
 export class EnvError extends Error {
@@ -164,7 +164,7 @@ export class EnvInstance {
 
   private apply(action: Action, rewards: number[], events: GameEvent[], eliminated: SeatId[]): void {
     const before = this.state;
-    const r = applyAction(this.state, action);
+    const r = autoResolveCombat(applyAction(this.state, action));
     this.state = r.state;
     events.push(...r.events);
     for (const e of r.events) {

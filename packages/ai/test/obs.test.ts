@@ -1,3 +1,4 @@
+import { applyAction } from '@dragon-rush/engine';
 import { describe, expect, it } from 'vitest';
 import { encodeObservation, OBS_DIM, OBS_V1_LAYOUT } from '../src/index';
 import { newGame, view, walk } from './helpers';
@@ -41,6 +42,14 @@ describe('obs_v1', () => {
         }
       }
     }
+  });
+
+  it('encodes a pending COMBAT (not a board decision) as an all-zero phase one-hot', () => {
+    const s = applyAction(newGame(2, 1, 30, 'external'), { type: 'CHALLENGE_DRAGON' }).state;
+    expect(s.pending?.phase).toBe('COMBAT');
+    const f = field('g.phase');
+    const obs = encodeObservation(view(s), s.pending!.actor);
+    expect([...obs.slice(f.offset, f.offset + f.length)]).toEqual([0, 0, 0, 0, 0, 0]);
   });
 
   it('encodes the starting position from seat 0', () => {
