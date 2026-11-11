@@ -1,7 +1,11 @@
-import Fastify from 'fastify';
+import { startServer } from './app';
+import { loadConfig } from './config';
 
-const app = Fastify();
-app.get('/health', async () => ({ ok: true }));
-const port = Number(process.env.PORT ?? 3001);
-await app.listen({ port, host: '0.0.0.0' });
-console.log(`server listening on :${port}`);
+const server = await startServer(loadConfig());
+
+const shutdown = async () => {
+  await server.close();
+  process.exit(0);
+};
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
