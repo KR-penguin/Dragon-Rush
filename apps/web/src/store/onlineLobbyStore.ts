@@ -1,6 +1,5 @@
 import type { JobId } from '@dragon-rush/engine';
 import {
-  PROTOCOL_VERSION,
   S2C,
   type Ack,
   type ModelInfo,
@@ -121,9 +120,6 @@ export const createOnlineLobbyStore = (deps: OnlineLobbyDeps) => {
     const attach = (s: OnlineSession) => {
       session = s;
       const socket = s.socket;
-      // The handshake auth is captured before the first welcome; refresh it so automatic
-      // reconnects resume this session (and its seat) instead of creating a new player.
-      socket.auth = { protocolVersion: PROTOCOL_VERSION, sessionToken: s.welcome.sessionToken };
       const onDisconnect = (reason: string) => {
         if (reason === 'io client disconnect') return;
         if (reason === 'io server disconnect') {
