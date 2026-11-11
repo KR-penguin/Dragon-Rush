@@ -148,8 +148,8 @@ interface RulesConfig {
 - 선택 이유: 작고 빠름(대량 시뮬), 통계 품질 충분, 상태 공간이 커서 공개된 주사위 결과로 상태를 역산하기가 비현실적. 암호학적 보장은 아니므로 상태는 비공개로 유지한다(§11).
 
 ### 3.7 불변 업데이트와 내부 합성
-- 모든 타입은 `readonly`, 갱신은 스프레드 기반 구조적 공유. Immer 미사용(엔진 무의존 원칙). 테스트는 입력 state를 deep-freeze하여 변이를 잡는다.
-- 내부 단위 `type Step = { state: GameState; events: GameEvent[] }`. 모듈 함수는 `(step, …) => Step`으로 이벤트를 누적하고 `pipe(step, f, g)`로 합성. RNG는 state 안에서 스레딩된다.
+- 입력 state는 절대 변이하지 않는다. `applyAction`은 state를 한 번 복제(`cloneState`, `rules`는 공유)한 뒤 그 작업 사본(`Ctx`)만 고친다(copy-on-write). Immer 미사용(엔진 무의존 원칙). 테스트는 입력 state를 deep-freeze하여 변이를 잡는다.
+- 내부 단위 `Ctx = { s: GameState(작업 사본); ev: GameEvent[] }`. 모듈 함수는 `(ctx, …) => void`로 사본을 갱신하고 이벤트를 누적한다. RNG는 사본 state 안에서 스레딩된다.
 
 ### 3.8 모듈 분할 (`packages/engine/src/`, 의존은 표의 위 → 아래 한 방향만)
 
@@ -165,7 +165,7 @@ interface RulesConfig {
 |---|---|---|
 | 엔진·셸 경계 | 함수형 코어 / 명령형 셸 | 결정성·테스트 용이(§1 P6) |
 | 엔진 코어 | 함수형 reducer + 상태기계(FSM) | 결정성·테스트 용이. 서버·브라우저·sim이 같은 코드 실행. 합법 행동을 phase 단위로 국소화 |
-| 엔진 내부 합성 | Step pipeline (`pipe(step, f, g)`) | 이벤트 누적, RNG를 state로 스레딩(§3.7) |
+| 엔진 내부 합성 | Copy-on-write 작업 사본(`Ctx`) | 이벤트 누적, RNG를 state로 스레딩, 입력 불변(§3.7) |
 | `Action` | Command (직렬화 가능한 데이터) | 네트워크 전송, 검증, 로그, 리플레이를 하나의 형태로 처리 |
 | `GameEvent` | 이벤트 로그 | 애니메이션 큐, 게임 로그 UI, 리플레이, 디버깅의 공통 원천 |
 | 칸 이벤트 | 데이터 주도 테이블 + 효과 핸들러 맵 | 수치는 `RulesConfig`, 동작은 `Record<EffectKind, EffectHandler>`. 새 칸 = 데이터 추가(OCP) |

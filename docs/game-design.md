@@ -203,7 +203,7 @@ flowchart TD
 
 | phase | 결정자 | 가능한 행동 | 비고 |
 |---|---|---|---|
-| `PRE_ROLL` | 턴 플레이어 | `UPGRADE{stat}` (반복 가능), `USE_THIEF{target}` (턴당 1회) + 주 행동 `ROLL_DICE` / `USE_TELEPORT{tile}` / `CHALLENGE_DRAGON` | `END_TURN` 없음. 텔레포트를 쓰면 그 턴에는 주사위도 용 도전도 없다 |
+| `PRE_ROLL` | 턴 플레이어 | `UPGRADE{stat}` (반복 가능), `USE_THIEF{target}` (턴당 1회) + 주 행동 `ROLL_DICE` / `USE_TELEPORT{tile}` / `CHALLENGE_DRAGON` | `END_TURN`은 쉬는 턴에만 있다(그때는 `ROLL_DICE`·`USE_TELEPORT`가 없다). 텔레포트를 쓰면 그 턴에는 주사위도 용 도전도 없다 |
 | `MOVE_ADJUST` | 닌자 | `ADJUST_MOVE{delta: -1, 0, +1}` | 쿨다운 중이면 단계를 생략한다. 주사위가 1이면 −1 불가 |
 | `CHOOSE_PVP_TARGET` | 도착자 | `CHOOSE_PVP_TARGET{target}` | 비안전 칸에 생존 상대가 2명 이상일 때 |
 | `SHIELD_DECISION` | 도착자 → 방어자 | `SHIELD_DECISION{use}` | 보유자에게만 묻는다. 방어자 차례가 유일한 비턴 결정이다 |
