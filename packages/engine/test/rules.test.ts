@@ -30,7 +30,7 @@ describe('DEFAULT_RULES matches docs/game-design.md', () => {
 
   it('dragon and combat (§9, §10)', () => {
     expect(DEFAULT_RULES.dragon).toEqual({ hp: 115, atk: 10, def: 6, breathEvery: 3 });
-    expect(DEFAULT_RULES.combat).toEqual({ maxExchanges: 100, dieSides: 6 });
+    expect(DEFAULT_RULES.combat).toEqual({ maxExchanges: 100, dieSides: 6, mode: 'external' });
     expect(DEFAULT_RULES.passives.ninjaEvadeDie).toBe(8);
     expect(DEFAULT_RULES.passives.ninjaAdjustCooldown).toBe(2);
   });
@@ -50,5 +50,7 @@ describe('DEFAULT_RULES matches docs/game-design.md', () => {
     expect(Object.isFrozen(DEFAULT_RULES.jobs)).toBe(true);
     expect(() => validateRules(DEFAULT_RULES)).not.toThrow();
     expect(() => validateRules(withRules({ board: DEFAULT_RULES.board.slice(1) }))).toThrow();
+    const badMode = { ...DEFAULT_RULES.combat, mode: 'auto' } as unknown as typeof DEFAULT_RULES.combat;
+    expect(() => validateRules(withRules({ combat: badMode }))).toThrow();
   });
 });

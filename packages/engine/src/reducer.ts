@@ -1,12 +1,13 @@
 import type { Ctx } from './ctx';
-import { challengeDragon } from './dragon';
-import { chooseTarget, shieldDecision } from './duel';
+import { challengeDragon, settleDragon } from './dragon';
+import { chooseTarget, settleDuel, shieldDecision } from './duel';
+import { finishCombat, pendingCombat, settleWithDice, validateCombatResult, type SettleCombat } from './fight';
 import { buyItem, trainStat, upgrade, useThief } from './items';
 import { actionKey, getLegalActions } from './legal';
 import { adjustMove, rollDice, teleport } from './movement';
 import { cloneState } from './state';
 import { endTurn } from './turn';
-import type { Action, GameEvent, GameState } from './types';
+import type { Action, CombatRequest, CombatResult, GameEvent, GameState } from './types';
 
 export class IllegalActionError extends Error {
   override readonly name = 'IllegalActionError';
@@ -44,15 +45,38 @@ function dispatch(ctx: Ctx, action: Action): void {
 
 const MAX_AUTO_STEPS = 10_000;
 
-export function applyAction(state: GameState, action: Action): { state: GameState; events: GameEvent[] } {
-  const key = actionKey(action);
-  if (!getLegalActions(state).some((a) => actionKey(a) === key)) throw new IllegalActionError(action);
-  const ctx: Ctx = { s: cloneState(state), ev: [] };
-  dispatch(ctx, action);
+/** Applies decisions that have exactly one legal action, so players only ever see real choices. */
+function autoAdvance(ctx: Ctx): { state: GameState; events: GameEvent[] } {
   for (let i = 0; i < MAX_AUTO_STEPS; i++) {
     const legal = getLegalActions(ctx.s);
     if (legal.length !== 1) break;
     dispatch(ctx, legal[0] as Action);
   }
   return { state: ctx.s, events: ctx.ev };
+}
+
+export function applyAction(state: GameState, action: Action): { state: GameState; events: GameEvent[] } {
+  const key = actionKey(action);
+  if (!getLegalActions(state).some((a) => actionKey(a) === key)) throw new IllegalActionError(action);
+  const ctx: Ctx = { s: cloneState(state), ev: [] };
+  dispatch(ctx, action);
+  return autoAdvance(ctx);
+}
+
+const SETTLE: Readonly<Record<CombatRequest['kind'], SettleCombat>> = { duel: settleDuel, dragonFight: settleDragon };
+
+/** Settles the pending fight with an externally resolved result (InvalidCombatResultError if it cannot be legal). */
+export function applyCombatResult(state: GameState, result: CombatResult): { state: GameState; events: GameEvent[] } {
+  const request = validateCombatResult(state, result);
+  const ctx: Ctx = { s: cloneState(state), ev: [] };
+  finishCombat(ctx, request, result, SETTLE[request.kind]);
+  return autoAdvance(ctx);
+}
+
+/** Settles the pending fight with the dice resolver and the state rng: same events and rng use as 'dice' mode. */
+export function resolveCombatWithDice(state: GameState): { state: GameState; events: GameEvent[] } {
+  const request = pendingCombat(state);
+  const ctx: Ctx = { s: cloneState(state), ev: [] };
+  settleWithDice(ctx, request, SETTLE[request.kind]);
+  return autoAdvance(ctx);
 }

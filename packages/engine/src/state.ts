@@ -50,6 +50,7 @@ export function createGameWithEvents(
       pending: null,
       turn: freshTurn(false),
       pvp: null,
+      combat: null,
       rng,
       outcome: null,
     },
@@ -75,6 +76,7 @@ export function cloneState(s: GameState): GameState {
     pending: s.pending ? { ...s.pending } : null,
     turn: { ...s.turn },
     pvp: s.pvp ? { ...s.pvp, candidates: [...s.pvp.candidates] } : null,
+    combat: s.combat ? { ...s.combat } : null,
     rng: { ...s.rng },
     outcome: s.outcome ? { ...s.outcome } : null,
   };

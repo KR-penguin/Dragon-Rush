@@ -1,24 +1,8 @@
-import { resolveCombat, type Fighter } from './combat';
-import { emit, playerAt, roll, type Ctx } from './ctx';
-import { PASSIVES } from './jobs';
+import { emit, playerAt, type Ctx } from './ctx';
+import { beginCombat, type SettleCombat } from './fight';
 import { resolveTile } from './tiles';
 import { checkLastSurvivor, eliminate, endTurn } from './turn';
-import type { PlayerState, SeatId } from './types';
-
-export const toFighter = (p: PlayerState, uses: number): Fighter => ({
-  ref: p.seat,
-  job: p.job,
-  hp: p.hp,
-  maxHp: p.maxHp,
-  atk: p.atk,
-  def: p.def,
-  indomitableAvailable: PASSIVES[p.job].indomitable === true && uses > 0 && !p.passive.indomitableUsed,
-});
-
-export const writeBack = (p: PlayerState, f: Fighter): void => {
-  p.hp = f.hp;
-  if (PASSIVES[p.job].indomitable && !f.indomitableAvailable) p.passive.indomitableUsed = true;
-};
+import type { SeatId } from './types';
 
 /** Seats that share the arriver's tile, ordered by turn order starting after the arriver. */
 export function opponentsOnTile(ctx: Ctx, arriver: SeatId): SeatId[] {
@@ -78,25 +62,17 @@ export function shieldDecision(ctx: Ctx, use: boolean): void {
 }
 
 export function runDuel(ctx: Ctx, arriver: SeatId, target: SeatId): void {
-  ctx.s.pending = null;
-  const a = playerAt(ctx.s, arriver);
-  const d = playerAt(ctx.s, target);
-  const uses = ctx.s.rules.passives.indomitableUses;
-  const result = resolveCombat(
-    ctx.s.rules,
-    toFighter(a, uses),
-    toFighter(d, uses),
-    { kind: 'duel', defaultFirst: 'a', capTieWinner: 'a' },
-    (sides) => roll(ctx, sides),
-  );
-  ctx.ev.push(...result.events);
-  writeBack(a, result.a);
-  writeBack(d, result.b);
-  ctx.s.pvp = null;
-  const winnerSeat = result.winner === 'a' ? arriver : target;
-  const loserSeat = result.winner === 'a' ? target : arriver;
+  beginCombat(ctx, { kind: 'duel', a: arriver, b: target }, settleDuel);
+}
+
+/** Loser is eliminated and looted; a losing arriver ends the turn, a winning one resolves the tile. */
+export const settleDuel: SettleCombat = (ctx, request, winner) => {
+  const { a: arriver, b: target } = request;
+  if (target === null) throw new Error('duel without a defender');
+  const winnerSeat = winner === 'a' ? arriver : target;
+  const loserSeat = winner === 'a' ? target : arriver;
   eliminate(ctx, loserSeat, winnerSeat, winnerSeat);
   if (checkLastSurvivor(ctx)) return;
   if (loserSeat === arriver) endTurn(ctx);
   else resolveTile(ctx, arriver);
-}
+};
