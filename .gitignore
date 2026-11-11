@@ -45,3 +45,6 @@ Thumbs.db
 
 # Personal AI persona prompt (contains private account IDs)
 prompt.md
+
+# Claude Code worktrees
+.claude/worktrees/

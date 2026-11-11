@@ -28,7 +28,7 @@ export const NicknameSchema = z
   .trim()
   .min(1)
   .max(16)
-  .regex(/^[^<>{}\u0000-\u001f]+$/u, 'invalid characters');
+  .refine((s) => !/[<>{}]/.test(s) && [...s].every((ch) => ch.charCodeAt(0) >= 0x20), 'invalid characters');
 
 export const ROOM_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const roomCode = z
