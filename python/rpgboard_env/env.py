@@ -20,6 +20,15 @@ def _decode(obs: Any) -> np.ndarray:
     return np.asarray(obs, dtype=np.float32)
 
 
+def describe_obs(obs: np.ndarray, layout: Sequence[dict[str, Any]]) -> dict[str, Any]:
+    """Maps a flat observation to {field name: value} using the server's obs_layout."""
+    out: dict[str, Any] = {}
+    for field in layout:
+        chunk = obs[field["offset"] : field["offset"] + field["length"]]
+        out[field["name"]] = float(chunk[0]) if field["length"] == 1 else [float(x) for x in chunk]
+    return out
+
+
 class _Base:
     def __init__(
         self,
@@ -115,6 +124,10 @@ class _Base:
         if "events" in e:
             info["events"] = e["events"]
         return info
+
+    def describe(self, obs: np.ndarray) -> dict[str, Any]:
+        """Names each obs_v1 field: scalars as float, multi-value fields as lists (debugging aid)."""
+        return describe_obs(obs, self.obs_layout)
 
     def close(self) -> None:
         self._proc.close()

@@ -80,3 +80,13 @@ def test_missing_build_is_reported(tmp_path):
     with pytest.raises(RPGBoardEnvError) as exc:
         RPGBoardEnv(cwd=str(tmp_path))
     assert exc.value.code == "SERVER_NOT_BUILT"
+
+
+def test_describe_names_every_field():
+    with RPGBoardEnv(num_players=2, **KW) as env:
+        obs, _ = env.reset(seed=4)
+        d = env.describe(obs)
+        assert len(d["self.job"]) == 5 and sum(d["self.job"]) == 1.0
+        assert d["self.coins"] == pytest.approx(5 / 50)
+        assert d["opp1.present"] == 1.0 and d["opp2.present"] == 0.0
+        assert sum(len(v) if isinstance(v, list) else 1 for v in d.values()) == 253

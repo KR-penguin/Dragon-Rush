@@ -12,6 +12,7 @@ This file is the workspace map: structure, libraries, patterns, stack. It does n
 | Rules, numbers, turn flow, edge cases, balance data | `docs/game-design.md` |
 | Module boundaries, engine internals, patterns, multiplayer protocol, security, deploy | `docs/architecture.md` |
 | `obs_v1`, `act_v1`, mask, reward, env server protocol, Python API, model contract, bots | `docs/ai-interface-spec.md` |
+| Training quick reference for the user (Korean, index tables) | `python/README.md` (must match the spec and `OBS_V1_LAYOUT`) |
 | Phases, DoD, open decisions (D1–D11, R1–R7), risks, asset request list | `docs/development-plan.md` |
 | The 8 must-follow code rules | `coding_convention.md` |
 
