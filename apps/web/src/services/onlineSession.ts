@@ -59,6 +59,8 @@ export class OnlineSession {
       socket.once(S2C.sessionWelcome, (welcome: SessionWelcomeMsg) => {
         socket.off('connect_error', onError);
         writeToken(welcome.sessionToken);
+        // Automatic reconnects reuse socket.auth, so it must carry the issued token.
+        socket.auth = { protocolVersion: PROTOCOL_VERSION, sessionToken: welcome.sessionToken };
         resolve(new OnlineSession(socket, welcome));
       });
     });
