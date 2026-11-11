@@ -1,0 +1,254 @@
+import { describe, expect, it } from 'vitest';
+import { getLegalActions, withRules, type Action, type GameState } from '../src/index';
+import { act, eventsOf, newGame, patch, seatOfJob, setPlayer } from './helpers';
+
+const firstLegal = (s: GameState): Action => getLegalActions(s)[0]!;
+
+/** Seat 0 gets a teleport so tests can move deterministically. */
+const withTeleport = (s: GameState, seat = 0) =>
+  patch(s, (d) => {
+    d.players[seat]!.items.teleport = 1;
+  });
+
+const atRound = (s: GameState, round: number) =>
+  patch(s, (d) => {
+    d.round = round;
+  });
+
+describe('game setup', () => {
+  it('creates the starting state from game-design §3', () => {
+    const s = newGame(['swordsman', 'archer', 'mage', 'ninja'], 3);
+    expect(s.players).toHaveLength(4);
+    expect(new Set(s.players.map((p) => p.job)).size).toBe(4);
+    for (const p of s.players) {
+      expect(p.position).toBe(0);
+      expect(p.coins).toBe(5);
+      expect(p.items).toEqual({ teleport: 0, shield: 1, thief: 0 });
+      expect(p.hp).toBe(p.maxHp);
+    }
+    expect(s.round).toBe(1);
+    expect(s.pending).toEqual({ actor: 0, phase: 'PRE_ROLL' });
+    expect([...s.seatOrigin].sort()).toEqual([0, 1, 2, 3]);
+  });
+
+  it('is deterministic per seed and shuffles seat order', () => {
+    const a = newGame(['swordsman', 'archer', 'mage', 'ninja'], 99);
+    const b = newGame(['swordsman', 'archer', 'mage', 'ninja'], 99);
+    expect(a).toEqual(b);
+    const orders = new Set(Array.from({ length: 20 }, (_, i) => newGame(['swordsman', 'archer', 'mage', 'ninja'], i).seatOrigin.join()));
+    expect(orders.size).toBeGreaterThan(1);
+  });
+
+  it('rejects duplicate jobs and bad player counts', () => {
+    expect(() => newGame(['mage', 'mage'])).toThrow();
+    expect(() => newGame(['mage'])).toThrow();
+  });
+});
+
+describe('movement and tiles', () => {
+  it('pays the start bonus when dice movement passes tile 0', () => {
+    let s = newGame(['swordsman', 'archer'], 5);
+    s = setPlayer(s, 0, { position: 23 });
+    const { events } = act(s, { type: 'ROLL_DICE' });
+    expect(eventsOf(events, 'StartBonus')).toHaveLength(1);
+  });
+
+  it('teleport has no start bonus and triggers the destination tile', () => {
+    let s = withTeleport(newGame(['swordsman', 'archer'], 5));
+    s = setPlayer(s, 0, { position: 20 });
+    const { state, events } = act(s, { type: 'USE_TELEPORT', tile: 9 });
+    expect(eventsOf(events, 'StartBonus')).toHaveLength(0);
+    expect(state.players[0]!.position).toBe(9);
+    expect(state.players[0]!.coins).toBe(5 + 6);
+    expect(state.players[0]!.items.teleport).toBe(0);
+  });
+
+  it('event damage never drops hp below 1 and coins below 0', () => {
+    let s = withTeleport(newGame(['swordsman', 'archer'], 5));
+    s = setPlayer(s, 0, { hp: 2, coins: 1 });
+    const trap = act(s, { type: 'USE_TELEPORT', tile: 8 }).state;
+    expect(trap.players[0]!.hp).toBe(1);
+    const s2 = withTeleport(setPlayer(newGame(['swordsman', 'archer'], 5), 0, { coins: 1 }));
+    expect(act(s2, { type: 'USE_TELEPORT', tile: 4 }).state.players[0]!.coins).toBe(0);
+  });
+
+  it('training tile asks for a stat and raises it with its level', () => {
+    const s = withTeleport(newGame(['swordsman', 'archer'], 5));
+    const r1 = act(s, { type: 'USE_TELEPORT', tile: 5 });
+    expect(r1.state.pending).toEqual({ actor: 0, phase: 'TRAINING_CHOICE' });
+    const r2 = act(r1.state, { type: 'CHOOSE_TRAINING_STAT', stat: 'def' });
+    expect(r2.state.players[0]!.def).toBe(s.players[0]!.def + 1);
+    expect(r2.state.players[0]!.upgradeLevels.def).toBe(1);
+  });
+
+  it('shop arrival enables purchases in POST_MOVE', () => {
+    let s = withTeleport(newGame(['swordsman', 'archer'], 5));
+    s = setPlayer(s, 0, { coins: 20 });
+    const r1 = act(s, { type: 'USE_TELEPORT', tile: 6 });
+    expect(r1.state.turn.canBuy).toBe(true);
+    const r2 = act(r1.state, { type: 'BUY_ITEM', item: 'thief' });
+    expect(r2.state.players[0]!.items.thief).toBe(1);
+    expect(r2.state.players[0]!.coins).toBe(15);
+  });
+
+  it('upgrade cost escalates with level', () => {
+    let s = setPlayer(newGame(['swordsman', 'archer'], 5), 0, { coins: 100 });
+    const atk0 = s.players[0]!.atk;
+    s = act(s, { type: 'UPGRADE', stat: 'atk' }).state;
+    s = act(s, { type: 'UPGRADE', stat: 'atk' }).state;
+    expect(s.players[0]!.atk).toBe(atk0 + 2);
+    expect(s.players[0]!.coins).toBe(100 - 3 - 4);
+    const hp = act(s, { type: 'UPGRADE', stat: 'maxHp' }).state.players[0]!;
+    expect(hp.maxHp - hp.hp).toBe(0);
+  });
+
+  it('ninja may adjust the roll, then waits out the cooldown', () => {
+    let s = newGame(['ninja', 'mage'], 11);
+    const ninja = seatOfJob(s, 'ninja');
+    if (ninja !== 0) s = act(s, { type: 'ROLL_DICE' }).state;
+    while (s.pending?.phase !== 'PRE_ROLL' || s.current !== ninja) s = act(s, firstLegal(s)).state;
+    s = act(s, { type: 'ROLL_DICE' }).state;
+    expect(s.pending?.phase).toBe('MOVE_ADJUST');
+    s = act(s, { type: 'ADJUST_MOVE', delta: 1 }).state;
+    expect(s.players[ninja]!.passive.ninjaCooldown).toBe(2);
+    while (s.pending?.phase !== 'PRE_ROLL' || s.current !== ninja) s = act(s, firstLegal(s)).state;
+    expect(s.players[ninja]!.passive.ninjaCooldown).toBe(1);
+    const rolled = act(s, { type: 'ROLL_DICE' }).state;
+    expect(rolled.pending?.phase).not.toBe('MOVE_ADJUST');
+  });
+});
+
+describe('pvp', () => {
+  const duelSetup = (shield0: number, shield1: number, round = 4) => {
+    let s = withTeleport(atRound(newGame(['swordsman', 'archer'], 8), round));
+    s = setPlayer(s, 1, { position: 9 });
+    s = patch(s, (d) => {
+      d.players[0]!.items.shield = shield0;
+      d.players[1]!.items.shield = shield1;
+    });
+    return s;
+  };
+
+  it('does not fight during the grace rounds', () => {
+    const { events, state } = act(duelSetup(0, 0, 3), { type: 'USE_TELEPORT', tile: 9 });
+    expect(eventsOf(events, 'CombatStarted')).toHaveLength(0);
+    expect(state.players.every((p) => p.alive)).toBe(true);
+  });
+
+  it('asks the arriver first, then the defender, for shields', () => {
+    const r1 = act(duelSetup(1, 1), { type: 'USE_TELEPORT', tile: 9 });
+    expect(r1.state.pending).toEqual({ actor: 0, phase: 'SHIELD_DECISION' });
+    const r2 = act(r1.state, { type: 'SHIELD_DECISION', use: false });
+    expect(r2.state.pending).toEqual({ actor: 1, phase: 'SHIELD_DECISION' });
+    const r3 = act(r2.state, { type: 'SHIELD_DECISION', use: true });
+    expect(eventsOf(r3.events, 'ShieldUsed')).toEqual([{ type: 'ShieldUsed', seat: 1, against: 0 }]);
+    expect(r3.state.players[1]!.items.shield).toBe(0);
+    expect(r3.state.players.every((p) => p.alive)).toBe(true);
+    expect(r3.state.players[0]!.coins).toBe(5 + 6);
+  });
+
+  it('resolves a duel: loser eliminated, winner takes half coins and all items', () => {
+    let s = duelSetup(0, 0);
+    s = patch(s, (d) => {
+      d.players[1]!.coins = 13;
+      d.players[1]!.items.thief = 2;
+      d.players[0]!.coins = 9;
+    });
+    const { state, events } = act(s, { type: 'USE_TELEPORT', tile: 9 });
+    const eliminated = eventsOf(events, 'PlayerEliminated');
+    expect(eliminated).toHaveLength(1);
+    expect(state.outcome?.kind).toBe('lastSurvivor');
+    const loot = eventsOf(events, 'LootTransferred')[0]!;
+    const loserCoins = loot.from === 1 ? 13 : 9;
+    expect(loot.coins).toBe(Math.floor(loserCoins / 2));
+    expect(state.pending).toBeNull();
+  });
+
+  it('lets the arriver choose among coexisting players', () => {
+    let s = withTeleport(atRound(newGame(['swordsman', 'archer', 'mage'], 8), 4));
+    s = patch(s, (d) => {
+      d.players[1]!.position = 9;
+      d.players[2]!.position = 9;
+      for (const p of d.players) p.items.shield = 0;
+    });
+    const r = act(s, { type: 'USE_TELEPORT', tile: 9 });
+    expect(r.state.pending).toEqual({ actor: 0, phase: 'CHOOSE_PVP_TARGET' });
+    expect(getLegalActions(r.state)).toEqual([
+      { type: 'CHOOSE_PVP_TARGET', target: 1 },
+      { type: 'CHOOSE_PVP_TARGET', target: 2 },
+    ]);
+    const after = act(r.state, { type: 'CHOOSE_PVP_TARGET', target: 2 });
+    expect(eventsOf(after.events, 'PlayerEliminated')).toHaveLength(1);
+  });
+});
+
+describe('items', () => {
+  it('thief steals up to 7 coins once per turn', () => {
+    let s = newGame(['swordsman', 'archer'], 5);
+    s = patch(s, (d) => {
+      d.players[0]!.items.thief = 2;
+      d.players[1]!.coins = 10;
+    });
+    const r = act(s, { type: 'USE_THIEF', target: 1 });
+    expect(r.state.players[0]!.coins).toBe(12);
+    expect(r.state.players[1]!.coins).toBe(3);
+    expect(getLegalActions(r.state).some((a) => a.type === 'USE_THIEF')).toBe(false);
+  });
+
+  it('teleport cannot target the current tile', () => {
+    const s = withTeleport(newGame(['swordsman', 'archer'], 5));
+    const tiles = getLegalActions(s).filter((a) => a.type === 'USE_TELEPORT');
+    expect(tiles).toHaveLength(23);
+  });
+});
+
+describe('rest turn', () => {
+  it('blocks only movement and consumes the flag at turn end', () => {
+    let s = withTeleport(newGame(['swordsman', 'archer'], 5));
+    s = patch(s, (d) => {
+      d.players[0]!.skipNextTurn = true;
+      d.turn.resting = true;
+    });
+    const types = getLegalActions(s).map((a) => a.type);
+    expect(types).toContain('END_TURN');
+    expect(types).toContain('CHALLENGE_DRAGON');
+    expect(types).toContain('UPGRADE');
+    expect(types).not.toContain('ROLL_DICE');
+    expect(types).not.toContain('USE_TELEPORT');
+    const r = act(s, { type: 'END_TURN' });
+    expect(eventsOf(r.events, 'TurnSkipped')).toHaveLength(1);
+    expect(r.state.players[0]!.skipNextTurn).toBe(false);
+    expect(r.state.current).toBe(1);
+  });
+});
+
+describe('dragon and game end', () => {
+  it('a strong challenger slays the dragon and wins', () => {
+    const s = setPlayer(newGame(['swordsman', 'archer'], 5), 0, { atk: 60, def: 60, hp: 500, maxHp: 500 });
+    const r = act(s, { type: 'CHALLENGE_DRAGON' });
+    expect(r.state.outcome).toEqual({ kind: 'dragon', winner: 0 });
+    expect(r.state.pending).toBeNull();
+  });
+
+  it('a failed challenge eliminates the challenger and destroys their assets', () => {
+    let s = newGame(['swordsman', 'archer', 'mage'], 5);
+    s = setPlayer(s, 0, { coins: 30 });
+    const r = act(s, { type: 'CHALLENGE_DRAGON' });
+    expect(r.state.players[0]!.alive).toBe(false);
+    expect(r.state.players[0]!.coins).toBe(0);
+    expect(eventsOf(r.events, 'LootTransferred')).toHaveLength(0);
+    expect(r.state.current).toBe(1);
+    expect(r.state.outcome).toBeNull();
+  });
+
+  it('the last remaining player wins when the other fails against the dragon', () => {
+    const r = act(newGame(['mage', 'archer'], 5), { type: 'CHALLENGE_DRAGON' });
+    expect(r.state.outcome).toEqual({ kind: 'lastSurvivor', winner: 1 });
+  });
+
+  it('ends in a draw after maxRounds', () => {
+    let s = newGame(['swordsman', 'archer'], 5, withRules({ maxRounds: 1 }));
+    for (let i = 0; i < 50 && s.pending; i++) s = act(s, firstLegal(s)).state;
+    expect(s.outcome).toEqual({ kind: 'draw', winner: null });
+  });
+});
