@@ -1,0 +1,195 @@
+/* Effect overlay: above every screen layer, never takes input. */
+.fx-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.fx-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.fx-flash {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background: #fff;
+  will-change: opacity;
+}
+
+.fx-vignette {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 48%,
+    var(--fx-vignette, rgba(0, 0, 0, 0.85)) 100%
+  );
+  will-change: opacity;
+}
+
+.fx-texts {
+  position: absolute;
+  inset: 0;
+}
+
+.fx-text {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-family: 'Black Han Sans', var(--font-display, sans-serif);
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+  will-change: transform, opacity;
+  paint-order: stroke fill;
+  -webkit-text-stroke: 4px #1a1210;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.55);
+}
+
+.fx-text--heavy,
+.fx-text--ko {
+  text-shadow:
+    0 0 14px rgba(255, 122, 61, 0.75),
+    0 3px 6px rgba(0, 0, 0, 0.6);
+}
+
+.fx-text--lastStand {
+  text-shadow:
+    0 0 18px rgba(246, 212, 122, 0.85),
+    0 3px 6px rgba(0, 0, 0, 0.6);
+}
+
+.fx-text--evade {
+  font-style: italic;
+}
+
+.fx-caption {
+  position: fixed;
+  left: 50%;
+  bottom: 18%;
+  z-index: 61;
+  transform: translateX(-50%);
+  padding: 6px 14px;
+  border-radius: 6px;
+  background: rgba(15, 11, 10, 0.82);
+  color: #f1e6d2;
+  font-weight: 700;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.fx-caption.is-on {
+  opacity: 1;
+}
+
+.fx-caption:empty {
+  display: none;
+}
+
+/* Camera shake wrapper. The transform is only set while shaking. */
+.world-shake {
+  transform-origin: 50% 50%;
+}
+
+.fx-shake-fill {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+}
+
+/* Hit-stop: hold CSS animations on the board and the combat overlay on the impact frame. */
+.fx-hitstop .board *,
+.fx-hitstop .combat-overlay * {
+  animation-play-state: paused !important;
+}
+
+/* The FX layer draws its own damage numbers; hide the overlay's static ones to avoid doubles. */
+.fx-on .hit-pop .hit-damage {
+  display: none;
+}
+
+/* Settings dock */
+.fx-settings {
+  border: 1px solid var(--border, #3b2f4d);
+  border-radius: var(--radius-sm, 6px);
+  background: var(--panel, #1c1626);
+  font-size: 0.85rem;
+}
+
+.fx-settings > summary {
+  cursor: pointer;
+  padding: 6px 10px;
+  color: var(--text-dim, #a99d8d);
+  user-select: none;
+}
+
+.fx-settings-panel {
+  display: grid;
+  gap: 8px;
+  padding: 4px 10px 10px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.fx-settings-panel fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.fx-settings-panel legend {
+  color: var(--gold-2, #f3cf7a);
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.fx-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  gap: 8px;
+}
+
+.fx-row input[type='range'],
+.fx-row select {
+  width: 100%;
+}
+
+.fx-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fx-channels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px 8px;
+}
+
+.fx-debug > summary {
+  cursor: pointer;
+  color: var(--text-faint, #6f6575);
+}
+
+.fx-debug {
+  display: grid;
+  gap: 6px;
+}
+
+.fx-hint {
+  margin: 0;
+  color: var(--text-faint, #6f6575);
+}

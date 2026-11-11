@@ -72,8 +72,9 @@ Brief the user with a reason before adding any library that is not in this table
 - `ai/src`: `obs/` (layout, encode) · `codec/actions.ts` · `policy.ts` · `bots/` (randomBot, heuristic/{estimate,heuristicBot}, registry) · `model/` (modelPolicy, parity, adapters/).
 - `sim/src`: `runner.ts` (playGame, runBatch, deriveSeed) · `metrics.ts` · `cli.ts` + `simWorker.ts` (worker threads) · `modelLoader.ts` · `env/` (config zod schemas, envInstance, envServer) · `env-server.ts` (stdio entry).
 - `server/src`: `main.ts app.ts config.ts errors.ts` · `socket/` (gateway, rateLimit) · `rooms/` (Room, RoomManager) · `session/SessionStore.ts` · `game/` (GameSession, TurnTimer, timeoutAction) · `ai/modelRegistry.ts`.
-- `web/src`: `pages/`, `components/` (View, props only), `hooks/`, `store/gameStore.ts` (Zustand), `animation/eventTimeline.ts`, `services/` (`gameClient.ts` port, `LocalGameClient`, `OnlineGameClient`, `onlineSession`), `types/` (labels, view helpers).
-- Assets: `apps/web/public/assets/{images,audio}/...` (list in development-plan §4.2); only files that exist are used.
+- `web/src`: `pages/`, `components/` (View, props only), `hooks/`, `store/gameStore.ts` (Zustand), `animation/eventTimeline.ts` + `eventSfx.ts`, `services/` (`gameClient.ts` port, `LocalGameClient`, `OnlineGameClient`, `onlineSession`, `audio.ts` Web Audio engine), `types/` (labels, view helpers).
+- `web/src/fx` (game feel, renderer-agnostic): `core/` pure models (trauma `camera`, hit-stop `time` clock, SoA `particles` capped at 500, `floatingText`, `flash` governor, easing, xorshift `rng`, Perlin `noise`) · `audio/` (sound catalogue + procedural Web Audio fallback) · `eventFx.ts` (GameEvent → cue list, pure) + `recipes.ts` · `runtime/` (one rAF loop outside React: `fx`, `fxTime`, `createArenaFx()` for the Canvas arena) · `board/boardResolver.ts` (anchor → screen point; replace for a new board) · `components/` (`FxLayer`, `ShakeContainer` = `.world-shake`, settings dock) · `settings/` (accessibility policy).
+- Assets: `apps/web/public/assets/{images,audio}/...` (list in development-plan §4.2); only files that exist are used. A sound file at `audio/sfx/<name>.{mp3,ogg,wav}` (variants `<name>_2` … `_5`) replaces its procedural placeholder automatically; `audio/bgm/loops.json` sets BGM loop points.
 
 **Dependency direction** (one way): `engine` ← `protocol`, `ai` ← `sim`, `server`, `web`. Engine imports nothing. Runtime only: web ↔ server via Socket.IO; Python ↔ sim via subprocess stdio.
 
@@ -103,6 +104,7 @@ Brief the user with a reason before adding any library that is not in this table
 | Ports & Adapters | `GameClient` → `LocalGameClient` / `OnlineGameClient` | UI does not know local vs online |
 | Schema-first | `packages/protocol` (zod) | runtime validation + TS types |
 | Observer + Producer–Consumer | Zustand store + event animation queue | minimal re-renders; animation decoupled from update rate |
+| Cue list + injected resolver | `fx/eventFx.ts` → `FxCue[]` with symbolic anchors, run by `fx` with a board `FxResolver` | effect mapping is pure and testable; survives the board redesign |
 
 ## 8. Key interfaces
 ```ts
