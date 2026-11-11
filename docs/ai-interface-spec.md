@@ -54,6 +54,8 @@
 | `GRACE_S` / `CD_S` / `TP_S` | 3 / 2 / 2 | 초반 보호 3라운드 / 닌자 쿨다운 2턴 / 이번 턴 텔레포트 사용 수 |
 | `DIST_S` | 23 | 링(24칸)에서 최대 전진 거리 |
 
+> 규칙 `rush-1`(2026-11-12)에서 밸런스 수치가 바뀌었지만 `obs_v1`의 레이아웃과 스케일은 그대로다. 용 HP는 88(관측값 0.73), 기본 HP는 34~53, 초반 보호는 2라운드라 `g.graceLeft` 시작 값이 0.67이다. 코인 흐름이 약 2배(시작 10, 출발 보너스 +20, 턴당 순 수입 ≈4.6, 도둑 10)라 코인 특징이 평균적으로 커지고, 100코인 이상은 클리핑된다. 게임 길이 p95는 15라운드다.
+
 ### 3.1 자기 블록 — offset 0, 길이 51
 
 | offset | len | 이름 | 인코딩 |
@@ -202,7 +204,7 @@
 ```json
 {"id":1,"cmd":"info"}
 {"id":1,"ok":true,"result":{"protocol":"rpgboard-env/1","obs_version":"obs_v1","act_version":"act_v1",
- "obs_dim":253,"action_dim":47,"rules_version":"final-1","action_names":["ROLL_DICE","END_TURN","CHALLENGE_DRAGON","..."],
+ "obs_dim":253,"action_dim":47,"rules_version":"rush-1","action_names":["ROLL_DICE","END_TURN","CHALLENGE_DRAGON","..."],
  "obs_layout":[{"name":"self.job","offset":0,"length":5},{"name":"self.pos","offset":5,"length":24},"..."],
  "bots":["random","random:uniform","heuristic","heuristic:aggro","heuristic:growth","heuristic:rush"]}}
 ```
@@ -366,7 +368,7 @@ createModelPolicy(model: PolicyModel, opts?: { mode?: 'argmax' | 'sample'; tempe
 - 전투력 지표 `race(A, B) = ln(hA / eB) − ln(hB / eA)`(> 0이면 A 우세). `eX` = X의 1회 기대 피해 = `mean_{d=1..6} max(1, atk − def' + d)`(def' = 마법사면 `floor(def/2)`). 광전사는 0.6·보통 + 0.4·광폭화 값, 용은 `((k−1)·보통 + def 0 값) / k`(k = `breathEvery`), 피격자가 닌자면 ×(1 − 회피 확률), 하한 0.05. `hX = maxHp + 상대 e × 불굴 잔여`, 상대가 궁수면 −3. "타격 수"는 올림 없는 연속값 `h / e`다.
 - 강화: `score = wd·race(나, 용) + wp·mean race(나, 생존 상대)`. 예산(코인 − 저축) 안에서 Δscore/비용이 최대(> 0)인 스탯을 반복 구매. 저축 = 방어막이 없으면 방어막 가격 + (aggro만) 텔레포트가 없으면 텔레포트 가격.
 - 칸 가치 `V(t)`: 코인 증감(손실은 보유 코인까지) + HP(회복 `min(Δ, 잃은 HP)`×0.45, 피해 `min(Δ, hp−1)`×0.35, hp ≥ maxHp/2이면 둘 다 ×0.2) + 무료 스탯 `3 + 해당 레벨` + 아이템 5 − 쉼 4 + 수련장 `2 + 최소 레벨` + 상점 3(coins ≥ 최저 가격 ∧ (저축 > 0 ∨ 도둑 0개)) + 동굴 = 카드 10장 평균 + 출발 보너스(통과 시) + PvP 기대값 `wp·(상대 코인/2 + 상대 아이템 가격 합 + 12) − (1−wp)·(60 + 내 코인)`(점유자 중 wp 최대 상대. 초반 보호·안전지대 제외. 상대 방어막 ∧ wp > 0.5면 0, 내 방어막 ∧ wp < 0.5면 −방어막 가격).
-- 용 도전: 가진 코인 전부를 `race(·, 용)` 기준으로 강화했다고 가정한 스탯의 wp(그 race < −0.9면 0)가 임계 이상이면 그 강화를 실행하고 도전. 임계 = 성향 값 − 0.01·max(0, round − 40), 생존 2인이고 상대의 같은 추정 ≥ 0.5면 −0.12, 하한 0.35.
+- 용 도전: 가진 코인 전부를 `race(·, 용)` 기준으로 강화했다고 가정한 스탯의 wp(그 race < −0.9면 0)가 임계 이상이면 그 강화를 실행하고 도전. 임계 = 성향 값 − 0.02·max(0, round − 18), 생존 2인이고 상대의 같은 추정 ≥ 0.5면 −0.12, 하한 0.35.
 - 텔레포트(턴당 최대 1회 사용, 프로토타입과 동일): ① 사냥 = 안전지대·내 칸이 아닌 칸에 혼자 있는 상대 중 wp ≥ 사냥 임계(상대 방어막 ∧ wp > 0.5 제외), `wp·(코인/2 + 아이템 가격 합 + 12)` 최대 ② 여관 = hp ≤ maxHp·inn_frac ∧ 잃은 HP ≥ 12 ③ (PRE_ROLL만) 상점 = coins ≥ 방어막 + 도둑 가격 + 2 ∧ (앞쪽 가장 가까운 상점까지 7칸 이상 ∨ 상점 위) ∧ (방어막 0개 ∨ (도둑 0개 ∧ 최다 코인 상대 ≥ 7))일 때 현재 칸이 아닌 상점 중 V 최대(V > 0) ④ (PRE_ROLL만) 경제 점프 = `max_t V(t) − mean_d V(주사위 착지)` ≥ tp_econ(보유 2장 이상이면 −2)인 칸.
 - 구매(반복): 위협(어떤 상대의 나에 대한 wp ≥ 0.5)이면 방어막 → 도둑 0개 ∧ 최다 코인 상대 ≥ thief_min이면 도둑 → 텔레포트 < want_tp ∧ coins ≥ 가격 + tp_buy_spare면 텔레포트 → hp ≤ 40% ∧ 잃은 HP ≥ 15면 탈출용 텔레포트. 도둑 사용: 최다 코인 상대가 ≥ 7, 또는 ≥ thief_min이고 3턴 이상 보유, 또는 ≥ 2이고 8턴 이상 보유.
 - 결정 순서: PRE_ROLL(도둑 → 용 도전 → 강화 → 텔레포트 → 주사위), MOVE_ADJUST(d−1/d/d+1의 V 비교, 이득 ≥ 2이거나 보정 없을 때 V ≤ −20(재앙 회피)일 때만 보정), CHOOSE_PVP_TARGET(`wp − (상대 방어막 ∧ wp > 0.5 ? 1 : 0)` 최대, 동률은 코인), SHIELD_DECISION(wp < 0.5면 사용), TRAINING_CHOICE(Δscore 최대), POST_MOVE(구매 → 도둑 → 텔레포트 ①② → 강화 → END_TURN).
@@ -377,7 +379,7 @@ createModelPolicy(model: PolicyModel, opts?: { mode?: 'argmax' | 'sample'; tempe
 | growth | 0.6 / 0.4 | 0.60 | 0.80 | 1 | 7 | 0.45 | 6 | 4 |
 | rush | 1.0 / 0 | 0.48 | 0.85 | 0 | 7 | 0.5 | 6 | 99 |
 
-- 기준선 지표(밸런스 결과): 4인에서 무작위 정책 좌석 승률 3.5%(공정 25%), 2인 12.9%(공정 50%). 온라인 대리 플레이(연결 끊김·연속 시간 초과, 기획서 §13 재접속)는 `heuristic:growth`.
+- 기준선 지표(밸런스 결과, `rush-1`): 4인에서 무작위 정책 좌석 승률 2.7%(공정 25%), 2인 16.3%(공정 50%). 온라인 대리 플레이(연결 끊김·연속 시간 초과, 기획서 §13 재접속)는 `heuristic:growth`.
 
 ## 11. 테스트 계획 (TDD, Vitest + fast-check, Python은 pytest)
 
