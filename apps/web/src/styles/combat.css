@@ -5,10 +5,11 @@
   --ember-hot: #ff7a3d;
   --moon: #8fb3d9;
   --bone: #f1e6d2;
-  --impact: 'Black Han Sans', 'Noto Sans KR', 'Malgun Gothic', system-ui, sans-serif;
+  --impact: var(--font-impact, 'Black Han Sans', 'Noto Sans KR', 'Malgun Gothic', sans-serif);
   position: fixed;
   inset: 0;
-  z-index: 45;
+  /* Above the board's drawers and popovers, below the game result (50) and the FX overlay (60). */
+  z-index: 48;
   display: flex;
   flex-direction: column;
   background: #0f0b0a;
