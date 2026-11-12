@@ -391,7 +391,9 @@ describe('combat env server (in-process)', () => {
       );
     expect(e.obs).toEqual(expectObs());
     const rand = lcg(9);
-    for (let i = 0; i < 300 && !e.terminated; i++) {
+    let steps = 0;
+    let ended = false;
+    for (let i = 0; i < 400 && !ended; i++) {
       const actions = randomActions([e], rand, false)[0] as [number, number][];
       sides.forEach((side, k) => {
         if (!isActionable(sim, side, 4)) {
@@ -410,9 +412,20 @@ describe('combat env server (in-process)', () => {
         if (isLive) live++;
       }
       e = call(s, i + 2, 'step', { actions: [actions] }).result.envs[0]!;
-      expect(e.tick).toBe(sim.tick);
-      expect(e.obs).toEqual(expectObs());
+      steps++;
+      if (e.terminated || e.truncated) {
+        // auto reset: the finished fight's last observations come back as final_obs
+        expect(sim.outcome).not.toBeNull();
+        const want = expectObs();
+        expect([e.final_obs['0'], e.final_obs['1']]).toEqual(want);
+        ended = true;
+      } else {
+        expect(e.tick).toBe(sim.tick);
+        expect(e.obs).toEqual(expectObs());
+      }
     }
+    expect(steps).toBeGreaterThan(20);
+    expect(ended).toBe(true);
   });
 
   it('samples stats from a stat_dist_v1 file and dragon curriculum scales', () => {
