@@ -53,6 +53,18 @@ export function validateCombatSetup(setup: CombatSetup): void {
   }
 }
 
+/** Translate board dragon stats into the real-time boss profile once per fight. */
+export function scaleDragonSetup(
+  dragon: NonNullable<CombatSetup['dragon']>,
+  rules: CombatRules = DEFAULT_COMBAT_RULES,
+): NonNullable<CombatSetup['dragon']> {
+  return {
+    hp: Math.round(dragon.hp * rules.dragon.hpMultiplier),
+    atk: Math.round(dragon.atk * rules.dragon.atkMultiplier),
+    def: dragon.def,
+  };
+}
+
 function createFighter(
   r: CombatRules,
   side: Side,
@@ -144,7 +156,12 @@ export function createCombat(
       : null;
   const dragon =
     !duel && setup.dragon
-      ? createDragonState(setup.dragon, arena.w, rules.dragon.anchorY, rules.dragon.firstIdle)
+      ? createDragonState(
+          scaleDragonSetup(setup.dragon, rules),
+          arena.w,
+          rules.dragon.anchorY,
+          rules.dragon.firstIdle,
+        )
       : null;
   return {
     kind: setup.kind,

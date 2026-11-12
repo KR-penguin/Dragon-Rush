@@ -18,7 +18,13 @@ export type {
   ShotMoveSpec,
 } from './rules';
 export * from './types';
-export { createCombat, stepCombat, cloneCombatState, validateCombatSetup } from './step';
+export {
+  createCombat,
+  stepCombat,
+  cloneCombatState,
+  validateCombatSetup,
+  scaleDragonSetup,
+} from './step';
 export { combatResult } from './result';
 export {
   COMBAT_PACK_VERSION,

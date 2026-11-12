@@ -34,6 +34,13 @@ function botFight(
 }
 
 describe('dragon script', () => {
+  it('keeps the tougher real-time dragon in combat rules rather than changing board stats', () => {
+    const d = createCombat(dragonFight(statFighter('swordsman', 70, 9, 8)), 1).dragon!;
+    expect(d.maxHp).toBe(194);
+    expect(d.atk).toBe(11);
+    expect(R.damage.dragonDamageTakenScale).toBe(0.3);
+  });
+
   it('telegraphs every maneuver for 24+ live ticks and resolves within one live tick', () => {
     for (const seed of [1, 2, 3, 4]) {
       const { states, events } = botFight(seed);
@@ -115,5 +122,19 @@ describe('dragon script', () => {
     expect(hits.reduce((a, h) => a + h.dmg, 0)).toBe(d0.hp - d1.hp);
     expect(d1.chip).toBeGreaterThanOrEqual(0);
     expect(d1.chip).toBeLessThan(1000);
+  });
+
+  it('shows meaningful per-hit damage and rewards attack upgrades against the dragon', () => {
+    const normal = eventsOf(botFight(2, statFighter('swordsman', 70, 9, 8)).events, 'Hit').filter(
+      (e) => e.target === 'dragon',
+    );
+    const upgraded = eventsOf(
+      botFight(2, statFighter('swordsman', 70, 12, 8)).events,
+      'Hit',
+    ).filter((e) => e.target === 'dragon');
+    expect(normal.some((hit) => hit.dmg >= 3)).toBe(true);
+    expect(upgraded.slice(0, 5).reduce((total, hit) => total + hit.dmg, 0)).toBeGreaterThan(
+      normal.slice(0, 5).reduce((total, hit) => total + hit.dmg, 0),
+    );
   });
 });

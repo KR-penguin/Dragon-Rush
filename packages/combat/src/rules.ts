@@ -166,6 +166,10 @@ export interface DragonHitSpec extends HitSpec {
 }
 
 export interface DragonRules {
+  /** Real-time boss HP relative to the board dragon; permits larger visible hit numbers. */
+  readonly hpMultiplier: number;
+  /** Real-time boss attack relative to the board dragon. */
+  readonly atkMultiplier: number;
   /** Body hurtbox circles relative to the centre (px). */
   readonly body: readonly { readonly dx: number; readonly dy: number; readonly r: number }[];
   /** Head hurtbox: `forward` px from the centre along the facing; a weak point while lowered. */
@@ -346,7 +350,7 @@ const NO_ARMOR = { armorFrom: -1, armorTo: -1 } as const;
 
 /** Every combat number lives here (decision sheet v1 §3; board passives come from the engine's DEFAULT_RULES). */
 export const DEFAULT_COMBAT_RULES: CombatRules = deepFreeze({
-  version: 'combat-2',
+  version: 'combat-3',
   tickHz: COMBAT_TICK_HZ,
   arena: { duel: { w: 800, h: 448 }, dragonFight: { w: 896, h: 448 } },
   duelGap: 480,
@@ -356,7 +360,7 @@ export const DEFAULT_COMBAT_RULES: CombatRules = deepFreeze({
   accelTicks: 4,
   stopTicks: 3,
   aimAssist: { half: 18, rangePct: 150 },
-  damage: { sNum: 8, sDen: 5, k: 10, min: 1, dragonDamageTakenScale: 0.15 },
+  damage: { sNum: 8, sDen: 5, k: 10, min: 1, dragonDamageTakenScale: 0.3 },
   hitstop: {
     light: 3,
     multiHit: 2,
@@ -799,6 +803,8 @@ export const DEFAULT_COMBAT_RULES: CombatRules = deepFreeze({
     },
   },
   dragon: {
+    hpMultiplier: 2.2,
+    atkMultiplier: 1.1,
     body: [
       { dx: -48, dy: 0, r: 40 },
       { dx: 0, dy: 0, r: 40 },
