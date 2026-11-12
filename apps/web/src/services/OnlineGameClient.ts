@@ -40,7 +40,7 @@ export function toGameUpdate(
     version: msg.version,
     publicState: msg.publicState,
     events: 'events' in msg && !snapshot ? msg.events : [],
-    pending: msg.pending,
+    pending: msg.pending?.phase === 'COMBAT' ? { ...msg.pending, timeLeftMs: null } : msg.pending,
     controllableSeats: msg.yourSeat === null ? [] : [msg.yourSeat],
     legalActions: msg.legalActions ?? [],
     seats,
@@ -57,6 +57,7 @@ export class OnlineGameClient implements GameClient {
   private readonly offs: (() => void)[] = [];
   private fightStart: FightStartMsg | null = null;
   private fightGo: FightGoMsg | null = null;
+  private awaitingFightStart: GameUpdate | null = null;
   private deferredBoard: GameUpdate | null = null;
   private presentationDone = false;
   private replay: PendingFight['replay'] = null;
@@ -70,6 +71,11 @@ export class OnlineGameClient implements GameClient {
       }
       this.overrides.clear();
       const next = toGameUpdate(msg, false, this.overrides);
+      if (next.pending?.phase === 'COMBAT' && !this.fightStart) {
+        this.awaitingFightStart = next;
+        return;
+      }
+      this.awaitingFightStart = null;
       if (this.last?.fight && !this.presentationDone && next.pending?.phase !== 'COMBAT')
         this.deferredBoard = next;
       else this.push(this.withFight(next));
@@ -77,6 +83,11 @@ export class OnlineGameClient implements GameClient {
     const onSnapshot = (msg: GameSnapshotMsg) => {
       this.overrides.clear();
       const next = toGameUpdate(msg, true, this.overrides);
+      if (next.pending?.phase === 'COMBAT' && !this.fightStart) {
+        this.awaitingFightStart = next;
+        return;
+      }
+      this.awaitingFightStart = null;
       if (this.last?.fight && !this.presentationDone && next.pending?.phase !== 'COMBAT')
         this.deferredBoard = next;
       else this.push(this.withFight(next));
@@ -100,7 +111,13 @@ export class OnlineGameClient implements GameClient {
       this.fightGo = null;
       this.presentationDone = false;
       this.replay = null;
-      if (this.last) this.push(this.withFight(this.last));
+      if (this.awaitingFightStart) {
+        const next = this.awaitingFightStart;
+        this.awaitingFightStart = null;
+        this.push(this.withFight(next));
+      } else if (this.last?.pending?.phase === 'COMBAT') {
+        this.push({ ...this.withFight(this.last), snapshot: true, events: [] });
+      }
     };
     const onFightGo = (raw: unknown) => {
       const parsed = FightGoSchema.safeParse(raw);
@@ -139,7 +156,7 @@ export class OnlineGameClient implements GameClient {
     const req = update.publicState.combat;
     const start = this.fightStart;
     if (update.pending?.phase !== 'COMBAT' || !req || !start) {
-      if (update.pending?.phase !== 'COMBAT') {
+      if (update.pending?.phase !== 'COMBAT' && this.last?.pending?.phase === 'COMBAT') {
         this.fightStart = null;
         this.fightGo = null;
         this.replay = null;

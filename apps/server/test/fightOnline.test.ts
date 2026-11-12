@@ -64,7 +64,7 @@ afterEach(async () => {
 });
 
 it('starts a server-authoritative dragon fight and confirms inputs to a fighter and spectator', async () => {
-  server = await startServer(config, { quiet: true });
+  server = await startServer({ ...config, turnTimeoutMs: 1000 }, { quiet: true });
   const a = await connect();
   const b = await connect();
   const created = await call(a, C2S.roomCreate, { nickname: 'Alice' });
@@ -83,6 +83,10 @@ it('starts a server-authoritative dragon fight and confirms inputs to a fighter 
   const state = actor === a ? ua : ub;
   const startA = event<FightStartMsg>(a, FIGHT_S2C.start);
   const startB = event<FightStartMsg>(b, FIGHT_S2C.start);
+  const combatUpdate = event<GameUpdateMsg>(actor, S2C.gameUpdate);
+  const received: string[] = [];
+  actor.on(S2C.gameUpdate, () => received.push(S2C.gameUpdate));
+  actor.on(FIGHT_S2C.start, () => received.push(FIGHT_S2C.start));
   expect(
     (
       await call(actor, C2S.gameAction, {
@@ -92,6 +96,10 @@ it('starts a server-authoritative dragon fight and confirms inputs to a fighter 
     ).ok,
   ).toBe(true);
   const [fa, fb] = await Promise.all([startA, startB]);
+  const combat = await combatUpdate;
+  expect(received.slice(0, 2)).toEqual([S2C.gameUpdate, FIGHT_S2C.start]);
+  expect(combat.pending?.phase).toBe('COMBAT');
+  expect(combat.pending?.timeLeftMs).toBeNull();
   expect(FightStartSchema.safeParse(fa).success).toBe(true);
   expect(FightStartSchema.safeParse(fb).success).toBe(true);
   expect(fa.fightId).toBe(fb.fightId);
@@ -100,6 +108,8 @@ it('starts a server-authoritative dragon fight and confirms inputs to a fighter 
   const spectator = fighter === a ? b : a;
   expect((fighter === a ? fa : fb).you.role).toBe('fighter');
   expect((spectator === a ? fa : fb).you.role).toBe('spectator');
+  await new Promise((resolve) => setTimeout(resolve, 1200));
+  expect(server.rooms.get(code!)?.game?.publicState.pending?.phase).toBe('COMBAT');
   const go = event<{ epochServerMs: number }>(fighter, FIGHT_S2C.go);
   fighter.emit(FIGHT_C2S.ready, { fightId: fa.fightId, inputDelay: 0, rttMs: 10, jitterMs: 0 });
   await go;
