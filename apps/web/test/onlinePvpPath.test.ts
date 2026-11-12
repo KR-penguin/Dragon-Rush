@@ -6,6 +6,19 @@ import type { GameUpdate } from '../src/services/gameClient';
 import type { FightSession } from '../src/services/fight/types';
 import { KeyTracker } from '../src/services/fight/keyboardInput';
 
+// Keep the production input, network, rollback, and settlement path; shorten only the
+// duel clock so this integration test does not spend 45 seconds waiting for a timeout.
+vi.mock('@dragon-rush/combat', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@dragon-rush/combat')>();
+  return {
+    ...actual,
+    DEFAULT_COMBAT_RULES: {
+      ...actual.DEFAULT_COMBAT_RULES,
+      timeLimit: { ...actual.DEFAULT_COMBAT_RULES.timeLimit, duel: 300 },
+    },
+  };
+});
+
 vi.mock('node:crypto', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:crypto')>();
   return {
