@@ -93,9 +93,8 @@ export function GamePage({ session, onExit, onRestart }: GamePageProps) {
   const clientMode = useStore(store, (s) => s.client?.mode ?? 'local');
   const tiltDeg = motion.reduced || narrow ? 0 : BOARD_TILT_DEG;
 
-  const areaRef = useRef<HTMLDivElement>(null);
   const cameraRef = useRef<HTMLDivElement>(null);
-  const fit = useBoardFit(areaRef, tiltDeg);
+  const { fit, areaRef } = useBoardFit(tiltDeg);
   useCameraDirector(store, cameraRef, { tiltDeg, reduced: motion.reduced });
   const { cards: eventCards, flyers } = useEventCards(store, motion.reduced);
   const toasts = useToasts(store);

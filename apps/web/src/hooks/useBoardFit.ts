@@ -1,18 +1,35 @@
-import { useEffect, useMemo, useState, type RefObject } from 'react';
+import { useCallback, useMemo, useRef, useState, type RefCallback } from 'react';
 import { fitStage, projectedBounds, type StageFit } from '../types/boardGeometry';
 
+interface AreaSize {
+  readonly w: number;
+  readonly h: number;
+}
+
+/** Start measuring when the board element appears after the loading screen. */
+export function observeBoardArea(element: HTMLElement, onMeasure: (size: AreaSize) => void) {
+  const measure = () => onMeasure({ w: element.clientWidth, h: element.clientHeight });
+  measure();
+  const observer = new ResizeObserver(measure);
+  observer.observe(element);
+  return () => observer.disconnect();
+}
+
 /** Fits the tilted board's projected bounds into the measured play area. */
-export function useBoardFit(areaRef: RefObject<HTMLElement | null>, tiltDeg: number): StageFit {
-  const [area, setArea] = useState({ w: 0, h: 0 });
-  useEffect(() => {
-    const el = areaRef.current;
-    if (!el) return;
-    const measure = () => setArea({ w: el.clientWidth, h: el.clientHeight });
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [areaRef]);
+export function useBoardFit(tiltDeg: number): {
+  readonly fit: StageFit;
+  readonly areaRef: RefCallback<HTMLDivElement>;
+} {
+  const [area, setArea] = useState<AreaSize>({ w: 0, h: 0 });
+  const stop = useRef<(() => void) | null>(null);
+  const areaRef = useCallback((element: HTMLDivElement | null) => {
+    stop.current?.();
+    stop.current = element ? observeBoardArea(element, setArea) : null;
+  }, []);
   const bounds = useMemo(() => projectedBounds({ tiltDeg }), [tiltDeg]);
-  return useMemo(() => fitStage(area, bounds), [area, bounds]);
+  const fit = useMemo(
+    () => (area.w > 0 && area.h > 0 ? fitStage(area, bounds) : { scale: 0, x: 0, y: 0 }),
+    [area, bounds],
+  );
+  return { fit, areaRef };
 }
