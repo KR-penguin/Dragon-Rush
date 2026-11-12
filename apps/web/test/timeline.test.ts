@@ -13,10 +13,27 @@ import {
   eventDuration,
   eventIcon,
   eventSeat,
+  EVENT_CARD_HOLD_MS,
+  EVENT_CARD_MS,
 } from '../src/animation/eventTimeline';
 import { ICON_NAMES } from '../src/types/icons';
 
 describe('event timeline', () => {
+  it('holds readable event cards through their queue beats', () => {
+    expect(EVENT_CARD_HOLD_MS).toBeGreaterThanOrEqual(3000);
+    expect(
+      eventDuration({ type: 'TileResolved', seat: 0, tile: 3, tileId: 'HERB' }),
+    ).toBeGreaterThanOrEqual(EVENT_CARD_MS);
+    expect(
+      eventDuration({ type: 'TileResolved', seat: 0, tile: 17, tileId: 'MYSTERY' }),
+    ).toBeLessThan(EVENT_CARD_MS);
+    expect(
+      eventDuration({ type: 'MysteryCardDrawn', seat: 0, cardId: 'BAT_SWARM' }),
+    ).toBeGreaterThanOrEqual(EVENT_CARD_MS);
+    expect(eventDuration({ type: 'TileResolved', seat: 0, tile: 6, tileId: 'SHOP' })).toBeLessThan(
+      EVENT_CARD_MS,
+    );
+  });
   it('describes every event of a full game without throwing and replays positions', () => {
     // Dice mode resolves fights inside applyAction (same events the temporary client-side resolver produces).
     const rules = {

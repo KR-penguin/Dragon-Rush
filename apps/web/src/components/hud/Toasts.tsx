@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import type { Toast } from '../../hooks/useToasts';
+import { TOAST_MS, type Toast } from '../../hooks/useToasts';
 import { seatColor } from '../../types/labels';
 import { GameIcon } from '../icons/GameIcon';
 
@@ -11,7 +11,11 @@ interface ToastsProps {
 /** The last three events as parchment slips; clicking one opens the chronicle. */
 export function Toasts({ toasts, onOpenChronicle }: ToastsProps) {
   return (
-    <ol className="toasts" aria-live="polite">
+    <ol
+      className="toasts"
+      aria-live="polite"
+      style={{ '--toast-life': `${TOAST_MS}ms` } as CSSProperties}
+    >
       {toasts.map((t) => (
         <li
           key={t.id}

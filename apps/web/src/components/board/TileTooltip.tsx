@@ -31,12 +31,13 @@ export function TileTooltip({ hover, tiles, occupants }: TileTooltipProps) {
   const category = tileCategory(tile, hover.index);
   const below = hover.rect.top < 220;
   const style = {
-    left: hover.rect.left + hover.rect.width / 2,
+    left: `clamp(140px, ${hover.rect.left + hover.rect.width / 2}px, calc(100vw - 140px))`,
     top: below ? hover.rect.top + hover.rect.height + 10 : hover.rect.top - 10,
   } as CSSProperties;
   return (
     <div
       className={`tile-tooltip parchment${below ? ' is-below' : ''}`}
+      id={`tile-tooltip-${hover.index}`}
       style={style}
       role="tooltip"
     >
