@@ -1,6 +1,7 @@
 import { JOB_IDS } from '@dragon-rush/engine';
 import type { CSSProperties } from 'react';
 import { DragonArt, JobArt } from '../components/icons/Art';
+import { AssetImage } from '../components/common/AssetImage';
 import { GameIcon } from '../components/icons/GameIcon';
 import { JOB_LABEL, seatColor } from '../types/labels';
 
@@ -23,7 +24,12 @@ export function HomePage({ onLocal, onOnline }: HomePageProps) {
           <DragonArt className="home-dragon" />
         </div>
         <h1 className="home-title">
-          <span className="home-title-ko">드래곤 러쉬</span>
+          <AssetImage
+            path="images/brand/dragon-rush-wordmark.png"
+            alt="드래곤 러쉬"
+            className="home-title-art"
+            fallback={<span className="home-title-ko">드래곤 러쉬</span>}
+          />
           <span className="home-title-en">DRAGON RUSH</span>
         </h1>
         <p className="home-tagline">룰렛을 돌려 강해지고, 결투에서 살아남아, 용을 쓰러뜨려라.</p>

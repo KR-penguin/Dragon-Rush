@@ -62,7 +62,7 @@ export class LocalSimProvider implements FightStateProvider {
   }
 }
 
-/** Replays recorded inputs; `fromTick` fast-forwards headlessly first (highlight = the ending). */
+/** Replays recorded inputs; `fromTick` can fast-forward headlessly for partial playback. */
 export class ReplayProvider implements FightStateProvider {
   prev: CombatState;
   curr: CombatState;
@@ -104,7 +104,7 @@ export class ReplayProvider implements FightStateProvider {
 /** Upper bound for a headless fight; the sim always ends by its own time limit well before. */
 const MAX_HEADLESS_TICKS = 20_000;
 
-/** Runs a whole fight at once (bot-only fights) and keeps its inputs for the highlight replay. */
+/** Runs a whole fight at once (bot-only fights) and keeps its inputs for playback. */
 export function simulateFight(
   setup: CombatSetup,
   seed: number,

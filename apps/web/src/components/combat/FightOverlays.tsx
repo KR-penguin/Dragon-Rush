@@ -6,14 +6,14 @@ import { KeycapHints } from './KeycapHints';
 type Cards = readonly [FighterCard, FighterCard];
 
 /** VS splash: portraits slide in and clash (art-direction §10, 1.3 s). */
-export function FightIntro({ cards, highlight }: { cards: Cards; highlight: boolean }) {
+export function FightIntro({ cards, replaySpeed }: { cards: Cards; replaySpeed: number | null }) {
   return (
     <div className="fight-intro" aria-live="polite">
       <div className="fight-wipe" />
       <FightPortrait card={cards[0]} side="left" />
       <div className="fight-vs">VS</div>
       <FightPortrait card={cards[1]} side="right" />
-      {highlight && <div className="fight-intro-note">봇 전투 하이라이트</div>}
+      {replaySpeed !== null && <div className="fight-intro-note">봇 전투 ×{replaySpeed}</div>}
     </div>
   );
 }

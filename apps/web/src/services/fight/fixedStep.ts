@@ -27,7 +27,7 @@ const EPS = 1e-6;
 export function createFixedStep(options: FixedStepOptions = SIM_STEP) {
   let acc = 0;
   return {
-    /** `speed` > 1 plays faster (highlight replays) and raises the step cap with it. */
+    /** `speed` > 1 plays faster and raises the step cap with it. */
     advance(frameMs: number, speed = 1): FixedStepResult {
       const clamped = Math.min(
         Math.max(0, Number.isFinite(frameMs) ? frameMs : 0),

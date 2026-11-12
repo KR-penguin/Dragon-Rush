@@ -87,8 +87,8 @@ type Step = { state: GameState; events: GameEvent[] };
 /**
  * Runs the engine and bots in the browser: hot-seat and vs-bot play without a server.
  * When the engine stops at COMBAT, the fight is offered as `GameUpdate.fight` for the combat screen
- * and settled by `reportFight`. Bot-only fights are resolved headlessly right away (their replay
- * rides along for a highlight); in a game without humans they are applied immediately.
+ * and settled by `reportFight`. Bot-only fights are simulated first and their recorded inputs
+ * are replayed by the combat screen before the board applies the result.
  */
 export class LocalGameClient implements GameClient {
   readonly mode = 'local' as const;
@@ -231,8 +231,8 @@ export class LocalGameClient implements GameClient {
   }
 
   /**
-   * Handles every COMBAT stop of one update: dice mode settles it, a bot-only fight in a game
-   * without humans is applied from its headless run, anything else waits for `reportFight`.
+   * Handles every COMBAT stop of one update: dice mode settles it, and real-time mode waits for
+   * `reportFight` after the combat screen has shown the fight.
    */
   private settleFights(step: Step): Step {
     let { state, events } = step;
@@ -245,12 +245,6 @@ export class LocalGameClient implements GameClient {
         continue;
       }
       const fight = this.openFight(state);
-      if (fight.replay && this.humanSeats.length === 0) {
-        const r = applyCombatResult(state, fight.replay.result);
-        state = r.state;
-        events = [...events, ...r.events];
-        continue;
-      }
       this.fight = fight;
       break;
     }

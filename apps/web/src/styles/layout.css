@@ -71,8 +71,19 @@
 
 .home-title {
   display: grid;
+  justify-items: center;
   gap: 2px;
   line-height: 1;
+}
+
+.home-title-art {
+  width: min(84vw, 780px);
+  max-width: 100%;
+}
+
+.home-title-art.asset-img {
+  height: auto;
+  filter: drop-shadow(0 8px 2px #2b1d14) drop-shadow(0 0 26px rgba(217, 164, 65, 0.35));
 }
 
 .home-title-ko {
@@ -80,18 +91,10 @@
   font-weight: 900;
   font-size: clamp(3rem, 8vw, 88px);
   letter-spacing: 0.02em;
-  background: linear-gradient(
-    180deg,
-    #fff3c4 0%,
-    var(--gold-hi) 35%,
-    var(--gold) 60%,
-    var(--gold-deep) 100%
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  -webkit-text-stroke: 1px rgba(26, 18, 16, 0.6);
-  filter: drop-shadow(0 3px 0 #2b1d14) drop-shadow(0 0 26px rgba(217, 164, 65, 0.35));
+  color: var(--gold-hi);
+  text-shadow:
+    0 3px 0 #2b1d14,
+    0 0 26px rgba(217, 164, 65, 0.35);
 }
 
 .home-title-en {

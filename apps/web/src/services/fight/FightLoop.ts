@@ -36,7 +36,7 @@ export const browserHost = (): LoopHost => ({
 });
 
 export interface FightLoopOptions {
-  /** Playback speed (highlight replays run at 4×). */
+  /** Playback speed (bot-only replays run at 4×). */
   readonly speed?: number;
   readonly step?: FixedStepOptions;
 }
