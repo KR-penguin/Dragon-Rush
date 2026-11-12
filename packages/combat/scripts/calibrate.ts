@@ -1,134 +1,158 @@
 /**
- * Bot-vs-bot calibration report for DEFAULT_COMBAT_RULES.
- *   pnpm --filter @dragon-rush/combat calibrate [matrix|stats|length|dragon|bench|all] [--n 200] [--style balanced]
+ * Bot-vs-bot calibration report for DEFAULT_COMBAT_RULES (worker threads).
+ *   pnpm --filter @dragon-rush/combat calibrate [matrix,stats,dragon,bench | all] [--n 200] [--style balanced]
+ *        [--set damage.dragonDamageTakenScale=0.8 ...]   (rule overrides for sweeps)
  */
-import { DEFAULT_RULES } from '@dragon-rush/engine';
+import { Worker } from 'node:worker_threads';
+import { cpus } from 'node:os';
+import { DEFAULT_RULES, type JobId } from '@dragon-rush/engine';
+import { baseFighter, boughtFighter, JOBS, mean, quantile, statFighter } from '../test/calibration';
 import {
-  baseFighter,
-  boughtFighter,
-  dragonSeries,
-  duelSeries,
-  JOBS,
-  mean,
-  pairRate,
-  quantile,
-  statFighter,
-  upgradeRate,
-} from '../test/calibration';
-import { createCombat, createCombatBot, runCombat, stepCombat, NO_INPUT, type BotStyle, type FighterInput } from '../src/index';
+  createCombat,
+  createCombatBot,
+  DEFAULT_COMBAT_RULES,
+  runCombat,
+  stepCombat,
+  type BotStyle,
+  type CombatSetup,
+  type FighterInput,
+  type FighterSetup,
+} from '../src/index';
+import type { Task, TaskResult } from './calibrateWorker';
 
 const args = process.argv.slice(2);
-const section = args.find((a) => !a.startsWith('--') && !/^\d+$/.test(a)) ?? 'all';
 const flag = (name: string, def: string): string => {
   const i = args.indexOf(`--${name}`);
   return i >= 0 ? (args[i + 1] ?? def) : def;
 };
+const sets: string[] = [];
+args.forEach((a, i) => {
+  if (a === '--set' && args[i + 1]) sets.push(args[i + 1]!);
+});
+const positional = args.filter((a, i) => !a.startsWith('--') && !args[i - 1]?.startsWith('--'));
+const sections = new Set((positional[0] ?? 'all').split(','));
+const want = (s: string): boolean => sections.has('all') || sections.has(s);
 const N = Number(flag('n', '200'));
 const style = flag('style', 'balanced') as BotStyle;
-const pct = (x: number): string => `${(100 * x).toFixed(0)}%`.padStart(5);
+const pct = (x: number): string => `${(100 * x).toFixed(0)}%`;
 const sec = (t: number): string => (t / 60).toFixed(1);
+const dragonStats = {
+  hp: DEFAULT_RULES.dragon.hp,
+  atk: DEFAULT_RULES.dragon.atk,
+  def: DEFAULT_RULES.dragon.def,
+};
 
-function matrix(): void {
-  console.log(`\n## Job matrix (row win rate vs column, both sides, n=${N} per cell, ${style})`);
-  console.log('           ' + JOBS.map((j) => j.slice(0, 9).padStart(10)).join(''));
-  for (const i of JOBS) {
-    const row: string[] = [];
-    for (const j of JOBS) {
-      if (i === j) {
-        const m = duelSeries(baseFighter(i), baseFighter(i), N, 1, style);
-        row.push(`${pct(m.winsA / m.n)}(a)`.padStart(10));
-      } else row.push(pct(pairRate(i, j, N, 1, style)).padStart(10));
-    }
-    console.log(i.padEnd(11) + row.join(''));
-  }
-}
+const duel = (a: FighterSetup, b: FighterSetup): CombatSetup => ({ kind: 'duel', a, b });
+const vsDragon = (a: FighterSetup): CombatSetup => ({
+  kind: 'dragonFight',
+  a,
+  b: null,
+  dragon: dragonStats,
+});
 
-function stats(): void {
-  console.log(`\n## Stats matter (upgraded vs same job at base, both sides, n=${N})`);
-  console.log('job        +3 ATK  +3 DEF  +18 HP');
-  for (const j of JOBS) {
-    const a = upgradeRate(j, { atk: 3 }, N, 11);
-    const d = upgradeRate(j, { def: 3 }, N, 12);
-    const h = upgradeRate(j, { maxHp: 18 }, N, 13);
-    console.log(`${j.padEnd(10)} ${pct(a)}   ${pct(d)}   ${pct(h)}`);
-  }
-}
+const tasks: Task[] = [];
+const add = (key: string, setup: CombatSetup, n: number, seed0: number): void => {
+  tasks.push({ key, setup, n, seed0, styleA: style, styleB: style });
+};
 
-function length(): void {
-  console.log(`\n## Duel length (s), all job pairs, n=${N} per pair`);
-  const all: number[] = [];
-  let timeouts = 0;
-  let total = 0;
+const UPGRADES: readonly [string, Partial<Pick<FighterSetup, 'atk' | 'def' | 'maxHp'>>][] = [
+  ['+3 ATK', { atk: 3 }],
+  ['+3 DEF', { def: 3 }],
+  ['+18 HP', { maxHp: 18 }],
+];
+const DRAGON_BUILDS: readonly [string, (j: JobId) => FighterSetup][] = [
+  ['base', (j) => baseFighter(j)],
+  ['A9/D8/HP70', (j) => statFighter(j, 70, 9, 8)],
+  ['60 coins', (j) => boughtFighter(j, 60)],
+  ['80 coins', (j) => boughtFighter(j, 80)],
+  ['100 coins', (j) => boughtFighter(j, 100)],
+];
+
+if (want('matrix')) {
   for (const i of JOBS)
-    for (const j of JOBS) {
-      const r = duelSeries(baseFighter(i), baseFighter(j), Math.max(4, Math.floor(N / 5)), 21, style);
-      all.push(...r.ticks);
-      timeouts += r.timeouts;
-      total += r.n;
+    for (const j of JOBS) add(`p:${i}:${j}`, duel(baseFighter(i), baseFighter(j)), N, 1);
+}
+if (want('stats')) {
+  for (const j of JOBS)
+    for (const [name, up] of UPGRADES) {
+      add(`u:${j}:${name}:A`, duel(baseFighter(j, up), baseFighter(j)), N / 2, 11);
+      add(`u:${j}:${name}:B`, duel(baseFighter(j), baseFighter(j, up)), N / 2, 211);
     }
-  console.log(
-    `mean ${sec(mean(all))}  p10 ${sec(quantile(all, 0.1))}  median ${sec(quantile(all, 0.5))}  p90 ${sec(quantile(all, 0.9))}  timeouts ${pct(timeouts / total)}`,
-  );
+}
+if (want('dragon')) {
+  for (const j of JOBS)
+    for (const [name, f] of DRAGON_BUILDS) add(`d:${j}:${name}`, vsDragon(f(j)), N, 31);
 }
 
-function dragon(): void {
-  console.log(`\n## Dragon (115/10/6) win rate and length, n=${N}, ${style}`);
-  console.log('job        base           A9/D8/HP70     70 coins       80 coins       90 coins');
-  for (const j of JOBS) {
-    const cells: string[] = [];
-    const setups = [baseFighter(j), statFighter(j, 70, 9, 8), boughtFighter(j, 70), boughtFighter(j, 80), boughtFighter(j, 90)];
-    for (const f of setups) {
-      const r = dragonSeries(f, N, 31, style);
-      cells.push(`${pct(r.winsA / r.n)} ${sec(mean(r.ticks)).padStart(5)}s`.padEnd(15));
-    }
-    console.log(j.padEnd(10) + ' ' + cells.join(''));
-  }
-  const b = boughtFighter('swordsman', 80);
-  console.log(`(80 coins swordsman = HP ${b.maxHp} ATK ${b.atk} DEF ${b.def})`);
+async function runTasks(): Promise<Map<string, TaskResult>> {
+  const workers = Math.max(1, Math.min(cpus().length - 2, tasks.length));
+  const buckets: Task[][] = Array.from({ length: workers }, () => []);
+  tasks.forEach((t, i) => buckets[i % workers]!.push(t));
+  const url = new URL('./calibrateWorker.ts', import.meta.url);
+  const results = await Promise.all(
+    buckets.map(
+      (b) =>
+        new Promise<TaskResult[]>((resolve, reject) => {
+          const w = new Worker(url, {
+            workerData: { tasks: b, sets },
+            execArgv: ['--import', 'tsx'],
+          });
+          w.once('message', (m: TaskResult[]) => resolve(m));
+          w.once('error', reject);
+        }),
+    ),
+  );
+  return new Map(results.flat().map((r) => [r.key, r]));
 }
 
 function bench(): void {
-  console.log('\n## Timing');
+  console.log('\n## Timing (single thread)');
   const bot = createCombatBot('balanced');
   let ticks = 0;
-  const t0 = performance.now();
   let fights = 0;
+  const t0 = performance.now();
   for (const i of JOBS)
     for (const j of JOBS)
       for (let s = 0; s < 20; s++) {
-        ticks += runCombat({ kind: 'duel', a: baseFighter(i), b: baseFighter(j) }, [bot, bot], 900 + s).ticks;
+        ticks += runCombat(duel(baseFighter(i), baseFighter(j)), [bot, bot], 900 + s).ticks;
         fights += 1;
       }
   const t1 = performance.now();
   console.log(
-    `runCombat duel (bots, in place): ${((t1 - t0) / fights).toFixed(2)} ms/fight, ${(((t1 - t0) * 1000) / ticks).toFixed(2)} µs/tick, ${(ticks / fights / 60).toFixed(1)} s avg`,
+    `runCombat duel, 2 bots: ${((t1 - t0) / fights).toFixed(2)} ms/fight, ${(((t1 - t0) * 1000) / ticks).toFixed(2)} µs/tick (avg fight ${sec(ticks / fights)} s)`,
   );
   let dt = 0;
   let dticks = 0;
   for (const j of JOBS)
-    for (let s = 0; s < 10; s++) {
+    for (let s = 0; s < 20; s++) {
       const d0 = performance.now();
-      dticks += runCombat(
-        { kind: 'dragonFight', a: boughtFighter(j, 80), b: null, dragon: { ...DEFAULT_RULES.dragon } },
-        [bot],
-        500 + s,
-      ).ticks;
+      dticks += runCombat(vsDragon(statFighter(j, 70, 9, 8)), [bot], 500 + s).ticks;
       dt += performance.now() - d0;
     }
-  console.log(`runCombat dragon: ${(dt / 50).toFixed(2)} ms/fight, ${((dt * 1000) / dticks).toFixed(2)} µs/tick`);
-  // copy-on-write stepCombat with scripted inputs (rollback re-simulation cost)
-  let st = createCombat({ kind: 'duel', a: baseFighter('archer'), b: baseFighter('berserker') }, 3);
+  console.log(
+    `runCombat dragon, 1 bot: ${(dt / 100).toFixed(2)} ms/fight, ${((dt * 1000) / dticks).toFixed(2)} µs/tick (avg fight ${sec(dticks / 100)} s)`,
+  );
   const inputs: [FighterInput, FighterInput][] = [];
-  for (let t = 0; t < 600; t++) {
+  for (let t = 0; t < 900; t++) {
     inputs.push([
-      { move: ((t >> 4) % 9) as FighterInput['move'], attack: (t & 15) < 8, skill: t % 97 === 0, dash: t % 131 === 0 },
-      { move: ((t >> 5) % 9) as FighterInput['move'], attack: (t & 7) < 2, skill: t % 113 === 0, dash: t % 89 === 0 },
+      {
+        move: ((t >> 4) % 9) as FighterInput['move'],
+        attack: (t & 15) < 8,
+        skill: t % 97 === 0,
+        dash: t % 131 === 0,
+      },
+      {
+        move: ((t >> 5) % 9) as FighterInput['move'],
+        attack: (t & 7) < 2,
+        skill: t % 113 === 0,
+        dash: t % 89 === 0,
+      },
     ]);
   }
-  const s0 = performance.now();
   let steps = 0;
-  for (let rep = 0; rep < 20; rep++) {
-    st = createCombat({ kind: 'duel', a: baseFighter('archer'), b: baseFighter('berserker') }, 3 + rep);
+  const s0 = performance.now();
+  for (let rep = 0; rep < 40; rep++) {
+    let st = createCombat(duel(baseFighter('archer'), baseFighter('berserker')), 3 + rep);
     for (const inp of inputs) {
       if (st.outcome) break;
       st = stepCombat(st, inp).state;
@@ -136,10 +160,78 @@ function bench(): void {
     }
   }
   const s1 = performance.now();
-  console.log(`stepCombat (copy-on-write, scripted inputs): ${(((s1 - s0) * 1000) / steps).toFixed(2)} µs/tick`);
-  void NO_INPUT;
+  console.log(
+    `stepCombat (copy-on-write, scripted inputs, incl. clone): ${(((s1 - s0) * 1000) / steps).toFixed(2)} µs/tick`,
+  );
 }
 
-const sections: Record<string, () => void> = { matrix, stats, length, dragon, bench };
-if (section === 'all') for (const f of Object.values(sections)) f();
-else sections[section]?.();
+async function main(): Promise<void> {
+  if (sets.length) console.log(`overrides: ${sets.join(' ')}`);
+  console.log(`rules ${DEFAULT_COMBAT_RULES.version}, bots ${style}, n=${N}`);
+  const t0 = performance.now();
+  const r = tasks.length ? await runTasks() : new Map<string, TaskResult>();
+  const W = (k: string): TaskResult => {
+    const x = r.get(k);
+    if (!x) throw new Error(`missing ${k}`);
+    return x;
+  };
+  if (want('matrix')) {
+    console.log(
+      `\n## Duel matrix: row job's win rate vs column job (both sides averaged; diagonal = side a in the mirror)`,
+    );
+    console.log('| | ' + JOBS.join(' | ') + ' |');
+    console.log('|---|' + JOBS.map(() => '---').join('|') + '|');
+    const all: number[] = [];
+    let timeouts = 0;
+    let fights = 0;
+    for (const i of JOBS) {
+      const cells = JOBS.map((j) => {
+        const ij = W(`p:${i}:${j}`);
+        all.push(...ij.ticks);
+        timeouts += ij.timeouts;
+        fights += ij.ticks.length;
+        if (i === j) return `${pct(ij.winsA / ij.ticks.length)} (a)`;
+        const ji = W(`p:${j}:${i}`);
+        return pct((ij.winsA + (ji.ticks.length - ji.winsA)) / (ij.ticks.length + ji.ticks.length));
+      });
+      console.log(`| ${i} | ${cells.join(' | ')} |`);
+    }
+    console.log(
+      `\nDuel length (s): mean ${sec(mean(all))}, p10 ${sec(quantile(all, 0.1))}, median ${sec(quantile(all, 0.5))}, p90 ${sec(quantile(all, 0.9))}; timeouts ${pct(timeouts / fights)}`,
+    );
+  }
+  if (want('stats')) {
+    console.log('\n## Upgraded fighter vs the same job at base stats (both sides)');
+    console.log('| job | ' + UPGRADES.map((u) => u[0]).join(' | ') + ' |');
+    console.log('|---|---|---|---|');
+    for (const j of JOBS) {
+      const cells = UPGRADES.map(([name]) => {
+        const a = W(`u:${j}:${name}:A`);
+        const b = W(`u:${j}:${name}:B`);
+        return pct((a.winsA + (b.ticks.length - b.winsA)) / (a.ticks.length + b.ticks.length));
+      });
+      console.log(`| ${j} | ${cells.join(' | ')} |`);
+    }
+  }
+  if (want('dragon')) {
+    console.log(
+      `\n## Dragon ${dragonStats.hp}/${dragonStats.atk}/${dragonStats.def}: challenger win rate (mean fight s, timeouts)`,
+    );
+    console.log('| job | ' + DRAGON_BUILDS.map((b) => b[0]).join(' | ') + ' |');
+    console.log('|---|' + DRAGON_BUILDS.map(() => '---').join('|') + '|');
+    for (const j of JOBS) {
+      const cells = DRAGON_BUILDS.map(([name]) => {
+        const x = W(`d:${j}:${name}`);
+        return `${pct(x.winsA / x.ticks.length)} (${sec(mean(x.ticks))}s, to ${pct(x.timeouts / x.ticks.length)})`;
+      });
+      console.log(`| ${j} | ${cells.join(' | ')} |`);
+    }
+    const b = boughtFighter('swordsman', 80);
+    console.log(`(80 coins on a swordsman = HP ${b.maxHp} / ATK ${b.atk} / DEF ${b.def})`);
+  }
+  if (tasks.length)
+    console.log(`\n(${tasks.length} series in ${((performance.now() - t0) / 1000).toFixed(1)} s)`);
+  if (want('bench')) bench();
+}
+
+void main();
