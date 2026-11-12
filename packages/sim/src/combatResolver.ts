@@ -14,7 +14,7 @@ import {
   createRng,
   nextFloat,
 } from '@dragon-rush/engine';
-import { sampleOutcomeResult } from './outcome';
+import { outcomeModelSetup, sampleOutcomeResult } from './outcome';
 
 export const COMBAT_RESOLVERS = ['dice', 'sim', 'outcome'] as const;
 export type CombatResolverName = (typeof COMBAT_RESOLVERS)[number];
@@ -87,7 +87,7 @@ export function createCombatResolver(
         const req = state.combat!;
         const [result, rng] = sampleOutcomeResult(
           model,
-          setup!,
+          outcomeModelSetup(setup!),
           state.rng,
           skills[req.a]! - (req.b === null ? 0 : skills[req.b]!),
         );

@@ -49,6 +49,14 @@ export const OutcomeModelSchema = z
     id: z.string().min(1),
     rules_version: z.string().min(1),
     combat_rules_version: z.string().min(1),
+    transfer: z
+      .object({
+        source_rules_version: z.string().min(1),
+        source_combat_rules_version: z.string().min(1),
+        recalibrated: z.literal(false),
+      })
+      .strict()
+      .optional(),
     damage: OutcomeDamageSchema,
     training: z
       .object({

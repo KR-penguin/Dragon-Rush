@@ -154,7 +154,7 @@ env.obs_layout                   # [{"name", "offset", "length"}, ...] 서버가
 | `jobs` | `"random"` | 좌석별 직업 목록으로 고정 가능 |
 | `max_rounds` | 100 | `None`이면 무제한 |
 | `combat_resolver` | `"outcome"` | `outcome`: 내장 `outcome_v1`을 게임 RNG로 샘플링 / `sim`: 두 `scripted:balanced` 봇의 실제 60Hz 전투 / `dice`: 선택형 빠른 전투의 6면 주사위 판정. 관측 `obs_v2`는 동일 |
-| `outcome_model`, `outcome_skill_noise` | `None`, `0.5` | 외부 모델 JSON 경로를 선택적으로 지정한다. 경로가 없으면 내장 `rush-7`/`combat-2` 이전 모델을 쓴다. 이전 가중치는 새 이동 분포에 재보정하지 않았다. 모델 버전이 규칙과 다르면 reset 오류다. skill noise는 outcome 샘플의 승률 로짓 이동 크기 |
+| `outcome_model`, `outcome_skill_noise` | `None`, `0.5` | 외부 모델 JSON 경로를 선택적으로 지정한다. 경로가 없으면 내장 `rush-7`/`combat-3` 이전 모델을 쓴다. 원본 `rush-3`/`combat-2` 계수·보정 곡선을 옮겼으며 `combat-3` 용전과 현행 보드 분포에서 재보정하지 않았다. 모델 버전이 규칙과 다르면 reset 오류다. skill noise는 outcome 샘플의 승률 로짓 이동 크기 |
 | `rules`, `reward_shaping`, `return_events` | `"default"`, `None`, `False` | 보드 규칙 일부 덮어쓰기 / §5 보상 계수 / 전이 이벤트 포함 |
 | `server_cmd`, `cwd` | — | env 서버 실행 커맨드와 저장소 루트 (환경변수 `RPGBOARD_ENV_CMD`, `RPGBOARD_ROOT`) |
 

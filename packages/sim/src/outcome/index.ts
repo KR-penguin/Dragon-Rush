@@ -2,6 +2,7 @@ import {
   runCombat,
   policyRandom,
   DEFAULT_COMBAT_RULES,
+  scaleDragonSetup,
   type CombatResult,
   type CombatSetup,
 } from '@dragon-rush/combat';
@@ -31,6 +32,13 @@ export interface OutcomeRow {
   readonly setup: CombatSetup;
   readonly result: CombatResult;
   readonly ticks: number;
+}
+
+/** Model features use the effective boss stats; runCombat still receives the board setup and scales it itself. */
+export function outcomeModelSetup(setup: CombatSetup): CombatSetup {
+  return setup.kind === 'dragonFight' && setup.dragon
+    ? { ...setup, dragon: scaleDragonSetup(setup.dragon) }
+    : setup;
 }
 
 export interface GenerateOutcomeOptions {
@@ -214,7 +222,7 @@ export function fitOutcomeModel(
   const lr = opts.learningRate ?? 0.02;
   for (let epoch = 0; epoch < opts.epochs; epoch++) {
     for (const row of train) {
-      const x = outcomeFeatures(row.setup, model.damage);
+      const x = outcomeFeatures(outcomeModelSetup(row.setup), model.damage);
       const target = Number(row.result.winner === 'a');
       const error = target - sigmoid(dot(model.win, x));
       for (let j = 0; j < x.length; j++) model.win[j]! += lr * error * x[j]!;
@@ -251,7 +259,7 @@ export function fitOutcomeModel(
   }
   const scored = calibrationRows
     .map((row) => ({
-      raw: sigmoid(dot(model.win, outcomeFeatures(row.setup, model.damage))),
+      raw: sigmoid(dot(model.win, outcomeFeatures(outcomeModelSetup(row.setup), model.damage))),
       won: Number(row.result.winner === 'a'),
     }))
     .sort((a, b) => a.raw - b.raw);
@@ -325,7 +333,7 @@ export function outcomeCalibration(
   let brier = 0;
   const scored = rows
     .map((row) => ({
-      p: predictOutcome(model, row.setup).winA,
+      p: predictOutcome(model, outcomeModelSetup(row.setup)).winA,
       y: Number(row.result.winner === 'a'),
     }))
     .sort((a, b) => a.p - b.p);

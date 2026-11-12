@@ -25,21 +25,29 @@ const damage = { sNum: 8, sDen: 5, k: 10, min: 1, dragonDamageTakenScale: 0.17, 
 
 describe('outcome_v1 contract', () => {
   it('loads the shipped rush-7 artifact and rejects invalid or mismatched models', () => {
-    const model = bundledOutcomeModel(DEFAULT_RULES.version, 'combat-2');
-    expect(model?.id).toBe('outcome-v1-rush7-transfer');
+    const model = bundledOutcomeModel(DEFAULT_RULES.version, 'combat-3');
+    expect(model?.id).toBe('outcome-v1-rush7-combat3-transfer');
     expect(model?.rules_version).toBe('rush-7');
+    expect(model?.combat_rules_version).toBe('combat-3');
+    expect(model?.damage.dragonDamageTakenScale).toBe(0.3);
+    expect(model?.transfer).toEqual({
+      source_rules_version: 'rush-3',
+      source_combat_rules_version: 'combat-2',
+      recalibrated: false,
+    });
     expect(model?.training.holdout_samples).toBe(40000);
     expect(model?.training.stat_dist_games).toBe(8000);
+    // This report is the retained combat-2 holdout, not a combat-3 validation.
     expect(calibration.count).toBe(model?.training.holdout_samples);
     expect(calibration.passes).toBe(true);
     expect(calibration.maxError).toBeLessThanOrEqual(0.03);
-    expect(bundledOutcomeModel('rush-1', 'combat-2')).toBeNull();
-    expect(bundledOutcomeModel('rush-2', 'combat-2')).toBeNull();
-    expect(bundledOutcomeModel('rush-5', 'combat-2')).toBeNull();
-    expect(bundledOutcomeModel('rush-6', 'combat-2')).toBeNull();
-    expect(bundledOutcomeModel(DEFAULT_RULES.version, 'combat-3')).toBeNull();
+    expect(bundledOutcomeModel('rush-1', 'combat-3')).toBeNull();
+    expect(bundledOutcomeModel('rush-2', 'combat-3')).toBeNull();
+    expect(bundledOutcomeModel('rush-5', 'combat-3')).toBeNull();
+    expect(bundledOutcomeModel('rush-6', 'combat-3')).toBeNull();
+    expect(bundledOutcomeModel(DEFAULT_RULES.version, 'combat-2')).toBeNull();
     expect(
-      bundledOutcomeModel(DEFAULT_RULES.version, 'combat-2', { version: 'broken' }),
+      bundledOutcomeModel(DEFAULT_RULES.version, 'combat-3', { version: 'broken' }),
     ).toBeNull();
   });
   it('validates dimensions, versions, finite weights, and metadata', () => {
@@ -49,6 +57,16 @@ describe('outcome_v1 contract', () => {
     expect(() => parseOutcomeModel({ ...model, win: [...model.win, 0] })).toThrow();
     expect(() => parseOutcomeModel({ ...model, win: [NaN, ...model.win.slice(1)] })).toThrow();
     expect(() => parseOutcomeModel({ ...model, id: '' })).toThrow();
+    expect(() =>
+      parseOutcomeModel({
+        ...model,
+        transfer: {
+          source_rules_version: 'rush-3',
+          source_combat_rules_version: 'combat-2',
+          recalibrated: true,
+        },
+      }),
+    ).toThrow();
     expect(() =>
       parseOutcomeModel({
         ...model,

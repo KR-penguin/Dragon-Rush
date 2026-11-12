@@ -3,14 +3,22 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { DEFAULT_COMBAT_RULES, policyRandom, runCombat } from '@dragon-rush/combat';
+import {
+  createCombat,
+  DEFAULT_COMBAT_RULES,
+  policyRandom,
+  runCombat,
+  scaleDragonSetup,
+} from '@dragon-rush/combat';
 import { createCombatBotByName } from '@dragon-rush/combat-ai';
 import { createRng, DEFAULT_RULES, nextFloat } from '@dragon-rush/engine';
-import { emptyOutcomeModel } from '@dragon-rush/ai';
+import { emptyOutcomeModel, outcomeFeatures } from '@dragon-rush/ai';
 import {
   generateOutcomeRows,
   fitOutcomeModel,
   outcomeCalibration,
+  outcomeDamage,
+  outcomeModelSetup,
   sampleOutcomeResult,
 } from '../src/outcome';
 import { StatDistSchema } from '../src/statDist';
@@ -43,6 +51,25 @@ const fixture = StatDistSchema.parse({
 });
 
 describe('outcome pipeline', () => {
+  it('uses effective dragon stats in features while keeping the combat setup unscaled', () => {
+    const setup = {
+      kind: 'dragonFight' as const,
+      a: { job: 'archer' as const, hp: 28, maxHp: 30, atk: 9, def: 6, indomitableAvailable: false },
+      b: null,
+      dragon: { hp: 88, atk: 10, def: 10 },
+    };
+    const modelSetup = outcomeModelSetup(setup);
+    expect(modelSetup.dragon).toEqual(scaleDragonSetup(setup.dragon));
+    expect(modelSetup.dragon).toEqual({ hp: 194, atk: 11, def: 10 });
+    expect(setup.dragon).toEqual({ hp: 88, atk: 10, def: 10 });
+    expect(createCombat(setup, 7).dragon?.hp).toBe(modelSetup.dragon?.hp);
+    expect(createCombat(setup, 7).dragon?.atk).toBe(modelSetup.dragon?.atk);
+    expect(outcomeFeatures(modelSetup, outcomeDamage())).not.toEqual(
+      outcomeFeatures(setup, outcomeDamage()),
+    );
+    const duel = { ...setup, kind: 'duel' as const, b: setup.a };
+    expect(outcomeModelSetup(duel)).toBe(duel);
+  });
   it('generates seeded rows from real 60Hz fights', () => {
     const a = generateOutcomeRows(fixture, { seed: 12, count: 12 });
     expect(a).toEqual(generateOutcomeRows(fixture, { seed: 12, count: 12 }));
@@ -268,7 +295,7 @@ describe('outcome pipeline', () => {
           }),
         ),
       );
-      expect(bad.result.outcome_model_id).toBe('outcome-v1-rush7-transfer');
+      expect(bad.result.outcome_model_id).toBe('outcome-v1-rush7-combat3-transfer');
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
