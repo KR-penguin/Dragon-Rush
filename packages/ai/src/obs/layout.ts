@@ -1,6 +1,6 @@
-export const OBS_VERSION = 'obs_v2';
+export const OBS_VERSION = 'obs_v3';
 
-export const OBS_V2_SCALES = {
+export const OBS_V3_SCALES = {
   HP_S: 120,
   ATK_S: 20,
   DEF_S: 20,
@@ -85,6 +85,7 @@ const GLOBAL_FIELDS: [string, number][] = [
   ['g.dragonAtk', 1],
   ['g.dragonDef', 1],
   ['g.itemPrice', 3],
+  ['g.paidUpgradesRemaining', 1],
 ];
 
 function buildLayout(): ObsField[] {
@@ -100,8 +101,12 @@ function buildLayout(): ObsField[] {
   return out;
 }
 
-export const OBS_V2_LAYOUT: readonly ObsField[] = buildLayout();
+export const OBS_V3_LAYOUT: readonly ObsField[] = buildLayout();
+/** Legacy obs_v2 layout ended at offset 256; all new fields are appended after it. */
+export const OBS_V2_LAYOUT: readonly ObsField[] = OBS_V3_LAYOUT.slice(0, -1);
+/** The existing scale constants are unchanged in obs_v3. */
+export const OBS_V2_SCALES = OBS_V3_SCALES;
 export const SELF_BLOCK = 51;
 export const OPP_BLOCK = 54;
 export const GLOBAL_OFFSET = SELF_BLOCK + OPP_BLOCK * 3;
-export const OBS_DIM = GLOBAL_OFFSET + 44;
+export const OBS_DIM = GLOBAL_OFFSET + 45;

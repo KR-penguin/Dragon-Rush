@@ -2,6 +2,7 @@ import { actionKey, applyAction, getLegalActions } from '@dragon-rush/engine';
 import { describe, expect, it } from 'vitest';
 import {
   ACTION_DIM,
+  ACT_VERSION,
   ACTION_NAMES,
   createHeuristicBot,
   decodeAction,
@@ -11,8 +12,9 @@ import {
 } from '../src/index';
 import { newGame, view, walk } from './helpers';
 
-describe('act_v1 codec', () => {
+describe('act_v2 codec', () => {
   it('has 47 named actions', () => {
+    expect(ACT_VERSION).toBe('act_v2');
     expect(ACTION_DIM).toBe(47);
     expect(ACTION_NAMES).toHaveLength(47);
     expect(new Set(ACTION_NAMES).size).toBe(47);

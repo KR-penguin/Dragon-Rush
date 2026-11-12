@@ -5,7 +5,7 @@ import {
   ACTION_NAMES,
   BOT_NAMES,
   OBS_DIM,
-  OBS_V2_LAYOUT,
+  OBS_V3_LAYOUT,
   OBS_VERSION,
 } from '@dragon-rush/ai';
 import { RequestSchema, ResetParamsSchema, StepParamsSchema, type ResetParams } from './config';
@@ -60,7 +60,7 @@ export class EnvServer {
           action_dim: ACTION_DIM,
           rules_version: DEFAULT_RULES.version,
           action_names: ACTION_NAMES,
-          obs_layout: OBS_V2_LAYOUT,
+          obs_layout: OBS_V3_LAYOUT,
           bots: BOT_NAMES,
         };
       case 'reset':
@@ -91,7 +91,10 @@ export class EnvServer {
     const seed = p.seed ?? (Date.now() % 2 ** 31) * 1000 + Math.floor(Math.random() * 1000);
     const rules = buildRules(p.config);
     this.params = { ...p, seed };
-    this.envs = Array.from({ length: p.num_envs }, (_, i) => new EnvInstance(i, seed, p.config, rules));
+    this.envs = Array.from(
+      { length: p.num_envs },
+      (_, i) => new EnvInstance(i, seed, p.config, rules),
+    );
     return {
       seed,
       combat_resolver: p.config.combat_resolver,

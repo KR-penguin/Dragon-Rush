@@ -18,10 +18,10 @@ describe('env server (in-process)', () => {
     const r = call(new EnvServer(), 1, 'info');
     expect(r.result).toMatchObject({
       protocol: 'rpgboard-env/2',
-      obs_dim: 257,
+      obs_dim: 258,
       action_dim: 47,
-      obs_version: 'obs_v2',
-      act_version: 'act_v1',
+      obs_version: 'obs_v3',
+      act_version: 'act_v2',
     });
     expect(r.result.action_names).toHaveLength(47);
     expect(r.result.action_names[0]).toBe('ROLL_DICE');
@@ -50,7 +50,7 @@ describe('env server (in-process)', () => {
     });
     expect(r.ok).toBe(true);
     let envs = r.result.envs;
-    expect(envs[0].obs).toHaveLength(257);
+    expect(envs[0].obs).toHaveLength(258);
     expect(envs[0].obs[216]).toBe(0);
     expect(envs[0].obs[217]).toBe(1);
     expect(envs[0].episode_start.num_players).toBe(4);

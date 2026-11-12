@@ -11,7 +11,7 @@ import {
   type PublicGameState,
   type SeatId,
 } from '@dragon-rush/engine';
-import { GLOBAL_OFFSET, OBS_DIM, OBS_V2_SCALES as S, OPP_BLOCK, SELF_BLOCK } from './layout';
+import { GLOBAL_OFFSET, OBS_DIM, OBS_V3_SCALES as S, OPP_BLOCK, SELF_BLOCK } from './layout';
 
 const OBS_DICE_SIDES = 10;
 
@@ -142,12 +142,18 @@ function writeGlobal(w: Writer, view: PublicGameState, seat: SeatId): void {
   w.put(n(r.dragon.atk, S.ATK_S));
   w.put(n(r.dragon.def, S.DEF_S));
   for (const item of ITEM_IDS) w.put(n(r.items[item].price, S.COIN_S));
+  w.put(
+    r.maxPaidUpgradesPerTurn === 0
+      ? 0
+      : Math.max(0, r.maxPaidUpgradesPerTurn - view.turn.paidUpgradesUsed) /
+          r.maxPaidUpgradesPerTurn,
+  );
 }
 
-/** obs_v2: ego-centric float32 vector from the acting seat's point of view (docs/ai-interface-spec.md §3). */
+/** obs_v3: ego-centric float32 vector from the acting seat's point of view (docs/ai-interface-spec.md §3). */
 export function encodeObservation(view: PublicGameState, seat: SeatId): Float32Array {
   if (view.rules.movement.rollSides > OBS_DICE_SIDES) {
-    throw new RangeError(`obs_v2 supports at most ${OBS_DICE_SIDES} movement roll sides`);
+    throw new RangeError(`obs_v3 supports at most ${OBS_DICE_SIDES} movement roll sides`);
   }
   const buf = new Float32Array(OBS_DIM);
   const me = view.players[seat];

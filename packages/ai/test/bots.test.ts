@@ -38,7 +38,7 @@ function playOut(s0: GameState, policies: Policy[], seed: number): GameState {
 const meta = (id: string) => ({
   id,
   obsVersion: OBS_VERSION,
-  actVersion: 'act_v1',
+  actVersion: 'act_v2',
   output: 'logits' as const,
   obsDim: OBS_DIM,
   actionDim: ACTION_DIM,
@@ -100,7 +100,7 @@ describe('built-in bots', () => {
         meta: { ...meta('legacy'), obsVersion: 'obs_v1' },
         forward: () => scores,
       }),
-    ).toThrow(/obs_v1.*obs_v2/);
+    ).toThrow(/obs_v1.*obs_v3/);
   });
 
   it('evaluates all ten movement outcomes before using a teleport', () => {

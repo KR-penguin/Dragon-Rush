@@ -1,4 +1,12 @@
-export { OBS_VERSION, OBS_DIM, OBS_V2_LAYOUT, OBS_V2_SCALES, type ObsField } from './obs/layout';
+export {
+  OBS_VERSION,
+  OBS_DIM,
+  OBS_V3_LAYOUT,
+  OBS_V3_SCALES,
+  OBS_V2_LAYOUT,
+  OBS_V2_SCALES,
+  type ObsField,
+} from './obs/layout';
 export { encodeObservation } from './obs/encode';
 export {
   ACT_VERSION,

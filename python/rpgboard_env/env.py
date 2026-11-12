@@ -10,8 +10,8 @@ import numpy as np
 from ._process import ServerProcess
 from .errors import RPGBoardEnvError
 
-OBS_VERSION = "obs_v2"
-ACT_VERSION = "act_v1"
+OBS_VERSION = "obs_v3"
+ACT_VERSION = "act_v2"
 ENV_PROTOCOL = "rpgboard-env/2"
 
 
@@ -135,7 +135,7 @@ class _Base:
         return info
 
     def describe(self, obs: np.ndarray) -> dict[str, Any]:
-        """Names each obs_v2 field: scalars as float, multi-value fields as lists (debugging aid)."""
+        """Names each obs_v3 field: scalars as float, multi-value fields as lists (debugging aid)."""
         return describe_obs(obs, self.obs_layout)
 
     def close(self) -> None:
