@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { getLegalActions, withRules, type Action, type GameState } from '../src/index';
+import {
+  DEFAULT_RULES,
+  getLegalActions,
+  withRules,
+  type Action,
+  type GameState,
+} from '../src/index';
 import { act, eventsOf, newGame, patch, seatOfJob, setPlayer } from './helpers';
 
 const firstLegal = (s: GameState): Action => getLegalActions(s)[0]!;
@@ -35,7 +41,11 @@ describe('game setup', () => {
     const a = newGame(['swordsman', 'archer', 'mage', 'ninja'], 99);
     const b = newGame(['swordsman', 'archer', 'mage', 'ninja'], 99);
     expect(a).toEqual(b);
-    const orders = new Set(Array.from({ length: 20 }, (_, i) => newGame(['swordsman', 'archer', 'mage', 'ninja'], i).seatOrigin.join()));
+    const orders = new Set(
+      Array.from({ length: 20 }, (_, i) =>
+        newGame(['swordsman', 'archer', 'mage', 'ninja'], i).seatOrigin.join(),
+      ),
+    );
     expect(orders.size).toBeGreaterThan(1);
   });
 
@@ -110,9 +120,13 @@ describe('movement and tiles', () => {
     s = act(s, { type: 'ROLL_DICE' }).state;
     expect(s.pending?.phase).toBe('MOVE_ADJUST');
     s = act(s, { type: 'ADJUST_MOVE', delta: 1 }).state;
-    expect(s.players[ninja]!.passive.ninjaCooldown).toBe(2);
+    expect(s.players[ninja]!.passive.ninjaCooldown).toBe(
+      DEFAULT_RULES.passives.ninjaAdjustCooldown,
+    );
     while (s.pending?.phase !== 'PRE_ROLL' || s.current !== ninja) s = act(s, firstLegal(s)).state;
-    expect(s.players[ninja]!.passive.ninjaCooldown).toBe(1);
+    expect(s.players[ninja]!.passive.ninjaCooldown).toBe(
+      DEFAULT_RULES.passives.ninjaAdjustCooldown - 1,
+    );
     const rolled = act(s, { type: 'ROLL_DICE' }).state;
     expect(rolled.pending?.phase).not.toBe('MOVE_ADJUST');
   });
@@ -141,7 +155,9 @@ describe('pvp', () => {
     const r2 = act(r1.state, { type: 'SHIELD_DECISION', use: false });
     expect(r2.state.pending).toEqual({ actor: 1, phase: 'SHIELD_DECISION' });
     const r3 = act(r2.state, { type: 'SHIELD_DECISION', use: true });
-    expect(eventsOf(r3.events, 'ShieldUsed')).toEqual([{ type: 'ShieldUsed', seat: 1, against: 0 }]);
+    expect(eventsOf(r3.events, 'ShieldUsed')).toEqual([
+      { type: 'ShieldUsed', seat: 1, against: 0 },
+    ]);
     expect(r3.state.players[1]!.items.shield).toBe(0);
     expect(r3.state.players.every((p) => p.alive)).toBe(true);
     expect(r3.state.players[0]!.coins).toBe(10 + 12);
@@ -224,7 +240,12 @@ describe('rest turn', () => {
 
 describe('dragon and game end', () => {
   it('a strong challenger slays the dragon and wins', () => {
-    const s = setPlayer(newGame(['swordsman', 'archer'], 5), 0, { atk: 60, def: 60, hp: 500, maxHp: 500 });
+    const s = setPlayer(newGame(['swordsman', 'archer'], 5), 0, {
+      atk: 60,
+      def: 60,
+      hp: 500,
+      maxHp: 500,
+    });
     const r = act(s, { type: 'CHALLENGE_DRAGON' });
     expect(r.state.outcome).toEqual({ kind: 'dragon', winner: 0 });
     expect(r.state.pending).toBeNull();
