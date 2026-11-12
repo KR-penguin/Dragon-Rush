@@ -151,6 +151,8 @@
 | `config.rules` | `"default"` \| `DEFAULT_COMBAT_RULES` 부분 덮어쓰기 | 깊은 병합. 없는 키·다른 타입·배열 길이 불일치면 `BAD_CONFIG` |
 | `config.return_events` | bool, false | 전투 이벤트 포함(디버그·리플레이) |
 
+순수 결투는 `mode_mix: {pvp: 1, dragon: 0}`, 순수 용전은 `{pvp: 0, dragon: 1}`로 설정한다. Python의 `PvPCombatEnv`/`PvPCombatVecEnv`와 `DragonCombatEnv`/`DragonCombatVecEnv`는 이 구성을 고정하는 얇은 래퍼다. 용전 래퍼는 기본 `controlled="p0"`라 비활성 두 번째 슬롯이 없다. 세 과제의 실행·배열·리셋·JSON 준비물은 [AI 학습 환경 시작 가이드](training-environments.md)를 본다.
+
 **step** — `{"actions": [...]}`: env마다 `[[move, button], …]`(n_ctrl개) 또는 flat이면 `[index, …]`. 모두 검증 후 하나라도 불법이면 아무것도 진행하지 않는다.
 
 **env별 결과** (`result.envs[i]`, reset도 같은 형식)
@@ -198,6 +200,7 @@ obs, reward, terminated, truncated, info = env.step(actions)
 
 - 속성: `obs_dim`(160), `action_nvec`((9, 4)), `flat_dim`(36), `n_ctrl`, `cobs_version`, `cact_version`, `combat_rules_version`, `combat_rules_hash`, `tick_hz`, `obs_layout`, `action_names`(`move`·`button`·`flat`), `bots`, `describe(obs)`.
 - **[구현]** `CombatEnv(**같은 인자)`: 단일 env(자동 리셋 없음). 관측 `(n_ctrl, 160)`, 행동 `(n_ctrl, 2)` 또는 flat `(n_ctrl,)`, 보상 `(n_ctrl,)`, 종료 후 `step`은 `EPISODE_OVER`. 예제 `python/examples/random_combat_agent.py`(Gumbel-max 가지별 마스크 샘플링).
+- **고정 전투 과제**: `PvPCombatEnv`/`PvPCombatVecEnv`는 결투만 생성하며 기본 `controlled="both"`; `DragonCombatEnv`/`DragonCombatVecEnv`는 용전만 생성하며 기본 `controlled="p0"`. 둘 다 기존 관측·행동·보상·리셋 계약을 그대로 쓴다. `mode_mix`를 직접 넘기면 `ValueError`다. 예제 `random_combat_agent.py --mode pvp|dragon`으로 실행한다.
 - 서버 커맨드: `server_cmd` > 환경변수 `RPGBOARD_COMBAT_ENV_CMD` > 기본 `node packages/sim/dist/combat-env-server.js`. 작업 폴더·예외(`RPGBoardEnvError`, `IllegalActionError`, `SERVER_NOT_BUILT`, `VERSION_MISMATCH`)는 `RPGBoardEnv`와 같다.
 - 두 head 정책: 가지마다 마스크(−∞)를 적용한 softmax에서 따로 뽑고 log-prob은 합한다. 예: `m = sample(masked_softmax(logits[:9], info["move_mask"][i, s]))`, `b = sample(masked_softmax(logits[9:], info["button_mask"][i, s]))`.
 

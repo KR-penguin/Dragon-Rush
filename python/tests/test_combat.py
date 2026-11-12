@@ -8,7 +8,16 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "python"))
 
-from rpgboard_env import CombatEnv, CombatVecEnv, IllegalActionError, RPGBoardEnvError  # noqa: E402
+from rpgboard_env import (  # noqa: E402
+    CombatEnv,
+    CombatVecEnv,
+    DragonCombatEnv,
+    DragonCombatVecEnv,
+    IllegalActionError,
+    PvPCombatEnv,
+    PvPCombatVecEnv,
+    RPGBoardEnvError,
+)
 
 SERVER = ["node", "--import", "tsx", "packages/sim/src/combat-env-server.ts"]
 KW = dict(server_cmd=SERVER, cwd=str(ROOT))
@@ -139,12 +148,13 @@ def test_describe_names_every_field():
         assert info["active"].tolist() == [True]
 
 
-def test_example_loop_runs():
+@pytest.mark.parametrize("mode", ["mixed", "pvp", "dragon"])
+def test_example_loop_runs(mode):
     import subprocess
 
     env = dict(os.environ, RPGBOARD_COMBAT_ENV_CMD=" ".join(SERVER), RPGBOARD_ROOT=str(ROOT), PYTHONPATH=str(ROOT / "python"))
     res = subprocess.run(
-        [sys.executable, str(ROOT / "python/examples/random_combat_agent.py"), "--envs", "2", "--steps", "40"],
+        [sys.executable, str(ROOT / "python/examples/random_combat_agent.py"), "--mode", mode, "--envs", "2", "--steps", "40"],
         cwd=str(ROOT),
         env=env,
         capture_output=True,
@@ -153,3 +163,72 @@ def test_example_loop_runs():
     )
     assert res.returncode == 0, res.stderr
     assert "decisions=" in res.stdout
+
+
+@pytest.mark.parametrize(
+    ("env_class", "mode", "n_ctrl"),
+    [
+        (PvPCombatEnv, "pvp", 2),
+        (DragonCombatEnv, "dragon", 1),
+        (PvPCombatVecEnv, "pvp", 2),
+        (DragonCombatVecEnv, "dragon", 1),
+    ],
+)
+def test_named_combat_envs_keep_one_mode_across_reset(env_class, mode, n_ctrl):
+    rules = {"timeLimit": {"duel": 12, "dragonFight": 12}}
+    kwargs = {"num_envs": 2} if issubclass(env_class, CombatVecEnv) else {}
+    with env_class(rules=rules, reward={"k_start": 0}, **kwargs, **KW) as env:
+        obs, info = env.reset(seed=27)
+        assert env.n_ctrl == n_ctrl
+        assert obs.shape[-2:] == (n_ctrl, 160)
+        starts = info["episode_start"] if isinstance(env, CombatVecEnv) else [info["episode_start"]]
+        assert all(start["mode"] == mode for start in starts)
+        finished = 0
+        for _ in range(30):
+            actions = random_actions(info, np.random.default_rng(1), False)
+            obs, reward, terminated, truncated, info = env.step(actions)
+            modes = info["mode"] if isinstance(env, CombatVecEnv) else [info["mode"]]
+            assert all(value == mode for value in modes)
+            assert reward.shape[-1] == n_ctrl
+            if isinstance(env, CombatVecEnv):
+                for i in np.flatnonzero(terminated | truncated):
+                    finished += 1
+                    assert info["outcome"][i] is not None
+                    assert info["episode_start"][i]["mode"] == mode
+                    assert info["final_obs"][i][0].shape == (160,)
+                    winner = info["outcome"][i]["winner"]
+                    assert reward[i, 0] == (1 if winner == 0 else -1)
+                    if mode == "pvp":
+                        assert reward[i, 1] == (1 if winner == 1 else -1)
+            elif terminated or truncated:
+                finished += 1
+                assert info["outcome"] is not None
+                assert info["final_obs"][0].shape == (160,)
+                winner = info["outcome"]["winner"]
+                assert reward[0] == (1 if winner == 0 else -1)
+                if mode == "pvp":
+                    assert reward[1] == (1 if winner == 1 else -1)
+                _, next_info = env.reset(seed=28)
+                assert next_info["episode_start"]["mode"] == mode
+                break
+            if finished:
+                break
+        assert finished > 0
+
+
+def test_dragon_both_retains_inactive_slot_contract():
+    with DragonCombatEnv(controlled="both", **KW) as env:
+        obs, info = env.reset(seed=9)
+        assert obs.shape == (2, 160)
+        assert info["active"].tolist() == [True, False]
+        assert not obs[1].any()
+        assert info["move_mask"][1].tolist() == [True] + [False] * 8
+        assert info["button_mask"][1].tolist() == [True, False, False, False]
+        _, reward, _, _, _ = env.step(np.zeros((2, 2), dtype=np.int64))
+        assert reward[1] == 0
+
+
+@pytest.mark.parametrize("env_class", [PvPCombatEnv, DragonCombatEnv])
+def test_named_combat_env_rejects_conflicting_mode_mix(env_class):
+    with pytest.raises(ValueError, match="mode_mix"):
+        env_class(mode_mix={"pvp": 0.5, "dragon": 0.5}, **KW)
