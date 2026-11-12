@@ -37,6 +37,7 @@ const hit = (over: Partial<Extract<CombatEventBody, { type: 'Hit' }>> = {}): Com
     firstStrike: false,
     rage: false,
     pierce: false,
+    backstab: false,
     ...over,
   });
 
