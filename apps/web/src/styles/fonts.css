@@ -1,0 +1,64 @@
+/* A single Korean WOFF2 per weight avoids bundling every Fontsource subset and legacy WOFF. */
+@font-face {
+  font-family: 'Hahmlet';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url('@fontsource/hahmlet/files/hahmlet-korean-500-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Hahmlet';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url('@fontsource/hahmlet/files/hahmlet-korean-700-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Hahmlet';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 900;
+  src: url('@fontsource/hahmlet/files/hahmlet-korean-900-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Black Han Sans';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url('@fontsource/black-han-sans/files/black-han-sans-korean-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Noto Sans KR';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url('@fontsource/noto-sans-kr/files/noto-sans-kr-korean-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Noto Sans KR';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url('@fontsource/noto-sans-kr/files/noto-sans-kr-korean-500-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Noto Sans KR';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url('@fontsource/noto-sans-kr/files/noto-sans-kr-korean-700-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Gowun Batang';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url('@fontsource/gowun-batang/files/gowun-batang-korean-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Gowun Batang';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url('@fontsource/gowun-batang/files/gowun-batang-korean-700-normal.woff2') format('woff2');
+}
