@@ -126,6 +126,27 @@ describe('decision gating', () => {
     expect(landingDecisionReached(shop, null)).toBe(false);
   });
 
+  it('opens the defender confirmation when the arriving pawn lands', () => {
+    const start = base();
+    const before = {
+      ...start,
+      players: start.players.map((p) => (p.seat === 1 ? { ...p, position: 6 } : p)),
+    };
+    const landed = {
+      ...before,
+      players: before.players.map((p) => (p.seat === 0 ? { ...p, position: 6 } : p)),
+      pvp: { arriver: 0, candidates: [1], target: 1, stage: 'defender' as const },
+    };
+    const confirm = update({
+      pending: { actor: 1, phase: 'SHIELD_DECISION' },
+      controllableSeats: [1],
+      publicState: landed,
+      legalActions: [{ type: 'SHIELD_DECISION', use: false }],
+    });
+    expect(landingDecisionReached(confirm, before)).toBe(false);
+    expect(landingDecisionReached(confirm, landed)).toBe(true);
+  });
+
   it('asks for a hand-off only when another local human takes over', () => {
     expect(needsHandoff([0, 1], 0, null)).toBe(true);
     expect(needsHandoff([0, 1], 0, 0)).toBe(false);

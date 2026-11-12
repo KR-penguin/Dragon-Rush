@@ -24,9 +24,9 @@ const setup = {
 const damage = { sNum: 8, sDen: 5, k: 10, min: 1, dragonDamageTakenScale: 0.17, mageDefDivisor: 2 };
 
 describe('outcome_v1 contract', () => {
-  it('loads the shipped rush-4 artifact and rejects invalid or mismatched models', () => {
+  it('loads the shipped rush-5 artifact and rejects invalid or mismatched models', () => {
     const model = bundledOutcomeModel(DEFAULT_RULES.version, 'combat-2');
-    expect(model?.id).toBe('outcome-v1-rush4-transfer');
+    expect(model?.id).toBe('outcome-v1-rush5-transfer');
     expect(model?.training.holdout_samples).toBe(40000);
     expect(model?.training.stat_dist_games).toBe(8000);
     expect(calibration.count).toBe(model?.training.holdout_samples);

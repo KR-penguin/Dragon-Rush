@@ -239,7 +239,11 @@ describe('pvp', () => {
     expect(eventsOf(confirmed.events, 'PvpTargetChosen')).toEqual([
       { type: 'PvpTargetChosen', arriver: 0, target: 1 },
     ]);
-    expect(eventsOf(confirmed.events, 'CombatStarted')).toHaveLength(1);
+    expect(confirmed.state.pending).toEqual({ actor: 1, phase: 'SHIELD_DECISION' });
+    expect(getLegalActions(confirmed.state)).toEqual([{ type: 'SHIELD_DECISION', use: false }]);
+    expect(eventsOf(confirmed.events, 'CombatStarted')).toHaveLength(0);
+    const started = act(confirmed.state, { type: 'SHIELD_DECISION', use: false });
+    expect(eventsOf(started.events, 'CombatStarted')).toHaveLength(1);
   });
 
   it('asks the arriver first, then the defender, for shields', () => {
@@ -265,7 +269,8 @@ describe('pvp', () => {
       d.players[0]!.coins = 9;
     });
     const landing = act(s, { type: 'USE_TELEPORT', tile: 9 });
-    const { state, events } = act(landing.state, { type: 'CHOOSE_PVP_TARGET', target: 1 });
+    const confirmed = act(landing.state, { type: 'CHOOSE_PVP_TARGET', target: 1 });
+    const { state, events } = act(confirmed.state, { type: 'SHIELD_DECISION', use: false });
     const eliminated = eventsOf(events, 'PlayerEliminated');
     expect(eliminated).toHaveLength(1);
     expect(state.outcome?.kind).toBe('lastSurvivor');
@@ -298,7 +303,9 @@ describe('pvp', () => {
       { type: 'CHOOSE_PVP_TARGET', target: 2 },
     ]);
     const after = act(r.state, { type: 'CHOOSE_PVP_TARGET', target: 2 });
-    expect(eventsOf(after.events, 'PlayerEliminated')).toHaveLength(1);
+    expect(after.state.pending).toEqual({ actor: 2, phase: 'SHIELD_DECISION' });
+    const resolved = act(after.state, { type: 'SHIELD_DECISION', use: false });
+    expect(eventsOf(resolved.events, 'PlayerEliminated')).toHaveLength(1);
   });
 });
 

@@ -71,6 +71,7 @@ export function DecisionDialogs({ ui, state, nameOf, onPreviewTile }: DecisionDi
           me={me}
           opponentName={nameOf(opponent)}
           opponent={opponentSummaries(state, [opponent])[0]!}
+          canShield={groups.shieldChoices.includes(true)}
           locked={locked}
           onDecide={(use) => void submit({ type: 'SHIELD_DECISION', use })}
         />

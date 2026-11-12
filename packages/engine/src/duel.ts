@@ -19,16 +19,13 @@ export function opponentsOnTile(ctx: Ctx, arriver: SeatId): SeatId[] {
 
 export function startPvp(ctx: Ctx, arriver: SeatId, target: SeatId): void {
   const a = playerAt(ctx.s, arriver);
-  const d = playerAt(ctx.s, target);
   ctx.s.pvp = { arriver, candidates: [target], target, stage: null };
   if (a.items.shield > 0) {
     ctx.s.pvp.stage = 'arriver';
     ctx.s.pending = { actor: arriver, phase: 'SHIELD_DECISION' };
-  } else if (d.items.shield > 0) {
+  } else {
     ctx.s.pvp.stage = 'defender';
     ctx.s.pending = { actor: target, phase: 'SHIELD_DECISION' };
-  } else {
-    runDuel(ctx, arriver, target);
   }
 }
 
@@ -58,7 +55,7 @@ export function shieldDecision(ctx: Ctx, use: boolean): void {
     resolveTile(ctx, arriver);
     return;
   }
-  if (pvp.stage === 'arriver' && playerAt(ctx.s, target).items.shield > 0) {
+  if (pvp.stage === 'arriver') {
     pvp.stage = 'defender';
     ctx.s.pending = { actor: target, phase: 'SHIELD_DECISION' };
     return;

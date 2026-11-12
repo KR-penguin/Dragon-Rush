@@ -57,7 +57,8 @@ describe('env server (in-process)', () => {
           expect(e.legal.length).toBeGreaterThan(0);
         } else {
           expect(e.legal.length).toBeGreaterThan(0);
-          if (e.legal.length === 1) expect(e.phase).toBe('CHOOSE_PVP_TARGET');
+          if (e.legal.length === 1)
+            expect(['CHOOSE_PVP_TARGET', 'SHIELD_DECISION', 'POST_MOVE']).toContain(e.phase);
         }
       }
     }
@@ -150,7 +151,7 @@ describe('env server (in-process)', () => {
     expect(
       call(new EnvServer(), 1, 'reset', { config: { combat_resolver: 'outcome' } }).result
         ?.outcome_model_id,
-    ).toBe('outcome-v1-rush4-transfer');
+    ).toBe('outcome-v1-rush5-transfer');
   });
 
   it('rejects bad configs', () => {

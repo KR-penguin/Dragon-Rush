@@ -28,9 +28,13 @@ export function landingDecisionReached(
     (pending.phase === 'POST_MOVE' && update.publicState.turn.canBuy) ||
     pending.phase === 'CHOOSE_PVP_TARGET' ||
     pending.phase === 'SHIELD_DECISION';
-  if (!landingPhase || display.current !== pending.actor) return false;
+  if (!landingPhase || display.current !== update.publicState.current) return false;
+  const landingSeat =
+    pending.phase === 'SHIELD_DECISION'
+      ? (update.publicState.pvp?.arriver ?? pending.actor)
+      : pending.actor;
   return (
-    display.players[pending.actor]?.position === update.publicState.players[pending.actor]?.position
+    display.players[landingSeat]?.position === update.publicState.players[landingSeat]?.position
   );
 }
 

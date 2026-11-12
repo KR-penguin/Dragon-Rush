@@ -351,6 +351,7 @@ class Planner {
   }
 
   useShield(): boolean {
+    if (this.me.items.shield < 1) return false;
     const pvp = this.view.pvp;
     if (!pvp || pvp.target === null) return false;
     const amArriver = pvp.arriver === this.seat;
