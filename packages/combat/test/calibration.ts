@@ -8,7 +8,10 @@ import type { CombatSetup, FighterSetup } from '../src/types';
 
 export const JOBS: readonly JobId[] = JOB_IDS;
 
-export function baseFighter(job: JobId, extra: Partial<Pick<FighterSetup, 'atk' | 'def' | 'maxHp'>> = {}): FighterSetup {
+export function baseFighter(
+  job: JobId,
+  extra: Partial<Pick<FighterSetup, 'atk' | 'def' | 'maxHp'>> = {},
+): FighterSetup {
   const j = DEFAULT_RULES.jobs[job];
   const maxHp = j.hp + (extra.maxHp ?? 0);
   return {
@@ -89,7 +92,12 @@ export function dragonSeries(
   let timeouts = 0;
   const ticks: number[] = [];
   for (let i = 0; i < n; i++) {
-    const out = runCombat({ kind: 'dragonFight', a, b: null, dragon: { hp: d.hp, atk: d.atk, def: d.def } }, [pa], seed0 + i, rules);
+    const out = runCombat(
+      { kind: 'dragonFight', a, b: null, dragon: { hp: d.hp, atk: d.atk, def: d.def } },
+      [pa],
+      seed0 + i,
+      rules,
+    );
     if (out.result.winner === 'a') winsA += 1;
     if (out.result.timedOut) timeouts += 1;
     ticks.push(out.ticks);
@@ -98,7 +106,14 @@ export function dragonSeries(
 }
 
 /** Win rate of job i against job j with both side assignments (removes the arriver-side bias). */
-export function pairRate(i: JobId, j: JobId, n: number, seed0: number, style: BotStyle = 'balanced', rules?: CombatRules): number {
+export function pairRate(
+  i: JobId,
+  j: JobId,
+  n: number,
+  seed0: number,
+  style: BotStyle = 'balanced',
+  rules?: CombatRules,
+): number {
   const half = Math.max(1, Math.floor(n / 2));
   const asA = duelSeries(baseFighter(i), baseFighter(j), half, seed0, style, rules);
   const asB = duelSeries(baseFighter(j), baseFighter(i), half, seed0 + 100_000, style, rules);
@@ -115,7 +130,14 @@ export function upgradeRate(
 ): number {
   const half = Math.max(1, Math.floor(n / 2));
   const asA = duelSeries(baseFighter(job, extra), baseFighter(job), half, seed0, 'balanced', rules);
-  const asB = duelSeries(baseFighter(job), baseFighter(job, extra), half, seed0 + 100_000, 'balanced', rules);
+  const asB = duelSeries(
+    baseFighter(job),
+    baseFighter(job, extra),
+    half,
+    seed0 + 100_000,
+    'balanced',
+    rules,
+  );
   return (asA.winsA + (asB.n - asB.winsA)) / (asA.n + asB.n);
 }
 
