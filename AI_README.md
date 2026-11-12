@@ -26,7 +26,7 @@ Reading order for any task: this file → `coding_convention.md` → canonical d
 ## 2. Project status
 - Done: engine (P1), AI interface + training env (P2), balance re-verified on the TS engine (P3), local web play (P4), online multiplayer (P5), model-integration plumbing (P6), deploy files (P7: Dockerfile, CI workflow).
 - Waiting on the user: `USER_WEIGHT_ADAPTER` in `packages/ai/src/model/adapters/index.ts` stays `null` until the weight JSON format and parity samples arrive (model seats show "준비 중"). Assets are placeholders (emoji/CSS) until files arrive at the paths in development-plan §4.2.
-- In progress (2nd round): `packages/combat` (deterministic 60 Hz combat sim, `DEFAULT_COMBAT_RULES`), `packages/combat-ai` (`cobs_v1`/`cact_v1` encoder, codec, masks, scripted bots, TS MLP runtime), `combat-env-server` + `CombatVecEnv`. The engine `COMBAT` phase is merged (`RulesConfig.combat.mode: 'dice' | 'external'`, `applyCombatResult`, `resolveCombatWithDice`; callers temporarily auto-resolve with dice). Check the code first. Board and combat models are separate models with separate envs.
+- In progress (2nd round): `packages/combat` (deterministic 60 Hz combat sim, `DEFAULT_COMBAT_RULES`), `packages/combat-ai` (`cobs_v1`/`cact_v1` encoder, codec, masks, scripted bots, TS MLP runtime), `combat-env-server` + `CombatVecEnv`. The engine `COMBAT` phase is merged (`RulesConfig.combat.mode: 'dice' | 'external'`, `applyCombatResult`, `resolveCombatWithDice`). Local play runs fights on the real-time combat screen (`LocalGameClient` offers `GameUpdate.fight`, the screen answers `reportFight`; setting "빠른 전투" = dice); the server still auto-resolves with dice until the online fight session lands. Check the code first. Board and combat models are separate models with separate envs.
 - Approved simulation-driven rules: early PvP grace (rounds 1–2, `pvpGraceRounds`), starting shield (`startingItems`), ninja move-adjust cooldown. A rest turn only blocks movement. Teleport has no per-turn limit (`teleport.perTurnLimit = null`, open question R2); thief is once per turn (R3).
 
 ## 3. Product in ~10 lines
@@ -80,6 +80,7 @@ Brief the user with a reason before adding any library that is not in this table
 - `sim/src`: `runner.ts` (playGame, runBatch, deriveSeed) · `metrics.ts` · `cli.ts` + `simWorker.ts` (worker threads) · `modelLoader.ts` · `env/` (config zod schemas, envInstance, envServer) · `env-server.ts` (stdio entry).
 - `server/src`: `main.ts app.ts config.ts errors.ts` · `socket/` (gateway, rateLimit) · `rooms/` (Room, RoomManager) · `session/SessionStore.ts` · `game/` (GameSession, TurnTimer, timeoutAction) · `ai/modelRegistry.ts`.
 - `web/src`: `pages/`, `components/` (View, props only), `hooks/`, `store/gameStore.ts` (Zustand), `animation/eventTimeline.ts` + `eventSfx.ts`, `services/` (`gameClient.ts` port, `LocalGameClient`, `OnlineGameClient`, `onlineSession`, `audio.ts` Web Audio engine), `types/` (labels, view helpers).
+- `web/src` real-time combat: `services/fight/` (no React: `FightSession` = `FightLoop` driving a `FightStateProvider` at 60 Hz from rAF; `LocalSimProvider`/`ReplayProvider`; input sources keyboard `KeyTracker`, gamepad, bot; `fightSetup` board stats → `CombatSetup`) · `combat/` (`render/` Canvas arena renderer + HUD, `fightFx.ts` pure sim event → FX/audio map, `fightDirector.ts`, `fightFlow.ts` VS/READY/KO/result phases) · `components/combat/` views · `hooks/useFight*` · `pages/game/CombatLayer.tsx` (the Game page's single mount point) · `types/combatControls.ts` (key layouts, input mapping).
 - `web/src/fx` (game feel, renderer-agnostic): `core/` pure models (trauma `camera`, hit-stop `time` clock, SoA `particles` capped at 500, `floatingText`, `flash` governor, easing, xorshift `rng`, Perlin `noise`) · `audio/` (sound catalogue + procedural Web Audio fallback) · `eventFx.ts` (GameEvent → cue list, pure) + `recipes.ts` · `runtime/` (one rAF loop outside React: `fx`, `fxTime`, `createArenaFx()` for the Canvas arena) · `board/boardResolver.ts` (anchor → screen point; replace for a new board) · `components/` (`FxLayer`, `ShakeContainer` = `.world-shake`, settings dock) · `settings/` (accessibility policy).
 - Assets: `apps/web/public/assets/{images,audio}/...` (list in development-plan §4.2); only files that exist are used. A sound file at `audio/sfx/<name>.{mp3,ogg,wav}` (variants `<name>_2` … `_5`) replaces its procedural placeholder automatically; `audio/bgm/loops.json` sets BGM loop points.
 
@@ -110,6 +111,7 @@ Planned (architecture §12): `engine` ← `combat` ← `combat-ai` ← `sim`, `s
 | Strategy | `Policy` (Random/Heuristic/Model), seat control in `GameSession` | humans, bots, models, proxies share one path |
 | Adapter | `WeightAdapter`: user JSON → `PolicyModel` | format change swaps only the adapter |
 | Ports & Adapters | `GameClient` → `LocalGameClient` / `OnlineGameClient` | UI does not know local vs online |
+| Strategy (provider + input source) | `FightStateProvider` (local sim / replay; online rollback later) × `FightInputSource` (keys, pad, bot, network) | one fight loop and renderer for every way a fight is run |
 | Schema-first | `packages/protocol` (zod) | runtime validation + TS types |
 | Observer + Producer–Consumer | Zustand store + event animation queue | minimal re-renders; animation decoupled from update rate |
 | Cue list + injected resolver | `fx/eventFx.ts` → `FxCue[]` with symbolic anchors, run by `fx` with a board `FxResolver` | effect mapping is pure and testable; survives the board redesign |
@@ -128,7 +130,8 @@ interface PolicyModel { meta: ModelMeta; forward(obs): Float32Array(47); value?(
 createModelPolicy(model, { mode?: 'argmax'|'sample', temperature? }); checkParity(model, samples)
 createPolicyByName('random'|'random:uniform'|'heuristic'|'heuristic:aggro|growth|rush', random)
 // apps/web/src/services/gameClient.ts
-interface GameClient { mode; subscribe(cb): () => void; submit(action, stateVersion): Promise<SubmitResult>; requestSnapshot(); dispose() }
+interface GameClient { mode; subscribe(cb): () => void; submit(action, stateVersion): Promise<SubmitResult>; requestSnapshot(); dispose();
+  reportFight?(fightId, result: CombatResult | 'dice'): Promise<SubmitResult> }   // GameUpdate.fight?: PendingFight | null (setup, seed, sides/controls, replay)
 // apps/server: GameSession.submit(seat, action, stateVersion, source: 'human'|'timer'|'policy')
 ```
 - Socket.IO: C→S `room:create|join|leave|configure|configureSeat|selectJob|setReady|start`, `game:action`, `game:requestSnapshot` (each with an `Ack<T>`); S→C `session:welcome`, `room:state`, `game:update`, `game:snapshot`, `seat:status`. Handshake `auth: { protocolVersion, sessionToken? }`.
