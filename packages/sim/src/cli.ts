@@ -15,6 +15,7 @@ interface CliArgs {
   json: boolean;
   combat: CombatResolverName;
   combatBot: string | undefined;
+  outcomeModelPath: string | undefined;
   logFights: string | undefined;
 }
 
@@ -28,6 +29,7 @@ function parseArgs(argv: string[]): CliArgs {
     json: false,
     combat: 'dice',
     combatBot: undefined,
+    outcomeModelPath: undefined,
     logFights: undefined,
   };
   for (let i = 0; i < argv.length; i++) {
@@ -38,9 +40,11 @@ function parseArgs(argv: string[]): CliArgs {
     else if (flag === '--seed') args.seed = Number(value);
     else if (flag === '--workers') args.workers = Number(value);
     else if (flag === '--combat') {
-      if (!(COMBAT_RESOLVERS as readonly string[]).includes(String(value))) throw new Error(`--combat must be one of ${COMBAT_RESOLVERS.join('|')}`);
+      if (!(COMBAT_RESOLVERS as readonly string[]).includes(String(value)))
+        throw new Error(`--combat must be one of ${COMBAT_RESOLVERS.join('|')}`);
       args.combat = value as CombatResolverName;
     } else if (flag === '--combat-bot') args.combatBot = String(value);
+    else if (flag === '--outcome-model') args.outcomeModelPath = String(value);
     else if (flag === '--log-fights') args.logFights = String(value);
     else if (flag === '--json') {
       args.json = true;
@@ -61,7 +65,11 @@ function runInWorker(opts: BatchOptions): Promise<GameRecord[]> {
   });
 }
 
-async function runParallel(base: Omit<BatchOptions, 'startIndex' | 'games'>, games: number, workers: number): Promise<GameRecord[]> {
+async function runParallel(
+  base: Omit<BatchOptions, 'startIndex' | 'games'>,
+  games: number,
+  workers: number,
+): Promise<GameRecord[]> {
   if (workers <= 1 || games < 50) return runBatch({ ...base, games });
   const chunk = Math.ceil(games / workers);
   const jobs: Promise<GameRecord[]>[] = [];
@@ -73,6 +81,8 @@ async function runParallel(base: Omit<BatchOptions, 'startIndex' | 'games'>, gam
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
+  if (args.combat === 'outcome' && !args.outcomeModelPath)
+    throw new Error('--combat outcome requires --outcome-model <path>');
   const reports = [];
   const logged: GameRecord[] = [];
   for (const players of args.players) {
@@ -84,6 +94,7 @@ async function main() {
         baseSeed: args.seed * 1000 + players,
         combat: args.combat,
         ...(args.combatBot ? { combatBot: args.combatBot } : {}),
+        ...(args.outcomeModelPath ? { outcomeModelPath: args.outcomeModelPath } : {}),
         ...(args.logFights ? { logFights: true } : {}),
       },
       args.games,
@@ -101,13 +112,16 @@ async function main() {
         args.combat === 'sim' && fights > 0
           ? `, combat=sim ${(fights / records.length).toFixed(2)} fights/game, ${(ticks / fights / 60).toFixed(1)} s/fight`
           : `, combat=${args.combat}`;
-      console.log(`\n(${seconds.toFixed(1)}s, ${(records.length / seconds).toFixed(1)} games/s, workers=${args.workers}, bots=${args.bots}${combat}, seed=${args.seed})\n`);
+      console.log(
+        `\n(${seconds.toFixed(1)}s, ${(records.length / seconds).toFixed(1)} games/s, workers=${args.workers}, bots=${args.bots}${combat}, seed=${args.seed})\n`,
+      );
     }
   }
   if (args.logFights) {
     const dist = statDistFromRecords(logged, args.combat);
     writeFileSync(args.logFights, JSON.stringify(dist) + '\n');
-    if (!args.json) console.log(`wrote ${dist.fighters.length} fighter samples to ${args.logFights}`);
+    if (!args.json)
+      console.log(`wrote ${dist.fighters.length} fighter samples to ${args.logFights}`);
   }
   if (args.json) console.log(JSON.stringify(reports, null, 2));
 }

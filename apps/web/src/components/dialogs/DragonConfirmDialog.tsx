@@ -9,14 +9,24 @@ interface DragonConfirmDialogProps {
   name: string;
   me: OpponentSummary;
   dragon: { readonly hp: number; readonly atk: number; readonly def: number };
-  chance: number;
+  chance: number | null;
+  method: 'dice' | 'realtime';
   locked: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
 
 /** Challenge scroll sealed in crimson wax. */
-export function DragonConfirmDialog({ name, me, dragon, chance, locked, onConfirm, onCancel }: DragonConfirmDialogProps) {
+export function DragonConfirmDialog({
+  name,
+  me,
+  dragon,
+  chance,
+  method,
+  locked,
+  onConfirm,
+  onCancel,
+}: DragonConfirmDialogProps) {
   return (
     <Modal
       className="modal-scroll modal-crimson"
@@ -29,7 +39,12 @@ export function DragonConfirmDialog({ name, me, dragon, chance, locked, onConfir
           <button type="button" className="btn btn-ghost" onClick={onCancel}>
             물러난다
           </button>
-          <button type="button" className="btn btn-danger btn-lg" disabled={locked} onClick={onConfirm}>
+          <button
+            type="button"
+            className="btn btn-danger btn-lg"
+            disabled={locked}
+            onClick={onConfirm}
+          >
             <GameIcon name="duel" /> 도전한다!
           </button>
         </>
@@ -56,8 +71,10 @@ export function DragonConfirmDialog({ name, me, dragon, chance, locked, onConfir
           </span>
         </div>
       </div>
-      <WinChance label="예상 승리 확률" chance={chance} />
-      <p className="warning">이기면 즉시 승리합니다. 지면 탈락하고 코인과 아이템이 모두 사라집니다.</p>
+      <WinChance label="예상 승리 확률" chance={chance} method={method} />
+      <p className="warning">
+        이기면 즉시 승리합니다. 지면 탈락하고 코인과 아이템이 모두 사라집니다.
+      </p>
     </Modal>
   );
 }

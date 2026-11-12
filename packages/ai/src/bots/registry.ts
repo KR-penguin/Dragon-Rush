@@ -1,5 +1,10 @@
 import type { Policy } from '../policy';
-import { createHeuristicBot, HEURISTIC_STYLES, type HeuristicStyle } from './heuristic/heuristicBot';
+import type { OutcomeModel } from '../outcome';
+import {
+  createHeuristicBot,
+  HEURISTIC_STYLES,
+  type HeuristicStyle,
+} from './heuristic/heuristicBot';
 import { createRandomBot } from './randomBot';
 
 export const BOT_NAMES = [
@@ -12,16 +17,22 @@ export const BOT_NAMES = [
 ] as const;
 
 /** Resolves a bot name; plain `heuristic` picks a style with `random`. */
-export function createPolicyByName(name: string, random: () => number): Policy {
+export function createPolicyByName(
+  name: string,
+  random: () => number,
+  outcomeModel?: OutcomeModel,
+): Policy {
   if (name === 'random') return createRandomBot();
   if (name === 'random:uniform') return createRandomBot({ uniform: true });
   if (name === 'heuristic') {
-    const style = HEURISTIC_STYLES[Math.floor(random() * HEURISTIC_STYLES.length)] as HeuristicStyle;
-    return createHeuristicBot(style);
+    const style = HEURISTIC_STYLES[
+      Math.floor(random() * HEURISTIC_STYLES.length)
+    ] as HeuristicStyle;
+    return createHeuristicBot(style, outcomeModel);
   }
   const [kind, style] = name.split(':');
   if (kind === 'heuristic' && HEURISTIC_STYLES.includes(style as HeuristicStyle)) {
-    return createHeuristicBot(style as HeuristicStyle);
+    return createHeuristicBot(style as HeuristicStyle, outcomeModel);
   }
   throw new RangeError(`unknown bot ${name}`);
 }

@@ -1,4 +1,5 @@
 import type { PublicGameState, SeatId } from '@dragon-rush/engine';
+import type { OutcomeModel } from '@dragon-rush/ai';
 import { useMemo } from 'react';
 import { DragonConfirmDialog } from '../../components/dialogs/DragonConfirmDialog';
 import { HandoffDialog } from '../../components/dialogs/HandoffDialog';
@@ -21,25 +22,42 @@ interface DecisionDialogsProps {
   nameOf: (seat: SeatId) => string;
   /** Destination preview on the board for the ninja's move adjust. */
   onPreviewTile?: (tile: number | null) => void;
+  method: 'dice' | 'realtime';
+  outcomeModel?: OutcomeModel;
 }
 
 /** Renders the one dialog the decision UI asks for, wired to legal actions only. */
-export function DecisionDialogs({ ui, state, nameOf, onPreviewTile }: DecisionDialogsProps) {
+export function DecisionDialogs({
+  ui,
+  state,
+  nameOf,
+  onPreviewTile,
+  method,
+  outcomeModel,
+}: DecisionDialogsProps) {
   const { dialog, actor, groups, locked, submit } = ui;
 
   const estimate = useMemo(() => {
     if (actor === null) return null;
-    if (dialog === 'dragon') return dragonWinChance(state, actor);
-    if (dialog === 'shield') return shieldDecisionChance(state, actor);
+    if (method === 'realtime' && !outcomeModel) return null;
+    if (dialog === 'dragon') return dragonWinChance(state, actor, undefined, outcomeModel);
+    if (dialog === 'shield') return shieldDecisionChance(state, actor, undefined, outcomeModel);
     return null;
-  }, [dialog, state, actor]);
+  }, [dialog, state, actor, method, outcomeModel]);
 
   const pvpChances = useMemo(
     () =>
       dialog === 'pvpTarget' && actor !== null
-        ? new Map(groups.pvpTargets.map((t) => [t, duelWinChance(state, actor, t)]))
+        ? new Map(
+            groups.pvpTargets.map((t) => [
+              t,
+              method === 'realtime' && !outcomeModel
+                ? null
+                : duelWinChance(state, actor, t, undefined, outcomeModel),
+            ]),
+          )
         : null,
-    [dialog, state, actor, groups.pvpTargets],
+    [dialog, state, actor, groups.pvpTargets, method, outcomeModel],
   );
 
   if (dialog === null || actor === null) return null;
@@ -74,6 +92,7 @@ export function DecisionDialogs({ ui, state, nameOf, onPreviewTile }: DecisionDi
             summary,
             chance: pvpChances?.get(summary.seat) ?? null,
           }))}
+          method={method}
           locked={locked}
           onChoose={(target) => void submit({ type: 'CHOOSE_PVP_TARGET', target })}
         />
@@ -90,6 +109,7 @@ export function DecisionDialogs({ ui, state, nameOf, onPreviewTile }: DecisionDi
           opponentName={nameOf(opponent)}
           opponent={opponentSummaries(state, [opponent])[0]!}
           chance={estimate}
+          method={method}
           locked={locked}
           onDecide={(use) => void submit({ type: 'SHIELD_DECISION', use })}
         />
@@ -132,7 +152,8 @@ export function DecisionDialogs({ ui, state, nameOf, onPreviewTile }: DecisionDi
           name={nameOf(actor)}
           me={me}
           dragon={state.rules.dragon}
-          chance={estimate ?? 0}
+          chance={estimate}
+          method={method}
           locked={locked}
           onConfirm={() => void submit({ type: 'CHALLENGE_DRAGON' })}
           onCancel={ui.cancel}

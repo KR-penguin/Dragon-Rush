@@ -1,4 +1,4 @@
-import { dragonProfile, profileOf, winProbability } from '@dragon-rush/ai';
+import { dragonProfile, profileOf, winProbability, type OutcomeModel } from '@dragon-rush/ai';
 import type { PublicGameState, SeatId } from '@dragon-rush/engine';
 import { playerOf } from './playerView';
 
@@ -9,12 +9,14 @@ export function dragonWinChance(
   state: PublicGameState,
   seat: SeatId,
   samples = ESTIMATE_SAMPLES,
+  outcomeModel?: OutcomeModel,
 ): number {
   return winProbability(
     state.rules,
     profileOf(playerOf(state, seat), state.rules),
     dragonProfile(state.rules),
     samples,
+    outcomeModel,
   );
 }
 
@@ -24,6 +26,7 @@ export function duelWinChance(
   arriver: SeatId,
   defender: SeatId,
   samples = ESTIMATE_SAMPLES,
+  outcomeModel?: OutcomeModel,
 ): number {
   const rules = state.rules;
   return winProbability(
@@ -31,6 +34,7 @@ export function duelWinChance(
     profileOf(playerOf(state, arriver), rules),
     profileOf(playerOf(state, defender), rules),
     samples,
+    outcomeModel,
   );
 }
 
@@ -39,11 +43,13 @@ export function shieldDecisionChance(
   state: PublicGameState,
   decider: SeatId,
   samples = ESTIMATE_SAMPLES,
+  outcomeModel?: OutcomeModel,
 ): number | null {
   const pvp = state.pvp;
   if (!pvp || pvp.target === null) return null;
-  if (decider === pvp.arriver) return duelWinChance(state, pvp.arriver, pvp.target, samples);
-  return 1 - duelWinChance(state, pvp.arriver, decider, samples);
+  if (decider === pvp.arriver)
+    return duelWinChance(state, pvp.arriver, pvp.target, samples, outcomeModel);
+  return 1 - duelWinChance(state, pvp.arriver, decider, samples, outcomeModel);
 }
 
 export const formatPercent = (p: number): string => `${Math.round(p * 100)}%`;

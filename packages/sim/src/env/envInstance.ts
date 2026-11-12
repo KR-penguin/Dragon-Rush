@@ -22,6 +22,7 @@ import {
   legalIndices,
   type Policy,
 } from '@dragon-rush/ai';
+import type { OutcomeModel } from '@dragon-rush/ai';
 import { createCombatResolver, type CombatResolver } from '../combatResolver';
 import { deriveSeed, randomJobs } from '../runner';
 import type { EnvConfig } from './config';
@@ -60,10 +61,12 @@ export interface Transition {
   events?: GameEvent[];
 }
 
-const terminalObs = (state: GameState, seat: SeatId) => encodeObservation({ ...toPublicState(state), pending: null }, seat);
+const terminalObs = (state: GameState, seat: SeatId) =>
+  encodeObservation({ ...toPublicState(state), pending: null }, seat);
 
 export function buildRules(config: EnvConfig): RulesConfig {
-  const base = config.rules === 'default' ? DEFAULT_RULES : withRules(config.rules as Partial<RulesConfig>);
+  const base =
+    config.rules === 'default' ? DEFAULT_RULES : withRules(config.rules as Partial<RulesConfig>);
   const rules = withRules({ maxRounds: config.max_rounds }, base);
   try {
     validateRules(rules);
@@ -89,6 +92,7 @@ export class EnvInstance {
     private readonly baseSeed: number,
     private readonly config: EnvConfig,
     private readonly rules: RulesConfig,
+    private readonly outcomeModel?: OutcomeModel,
   ) {}
 
   get isDone(): boolean {
@@ -97,7 +101,11 @@ export class EnvInstance {
 
   legal(): number[] {
     if (this.done || !this.state.pending) return [];
-    return legalIndices(toPublicState(this.state), this.state.pending.actor, getLegalActions(this.state));
+    return legalIndices(
+      toPublicState(this.state),
+      this.state.pending.actor,
+      getLegalActions(this.state),
+    );
   }
 
   reset(): Transition {
@@ -105,7 +113,11 @@ export class EnvInstance {
     const seed = deriveSeed(this.baseSeed, this.index, this.episode);
     this.random = createPolicyRandom(deriveSeed(seed, 7, 7));
     const c = this.config;
-    this.resolveCombat = createCombatResolver(c.combat_resolver, { seed: deriveSeed(seed, 9, 9) });
+    this.resolveCombat = createCombatResolver(c.combat_resolver, {
+      seed: deriveSeed(seed, 9, 9),
+      ...(this.outcomeModel ? { outcomeModel: this.outcomeModel } : {}),
+      outcomeSkillNoise: c.outcome_skill_noise,
+    });
     const n = Array.isArray(c.num_players)
       ? c.num_players[Math.floor(this.random() * c.num_players.length)]!
       : c.jobs !== 'random'
@@ -127,13 +139,20 @@ export class EnvInstance {
       this.agentSeat = seat;
       this.controlled.add(seat);
     } else {
-      const seats = c.controlled_seats === 'all' ? [...Array(n).keys()] : c.controlled_seats.filter((s) => s < n);
+      const seats =
+        c.controlled_seats === 'all'
+          ? [...Array(n).keys()]
+          : c.controlled_seats.filter((s) => s < n);
       if (seats.length === 0) throw new EnvError('BAD_CONFIG', 'no controlled seats');
       for (const s of seats) this.controlled.add(s);
     }
     const names = Array.isArray(c.opponents) ? c.opponents : [c.opponents];
     for (let seat = 0; seat < n; seat++) {
-      if (!this.controlled.has(seat)) this.bots.set(seat, createPolicyByName(names[seat % names.length]!, this.random));
+      if (!this.controlled.has(seat))
+        this.bots.set(
+          seat,
+          createPolicyByName(names[seat % names.length]!, this.random, this.outcomeModel),
+        );
     }
     this.done = false;
     const t = this.advance([], Array(4).fill(0), []);
@@ -148,9 +167,13 @@ export class EnvInstance {
   }
 
   validate(index: number): void {
-    if (this.done) throw new EnvError('EPISODE_OVER', `env ${this.index} episode is over; call reset`);
+    if (this.done)
+      throw new EnvError('EPISODE_OVER', `env ${this.index} episode is over; call reset`);
     if (!this.legal().includes(index)) {
-      throw new EnvError('ILLEGAL_ACTION', `action ${index} not legal in phase ${this.state.pending?.phase}`);
+      throw new EnvError(
+        'ILLEGAL_ACTION',
+        `action ${index} not legal in phase ${this.state.pending?.phase}`,
+      );
     }
   }
 
@@ -165,7 +188,12 @@ export class EnvInstance {
     return this.advance(events, rewards, eliminated, seat);
   }
 
-  private apply(action: Action, rewards: number[], events: GameEvent[], eliminated: SeatId[]): void {
+  private apply(
+    action: Action,
+    rewards: number[],
+    events: GameEvent[],
+    eliminated: SeatId[],
+  ): void {
     const before = this.state;
     const r = this.resolveCombat(applyAction(this.state, action));
     this.state = r.state;
@@ -173,7 +201,7 @@ export class EnvInstance {
     for (const e of r.events) {
       if (e.type === 'PlayerEliminated') {
         eliminated.push(e.seat);
-        rewards[e.seat] = (rewards[e.seat] ?? 0) - (1);
+        rewards[e.seat] = (rewards[e.seat] ?? 0) - 1;
       }
     }
     this.shape(before, r.events, rewards);
@@ -185,24 +213,38 @@ export class EnvInstance {
     for (const p of this.state.players) {
       const b = before.players[p.seat]!;
       const alive = p.alive ? 1 : 0;
-      rewards[p.seat] = (rewards[p.seat] ?? 0) + (w.coins * (p.coins - b.coins) * alive);
-      rewards[p.seat] = (rewards[p.seat] ?? 0) + (w.stats * (p.atk + p.def + p.maxHp / 6 - (b.atk + b.def + b.maxHp / 6)) * alive);
+      rewards[p.seat] = (rewards[p.seat] ?? 0) + w.coins * (p.coins - b.coins) * alive;
+      rewards[p.seat] =
+        (rewards[p.seat] ?? 0) +
+        w.stats * (p.atk + p.def + p.maxHp / 6 - (b.atk + b.def + b.maxHp / 6)) * alive;
     }
     for (const e of events) {
-      if (e.type === 'PlayerEliminated' && typeof e.by === 'number') rewards[e.by] = (rewards[e.by] ?? 0) + (w.kill);
-      if (e.type === 'CombatStarted' && e.kind === 'dragonFight' && typeof e.a === 'number') rewards[e.a] = (rewards[e.a] ?? 0) + (w.dragon_try);
+      if (e.type === 'PlayerEliminated' && typeof e.by === 'number')
+        rewards[e.by] = (rewards[e.by] ?? 0) + w.kill;
+      if (e.type === 'CombatStarted' && e.kind === 'dragonFight' && typeof e.a === 'number')
+        rewards[e.a] = (rewards[e.a] ?? 0) + w.dragon_try;
     }
   }
 
   /** Runs bots until a controlled seat must decide or the episode ends. */
-  private advance(events: GameEvent[], rewards: number[], eliminated: SeatId[], lastActor?: SeatId): Transition {
+  private advance(
+    events: GameEvent[],
+    rewards: number[],
+    eliminated: SeatId[],
+    lastActor?: SeatId,
+  ): Transition {
     for (let guard = 0; guard < 100_000; guard++) {
       const pending = this.state.pending;
       if (!pending || this.controlled.has(pending.actor)) break;
       if (this.agentSeat !== null && !this.state.players[this.agentSeat]!.alive) break;
       const bot = this.bots.get(pending.actor)!;
       const view = toPublicState(this.state);
-      const action = bot.decide({ view, seat: pending.actor, legal: getLegalActions(this.state), random: this.random });
+      const action = bot.decide({
+        view,
+        seat: pending.actor,
+        legal: getLegalActions(this.state),
+        random: this.random,
+      });
       this.apply(action, rewards, events, eliminated);
     }
     const outcome = this.state.outcome;
@@ -217,7 +259,8 @@ export class EnvInstance {
       terminated = !truncated;
       for (const p of this.state.players) {
         if (!p.alive) continue;
-        if (outcome.kind !== 'draw') rewards[p.seat] = (rewards[p.seat] ?? 0) + (outcome.winner === p.seat ? 1 : -1);
+        if (outcome.kind !== 'draw')
+          rewards[p.seat] = (rewards[p.seat] ?? 0) + (outcome.winner === p.seat ? 1 : -1);
         if (this.controlled.has(p.seat)) finalObs[String(p.seat)] = terminalObs(this.state, p.seat);
       }
     } else if (this.agentSeat !== null && !this.state.players[this.agentSeat]!.alive) {

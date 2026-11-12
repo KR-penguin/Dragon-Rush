@@ -1,14 +1,27 @@
 import { DEFAULT_RULES } from '@dragon-rush/engine';
-import { ACT_VERSION, ACTION_DIM, ACTION_NAMES, BOT_NAMES, OBS_DIM, OBS_V1_LAYOUT, OBS_VERSION } from '@dragon-rush/ai';
+import {
+  ACT_VERSION,
+  ACTION_DIM,
+  ACTION_NAMES,
+  BOT_NAMES,
+  OBS_DIM,
+  OBS_V1_LAYOUT,
+  OBS_VERSION,
+} from '@dragon-rush/ai';
 import { RequestSchema, ResetParamsSchema, StepParamsSchema, type ResetParams } from './config';
 import { buildRules, EnvError, EnvInstance, type Transition } from './envInstance';
+import { loadOutcomeModel } from '../outcome/load';
+import { assertOutcomeCompatible, type OutcomeModel } from '@dragon-rush/ai';
+import { DEFAULT_COMBAT_RULES } from '@dragon-rush/combat';
 
 export const ENV_PROTOCOL = 'rpgboard-env/1';
 
 type Json = Record<string, unknown>;
 
 const encodeObs = (obs: Float32Array, encoding: 'b64' | 'json') =>
-  encoding === 'b64' ? Buffer.from(obs.buffer, obs.byteOffset, obs.byteLength).toString('base64') : Array.from(obs);
+  encoding === 'b64'
+    ? Buffer.from(obs.buffer, obs.byteOffset, obs.byteLength).toString('base64')
+    : Array.from(obs);
 
 /** Stateful request handler; transport-agnostic so it can be tested in-process. */
 export class EnvServer {
@@ -33,7 +46,8 @@ export class EnvServer {
     } catch (e) {
       const err = e instanceof EnvError ? e : new EnvError('INTERNAL', (e as Error).message);
       const error: Json = { code: err.code, message: err.message };
-      if ((e as { envIndex?: number }).envIndex !== undefined) error.env_index = (e as { envIndex?: number }).envIndex;
+      if ((e as { envIndex?: number }).envIndex !== undefined)
+        error.env_index = (e as { envIndex?: number }).envIndex;
       return JSON.stringify({ id, ok: false, error });
     }
   }
@@ -68,17 +82,42 @@ export class EnvServer {
     const parsed = ResetParamsSchema.safeParse(raw);
     if (!parsed.success) throw new EnvError('BAD_CONFIG', parsed.error.message);
     const p = parsed.data;
-    if (p.expect?.obs_version && p.expect.obs_version !== OBS_VERSION) throw new EnvError('VERSION_MISMATCH', `obs ${OBS_VERSION}`);
-    if (p.expect?.act_version && p.expect.act_version !== ACT_VERSION) throw new EnvError('VERSION_MISMATCH', `act ${ACT_VERSION}`);
+    if (p.expect?.obs_version && p.expect.obs_version !== OBS_VERSION)
+      throw new EnvError('VERSION_MISMATCH', `obs ${OBS_VERSION}`);
+    if (p.expect?.act_version && p.expect.act_version !== ACT_VERSION)
+      throw new EnvError('VERSION_MISMATCH', `act ${ACT_VERSION}`);
     if (p.expect?.combat_resolver && p.expect.combat_resolver !== p.config.combat_resolver) {
       throw new EnvError('VERSION_MISMATCH', `combat_resolver ${p.config.combat_resolver}`);
     }
-    if (!p.auto_reset && p.num_envs !== 1) throw new EnvError('BAD_CONFIG', 'auto_reset=false requires num_envs=1');
+    if (!p.auto_reset && p.num_envs !== 1)
+      throw new EnvError('BAD_CONFIG', 'auto_reset=false requires num_envs=1');
     const seed = p.seed ?? (Date.now() % 2 ** 31) * 1000 + Math.floor(Math.random() * 1000);
     const rules = buildRules(p.config);
+    let outcomeModel: OutcomeModel | undefined;
+    if (p.config.combat_resolver === 'outcome') {
+      if (!p.config.outcome_model)
+        throw new EnvError('BAD_CONFIG', 'outcome_model path is required');
+      try {
+        outcomeModel = loadOutcomeModel(p.config.outcome_model);
+        assertOutcomeCompatible(outcomeModel, rules.version, DEFAULT_COMBAT_RULES.version);
+      } catch (e) {
+        throw new EnvError('BAD_CONFIG', `outcome_model: ${(e as Error).message}`);
+      }
+    }
+    if (p.expect?.outcome_model_id && p.expect.outcome_model_id !== outcomeModel?.id) {
+      throw new EnvError('VERSION_MISMATCH', `outcome_model_id ${outcomeModel?.id ?? 'none'}`);
+    }
     this.params = { ...p, seed };
-    this.envs = Array.from({ length: p.num_envs }, (_, i) => new EnvInstance(i, seed, p.config, rules));
-    return { seed, combat_resolver: p.config.combat_resolver, envs: this.envs.map((env) => this.serialize(env.reset())) };
+    this.envs = Array.from(
+      { length: p.num_envs },
+      (_, i) => new EnvInstance(i, seed, p.config, rules, outcomeModel),
+    );
+    return {
+      seed,
+      combat_resolver: p.config.combat_resolver,
+      outcome_model_id: outcomeModel?.id ?? null,
+      envs: this.envs.map((env) => this.serialize(env.reset())),
+    };
   }
 
   private step(raw: Json): Json {
@@ -86,7 +125,8 @@ export class EnvServer {
     const parsed = StepParamsSchema.safeParse(raw);
     if (!parsed.success) throw new EnvError('BAD_REQUEST', parsed.error.message);
     const { actions } = parsed.data;
-    if (actions.length !== this.envs.length) throw new EnvError('BAD_REQUEST', `expected ${this.envs.length} actions`);
+    if (actions.length !== this.envs.length)
+      throw new EnvError('BAD_REQUEST', `expected ${this.envs.length} actions`);
     this.envs.forEach((env, i) => {
       try {
         env.validate(actions[i]!);
@@ -99,7 +139,18 @@ export class EnvServer {
       const t = env.step(actions[i]!);
       if (env.isDone && this.params!.auto_reset) {
         const next = env.reset();
-        return this.serialize({ ...t, ...pick(next, ['obs', 'legal', 'acting_seat', 'turn_seat', 'phase', 'round', 'episode_start']) });
+        return this.serialize({
+          ...t,
+          ...pick(next, [
+            'obs',
+            'legal',
+            'acting_seat',
+            'turn_seat',
+            'phase',
+            'round',
+            'episode_start',
+          ]),
+        });
       }
       return this.serialize(t);
     });
@@ -120,7 +171,9 @@ export class EnvServer {
       truncated: t.truncated,
       outcome: t.outcome,
       eliminated: t.eliminated,
-      final_obs: Object.fromEntries(Object.entries(t.final_obs).map(([k, v]) => [k, encodeObs(v, enc)])),
+      final_obs: Object.fromEntries(
+        Object.entries(t.final_obs).map(([k, v]) => [k, encodeObs(v, enc)]),
+      ),
     };
     if (t.episode_start) out.episode_start = t.episode_start;
     if (t.events) out.events = t.events;

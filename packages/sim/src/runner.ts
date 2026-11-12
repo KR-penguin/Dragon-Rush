@@ -15,8 +15,14 @@ import {
   type RulesConfig,
   type SeatId,
 } from '@dragon-rush/engine';
-import { createPolicyByName, createPolicyRandom, type Policy } from '@dragon-rush/ai';
+import {
+  createPolicyByName,
+  createPolicyRandom,
+  type OutcomeModel,
+  type Policy,
+} from '@dragon-rush/ai';
 import { createCombatResolver, type CombatResolverName, type FightLog } from './combatResolver';
+import { loadOutcomeModel } from './outcome/load';
 import { loadModelPolicy } from './modelLoader';
 
 export interface GameRecord {
@@ -50,11 +56,16 @@ export interface PlayGameOptions {
   combat?: CombatResolverName;
   /** Scripted combat bot for the sim resolver (default `scripted:balanced`). */
   combatBot?: string;
+  outcomeModel?: OutcomeModel;
+  outcomeSkillNoise?: number;
   logFights?: boolean;
 }
 
 /** Dice resolver: settles a pending COMBAT with the board's dice duel, exactly like the old 'dice' mode. */
-export function autoResolveCombat(r: { state: GameState; events: GameEvent[] }): { state: GameState; events: GameEvent[] } {
+export function autoResolveCombat(r: { state: GameState; events: GameEvent[] }): {
+  state: GameState;
+  events: GameEvent[];
+} {
   let { state, events } = r;
   while (state.pending?.phase === 'COMBAT') {
     const settled = resolveCombatWithDice(state);
@@ -67,13 +78,19 @@ export function autoResolveCombat(r: { state: GameState; events: GameEvent[] }):
 export function playGame(opts: PlayGameOptions): GameRecord {
   const rules = opts.rules ?? DEFAULT_RULES;
   const random = opts.random ?? createPolicyRandom(opts.seed ^ 0x5bd1e995);
-  const created = createGameWithEvents({ seats: opts.jobs.map((job) => ({ job })) }, rules, opts.seed);
+  const created = createGameWithEvents(
+    { seats: opts.jobs.map((job) => ({ job })) },
+    rules,
+    opts.seed,
+  );
   let state = created.state;
   const events: GameEvent[] = [...created.events];
   const fights: FightLog[] = [];
   const resolve = createCombatResolver(opts.combat ?? 'dice', {
     seed: opts.seed,
     ...(opts.combatBot ? { bot: opts.combatBot } : {}),
+    ...(opts.outcomeModel ? { outcomeModel: opts.outcomeModel } : {}),
+    ...(opts.outcomeSkillNoise !== undefined ? { outcomeSkillNoise: opts.outcomeSkillNoise } : {}),
     onFight: (f) => fights.push(f),
   });
   const seatPolicies = state.seatOrigin.map((origin) => opts.policies[origin]!);
@@ -120,7 +137,11 @@ export function playGame(opts: PlayGameOptions): GameRecord {
         if (e.outcome.kind === 'dragon') record.dragonWins++;
         break;
       case 'PlayerEliminated':
-        record.eliminations.push({ seat: e.seat, round: e.round, by: e.by === 'dragon' ? 'dragon' : 'pvp' });
+        record.eliminations.push({
+          seat: e.seat,
+          round: e.round,
+          by: e.by === 'dragon' ? 'dragon' : 'pvp',
+        });
         break;
       case 'ItemBought':
         record.purchases[e.item]++;
@@ -138,7 +159,12 @@ export function playGame(opts: PlayGameOptions): GameRecord {
 
 /** Mixes three integers into a deterministic 53-bit seed (splitmix64-style). */
 export function deriveSeed(base: number, a: number, b: number): number {
-  let x = BigInt.asUintN(64, BigInt(base) * 0x9e3779b97f4a7c15n + BigInt(a) * 0xbf58476d1ce4e5b9n + BigInt(b) * 0x94d049bb133111ebn);
+  let x = BigInt.asUintN(
+    64,
+    BigInt(base) * 0x9e3779b97f4a7c15n +
+      BigInt(a) * 0xbf58476d1ce4e5b9n +
+      BigInt(b) * 0x94d049bb133111ebn,
+  );
   x = BigInt.asUintN(64, (x ^ (x >> 30n)) * 0xbf58476d1ce4e5b9n);
   x = BigInt.asUintN(64, (x ^ (x >> 27n)) * 0x94d049bb133111ebn);
   x ^= x >> 31n;
@@ -161,11 +187,14 @@ export interface BatchOptions {
   rules?: RulesConfig;
   combat?: CombatResolverName;
   combatBot?: string;
+  outcomeModelPath?: string;
+  outcomeSkillNoise?: number;
   logFights?: boolean;
 }
 
 export function runBatch(opts: BatchOptions): GameRecord[] {
   const out: GameRecord[] = [];
+  const outcomeModel = opts.outcomeModelPath ? loadOutcomeModel(opts.outcomeModelPath) : undefined;
   const start = opts.startIndex ?? 0;
   for (let g = start; g < start + opts.games; g++) {
     const seed = deriveSeed(opts.baseSeed, g, 0);
@@ -174,7 +203,9 @@ export function runBatch(opts: BatchOptions): GameRecord[] {
     const names = opts.bots.split(',');
     const policies = jobs.map((_, i) => {
       const name = names[i % names.length]!;
-      return name.startsWith('model:') ? loadModelPolicy(name.slice('model:'.length)) : createPolicyByName(name, random);
+      return name.startsWith('model:')
+        ? loadModelPolicy(name.slice('model:'.length))
+        : createPolicyByName(name, random, outcomeModel);
     });
     out.push(
       playGame({
@@ -185,6 +216,10 @@ export function runBatch(opts: BatchOptions): GameRecord[] {
         ...(opts.rules ? { rules: opts.rules } : {}),
         ...(opts.combat ? { combat: opts.combat } : {}),
         ...(opts.combatBot ? { combatBot: opts.combatBot } : {}),
+        ...(outcomeModel ? { outcomeModel } : {}),
+        ...(opts.outcomeSkillNoise !== undefined
+          ? { outcomeSkillNoise: opts.outcomeSkillNoise }
+          : {}),
         ...(opts.logFights ? { logFights: true } : {}),
       }),
     );

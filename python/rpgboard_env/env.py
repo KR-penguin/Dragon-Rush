@@ -45,6 +45,9 @@ class _Base:
         reward_shaping: dict[str, float] | None = None,
         return_events: bool = False,
         combat_resolver: str = "dice",
+        outcome_model: str | None = None,
+        outcome_skill_noise: float = 0.5,
+        expect_outcome_model_id: str | None = None,
         server_cmd: str | Sequence[str] | None = None,
         cwd: str | os.PathLike[str] | None = None,
         expect_obs_version: str = OBS_VERSION,
@@ -66,7 +69,13 @@ class _Base:
             "reward_shaping": reward_shaping,
             "return_events": return_events,
             "combat_resolver": combat_resolver,
+            "outcome_skill_noise": outcome_skill_noise,
         }
+        if outcome_model is not None:
+            self._config["outcome_model"] = outcome_model
+        self._expect_outcome_model_id = expect_outcome_model_id
+        self.combat_resolver = combat_resolver
+        self.outcome_model_id: str | None = None
         self._proc = ServerProcess(server_cmd, cwd, timeout)
         info = self._proc.call("info")
         if info["obs_version"] != expect_obs_version or info["act_version"] != expect_act_version:
@@ -93,7 +102,11 @@ class _Base:
         }
         if seed is not None:
             params["seed"] = int(seed)
-        envs = self._proc.call("reset", params)["envs"]
+        if self._expect_outcome_model_id is not None:
+            params["expect"] = {"outcome_model_id": self._expect_outcome_model_id}
+        result = self._proc.call("reset", params)
+        self.outcome_model_id = result.get("outcome_model_id")
+        envs = result["envs"]
         for i, e in enumerate(envs):
             self._agent_seats[i] = e["episode_start"].get("agent_seat") or 0
         return envs
@@ -122,6 +135,8 @@ class _Base:
             "outcome": e["outcome"],
             "final_obs": {int(k): _decode(v) for k, v in e["final_obs"].items()},
             "episode_start": e.get("episode_start"),
+            "combat_resolver": self.combat_resolver,
+            "outcome_model_id": self.outcome_model_id,
         }
         if "events" in e:
             info["events"] = e["events"]

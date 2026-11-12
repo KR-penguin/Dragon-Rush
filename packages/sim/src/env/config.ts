@@ -9,7 +9,9 @@ const botName = z.enum(BOT_NAMES);
 export const EnvConfigSchema = z
   .object({
     mode: z.enum(['single', 'selfplay']).default('single'),
-    num_players: z.union([z.number().int().min(2).max(4), z.array(z.number().int().min(2).max(4)).min(1)]).default(4),
+    num_players: z
+      .union([z.number().int().min(2).max(4), z.array(z.number().int().min(2).max(4)).min(1)])
+      .default(4),
     agent_seat: z.union([z.number().int().min(0).max(3), z.literal('random')]).default('random'),
     controlled_seats: z.union([seatList, z.literal('all')]).default('all'),
     jobs: z.union([z.literal('random'), z.array(z.enum(JOB_IDS)).min(2).max(4)]).default('random'),
@@ -27,8 +29,10 @@ export const EnvConfigSchema = z
       .nullable()
       .default(null),
     return_events: z.boolean().default(false),
-    /** How fights are settled: 'dice' (board dice duel) or 'sim' (real-time sim with scripted bots). */
+    /** How fights are settled; outcome requires an outcome_v1 model path. */
     combat_resolver: z.enum(COMBAT_RESOLVERS).default('dice'),
+    outcome_model: z.string().min(1).optional(),
+    outcome_skill_noise: z.number().finite().min(0).max(2).default(0.5),
   })
   .strict();
 
@@ -41,7 +45,12 @@ export const ResetParamsSchema = z
     encoding: z.enum(['b64', 'json']).default('b64'),
     auto_reset: z.boolean().default(true),
     expect: z
-      .object({ obs_version: z.string().optional(), act_version: z.string().optional(), combat_resolver: z.string().optional() })
+      .object({
+        obs_version: z.string().optional(),
+        act_version: z.string().optional(),
+        combat_resolver: z.string().optional(),
+        outcome_model_id: z.string().optional(),
+      })
       .optional(),
     config: EnvConfigSchema.default(EnvConfigSchema.parse({})),
   })
