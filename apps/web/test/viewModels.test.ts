@@ -1,4 +1,5 @@
-import { dragonProfile, profileOf, winProbability } from '@dragon-rush/ai';
+import { dragonProfile, emptyOutcomeModel, profileOf, winProbability } from '@dragon-rush/ai';
+import { DEFAULT_COMBAT_RULES } from '@dragon-rush/combat';
 import {
   createGame,
   DEFAULT_RULES,
@@ -87,6 +88,17 @@ describe('decision view models', () => {
 });
 
 describe('estimates', () => {
+  it('uses an injected outcome model for real-time estimates', () => {
+    const s = game();
+    const model = emptyOutcomeModel('fixture', s.rules.version, DEFAULT_COMBAT_RULES.version, {
+      ...DEFAULT_COMBAT_RULES.damage,
+      mageDefDivisor: DEFAULT_COMBAT_RULES.passives.mageDefDivisor,
+    });
+    model.win[0] = 8;
+    expect(dragonWinChance(s, 0, 320, model)).toBeGreaterThan(0.99);
+    expect(duelWinChance(s, 0, 1, 320, model)).toBeGreaterThan(0.99);
+  });
+
   it('uses the AI win probability helpers with 320 samples', () => {
     const s = game();
     const p = s.players[0]!;

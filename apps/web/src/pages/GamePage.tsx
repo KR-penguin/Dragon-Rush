@@ -1,6 +1,7 @@
 import type { CombatantRef, SeatId } from '@dragon-rush/engine';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from 'zustand';
+import { combatSettings } from '../store/combatSettingsStore';
 import { Board } from '../components/board/Board';
 import type { DiceRoll } from '../components/board/DiceTray';
 import { DragonLair } from '../components/board/DragonLair';
@@ -89,6 +90,7 @@ export function GamePage({ session, onExit, onRestart }: GamePageProps) {
   const motion = useReducedMotion();
   const narrow = useMediaQuery(NARROW_QUERY);
   const clientMode = useStore(store, (s) => s.client?.mode ?? 'local');
+  const fastCombat = useStore(combatSettings, (s) => s.fastCombat);
   const tiltDeg = motion.reduced || narrow ? 0 : BOARD_TILT_DEG;
 
   const areaRef = useRef<HTMLDivElement>(null);
@@ -338,7 +340,13 @@ export function GamePage({ session, onExit, onRestart }: GamePageProps) {
         </TargetBanner>
       )}
 
-      <DecisionDialogs ui={ui} state={state} nameOf={nameOf} onPreviewTile={setPreview} />
+      <DecisionDialogs
+        ui={ui}
+        state={state}
+        nameOf={nameOf}
+        onPreviewTile={setPreview}
+        method={clientMode === 'local' && fastCombat ? 'dice' : 'realtime'}
+      />
 
       <CombatLayer store={store} />
 
