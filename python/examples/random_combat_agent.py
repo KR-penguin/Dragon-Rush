@@ -1,7 +1,9 @@
 """Plays combat episodes with a masked random two-head policy. Replace `act` with your numpy Actor-Critic.
 
 Usage (from the repo root, after `pnpm install && pnpm build` and `pip install -e python/`):
-    python python/examples/random_combat_agent.py --envs 16 --steps 2000
+    python python/examples/random_combat_agent.py --mode pvp --envs 16 --steps 2000
+    python python/examples/random_combat_agent.py --mode pvp --p0 --opponent scripted:balanced
+    python python/examples/random_combat_agent.py --mode dragon --envs 16 --steps 2000
 """
 from __future__ import annotations
 
@@ -11,7 +13,7 @@ from collections import Counter
 
 import numpy as np
 
-from rpgboard_env import CombatVecEnv
+from rpgboard_env import CombatVecEnv, DragonCombatVecEnv, PvPCombatVecEnv
 
 
 def masked_sample(logits: np.ndarray, mask: np.ndarray, rng: np.random.Generator) -> np.ndarray:
@@ -25,13 +27,18 @@ def main() -> None:
     parser.add_argument("--envs", type=int, default=16)
     parser.add_argument("--steps", type=int, default=2000)
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--mode", choices=("mixed", "pvp", "dragon"), default="mixed")
     parser.add_argument("--opponent", default="scripted:pool", help="used with --p0")
-    parser.add_argument("--p0", action="store_true", help="control fighter a only, against a scripted bot")
+    parser.add_argument("--p0", action="store_true", help="control fighter a only in PvP/mixed, against a scripted bot")
     args = parser.parse_args()
 
     rng = np.random.default_rng(args.seed)
-    controlled = "p0" if args.p0 else "both"
-    with CombatVecEnv(num_envs=args.envs, controlled=controlled, opponent=args.opponent) as env:
+    if args.mode == "dragon":
+        env = DragonCombatVecEnv(num_envs=args.envs)
+    else:
+        env_class = PvPCombatVecEnv if args.mode == "pvp" else CombatVecEnv
+        env = env_class(num_envs=args.envs, controlled="p0" if args.p0 else "both", opponent=args.opponent)
+    with env:
         # a linear "actor" with two heads: 9 move logits + 4 button logits
         w = rng.normal(0.0, 0.01, (env.obs_dim, sum(env.action_nvec))).astype(np.float32)
         obs, info = env.reset(seed=args.seed)

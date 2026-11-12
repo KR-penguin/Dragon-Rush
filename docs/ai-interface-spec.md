@@ -17,6 +17,7 @@
 
 - 인코더·마스크는 **`packages/ai`(TS)에만** 있다. Python은 env 서버가 준 벡터를 그대로 쓰고 재구현하지 않는다. 그래서 학습 관측과 실제 게임(브라우저·서버) 관측이 항상 같다.
 - Python 의존성은 **numpy만**. 시그니처는 Gymnasium 스타일이지만 `gymnasium`은 import하지 않는다.
+- 보드·1v1 결투·용전의 실행 명령과 Python 배열 계약은 [AI 학습 환경 시작 가이드](training-environments.md)에 정리했다. 보드 모델의 관측·행동은 전투 모델과 별개다.
 
 ## 2. 버전 정책
 

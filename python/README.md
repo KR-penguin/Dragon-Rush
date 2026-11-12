@@ -1,18 +1,19 @@
 # 학습 가이드 — `rpgboard_env`
 
 numpy Actor-Critic으로 "드래곤 러쉬"를 학습시키기 위한 안내서다. 이 문서는 실제 코드 기준의 요약본이고, 계약의 정본은 [docs/ai-interface-spec.md](../docs/ai-interface-spec.md)다(관측 §3, 행동 §4, 마스크 §5, 보상 §6, env 프로토콜 §7, Python API §8, 모델 통합 §9).
+세 과제의 실행 명령·배열 형태·리셋·모델 JSON 준비물은 [AI 학습 환경 시작 가이드](../docs/training-environments.md)에 모았다.
 
 - 관측: `obs_v1`, float32 **253개**
 - 행동: `act_v1`, 이산 **47개** + 행동 마스크
 - 의존성: numpy만 (gymnasium·torch 없음)
-- **전투 모델은 별도 모델·별도 env**다(`CombatVecEnv`, `cobs_v1`/`cact_v1`). 보드 가중치와 전투 가중치는 호환되지 않는다. §9를 본다.
+- **전투 모델은 별도 모델·별도 env**다(`PvPCombatEnv`/`DragonCombatEnv`, `cobs_v1`/`cact_v1`). 보드 가중치와 전투 가중치는 호환되지 않는다. §9를 본다.
 
 ## 1. 빠른 시작
 
 ```bash
 pnpm install && pnpm build        # 저장소 루트에서. env 서버(packages/sim/dist/env-server.js)를 만든다
 pip install -e python/            # 이 패키지 설치
-python python/examples/random_agent.py --episodes 20
+python python/examples/random_agent.py --episodes 20 --combat-resolver sim
 ```
 
 ```python
@@ -20,7 +21,8 @@ import numpy as np
 from rpgboard_env import RPGBoardEnv
 
 rng = np.random.default_rng(0)
-env = RPGBoardEnv(mode="single", num_players=4, opponents="heuristic", max_rounds=100)
+env = RPGBoardEnv(mode="single", num_players=4, opponents="heuristic", max_rounds=100,
+                  combat_resolver="sim")
 obs, info = env.reset(seed=0)                 # obs: float32 (253,)
 while True:
     logits = np.zeros(env.action_dim)         # 예제용 균등 로짓; 학습한 actor(obs)로 교체
@@ -185,6 +187,15 @@ env.obs_layout                   # [{"name", "offset", "length"}, ...] 서버가
 
 - 관측 `cobs_v1` float32 **160개**, 행동 `cact_v1` MultiDiscrete **[9, 4]**(또는 flat **36**) + 가지별 마스크
 - 서버 `packages/sim/dist/combat-env-server.js`(`pnpm build`로 생성). 보드 env와 별도 프로세스다.
+- 과제별 생성자: `PvPCombatEnv`/`PvPCombatVecEnv`는 **결투만** 만들고 기본으로 두 전투원을 제어한다. `DragonCombatEnv`/`DragonCombatVecEnv`는 **용전만** 만들고 기본으로 도전자 한 명(`controlled="p0"`)을 제어한다. 혼합 과제 `CombatEnv`/`CombatVecEnv`도 그대로 쓸 수 있다. 고정 모드 생성자는 `mode_mix`를 받지 않는다.
+
+```bash
+python python/examples/random_combat_agent.py --mode pvp --envs 2 --steps 40
+python python/examples/random_combat_agent.py --mode pvp --p0 --opponent scripted:balanced --envs 2 --steps 40
+python python/examples/random_combat_agent.py --mode dragon --envs 2 --steps 40
+```
+
+`PvPCombatVecEnv` 관측은 기본 `(N,2,160)`, `DragonCombatVecEnv`는 기본 `(N,1,160)`이다. 행동·마스크·보상의 `n_ctrl` 축도 각각 2/1이다. `controlled="both"`인 용전의 두 번째 슬롯은 비활성 패딩으로, `info["active"]`가 False이며 `[0,0]`만 합법이다. 종료 후 벡터 env는 같은 전투 종류로 자동 리셋된다. 전이 보상·종료·`final_obs`는 끝난 전투, 새 관측·마스크·`episode_start`는 다음 전투다.
 
 ```python
 import numpy as np
