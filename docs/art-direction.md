@@ -262,6 +262,7 @@
 - **더킹**: 용 포효·브레스·KO·VS 충돌 때 음악을 −9dB로: `setTargetAtTime(dbToGain(-9), t, 0.005)` → 400ms 유지 → `setTargetAtTime(1, t+0.4, 0.15)`.
 - **동기화**: 타격 SFX는 접촉 프레임(히트스톱 시작)에 낸다. 그보다 먼저 내지 않는다(허용: 45ms 이르게 ~ 125ms 늦게). 보드 SFX는 네트워크 도착이 아니라 애니메이션 타임라인에서 예약한다.
 - **루프**: MP3 인코더 패딩 때문에 `loop`만으로는 이음매가 생긴다. BGM은 `AudioBufferSourceNode`의 `loopStart`/`loopEnd`를 `audio/bgm/loops.json`에서 읽어 반복한다.
+- **음원 없는 경우**: `lobby`·`board`·`dragon_battle` 파일이 없거나 디코딩에 실패하면 코드가 4마디 PCM 루프를 합성해 같은 `music` 버스에서 반복한다. 첫 사용자 입력으로 `AudioContext`가 열린 뒤 시작하며, 기존 음악 볼륨·마스터 mute·더킹을 그대로 따른다. 파일이 있으면 파일과 `loops.json`의 반복 지점을 우선한다.
 - **레이어링 권장**(효과음 제작): 순간음(0~30ms) + 몸통 + 꼬리, 강타·폭발은 저역(sub) 레이어 추가.
 
 ## 12. 접근성·설정

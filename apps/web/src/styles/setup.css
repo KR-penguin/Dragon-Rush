@@ -59,6 +59,14 @@
   height: 24px;
 }
 
+.setup-bot-help {
+  min-height: 3em;
+  margin: -2px 0 0;
+  color: var(--bone-dim);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
 .job-picker {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
