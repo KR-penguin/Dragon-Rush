@@ -87,7 +87,7 @@ env.close()
 | 인덱스 | 이름 | 내용 |
 |---|---|---|
 | 213 / 214 / 215 | `g.round` / `g.maxRounds` / `g.roundsLeftFrac` | round/100, maxRounds/100, 남은 라운드 비율 (무제한이면 0) |
-| 216 / 217 | `g.graceLeft` / `g.pvpEnabled` | 초반 보호 남은 라운드/3(`rush-3`도 보호 2라운드라 시작 값 0.67), 이번 라운드에 PvP 가능 여부(라운드 3부터 1) |
+| 216 / 217 | `g.graceLeft` / `g.pvpEnabled` | 초반 보호 남은 라운드/3, 이번 라운드에 PvP 가능 여부. `rush-6` 기본 규칙은 보호가 없어 시작부터 각각 0 / 1 |
 | 218–220 | `g.numPlayers` | 시작 인원 one-hot [2, 3, 4] |
 | 221 | `g.aliveCount` | 생존자 수/4 |
 | 222–227 | `g.phase` | [PRE_ROLL, MOVE_ADJUST, CHOOSE_PVP_TARGET, SHIELD_DECISION, TRAINING_CHOICE, POST_MOVE] |
@@ -127,7 +127,7 @@ env.obs_layout                   # [{"name", "offset", "length"}, ...] 서버가
 - 이름 목록은 `env.action_names`에 있다.
 
 ### 4.1 칸 번호 (텔레포트 대상, `self.pos`)
-0 출발(안전지대) · 1 고블린 · 2 독 늪 · 3 약초 · 4 산적 · 5 수련장 · **6 상점** · 7 늑대 · 8 가시 함정 · 9 보물 · 10 소매치기 · 11 대장장이 · **12 여관(HP +20)** · 13 오크 · 14 저주 제단 · 15 행운의 샘 · 16 낙석 · 17 미지의 동굴 · **18 상점** · 19 트롤 · 20 거미줄(쉼) · 21 떠돌이 상인 · 22 폭풍 · 23 미지의 동굴. 칸별 효과 수치는 [기획서 §5](../docs/game-design.md)에 있다.
+0 출발(PvP 가능) · 1 고블린 · 2 독 늪 · 3 약초 · 4 산적 · 5 수련장 · **6 상점** · 7 늑대 · 8 가시 함정 · 9 보물 · 10 소매치기 · 11 대장장이 · **12 여관(HP +20)** · 13 오크 · 14 저주 제단 · 15 행운의 샘 · 16 낙석 · 17 미지의 동굴 · **18 상점** · 19 트롤 · 20 거미줄(쉼) · 21 떠돌이 상인 · 22 폭풍 · 23 미지의 동굴. 칸별 효과 수치는 [기획서 §5](../docs/game-design.md)에 있다.
 
 ## 5. 보상과 종료
 
@@ -153,7 +153,7 @@ env.obs_layout                   # [{"name", "offset", "length"}, ...] 서버가
 | `jobs` | `"random"` | 좌석별 직업 목록으로 고정 가능 |
 | `max_rounds` | 100 | `None`이면 무제한 |
 | `combat_resolver` | `"outcome"` | `outcome`: 내장 `outcome_v1`을 게임 RNG로 샘플링 / `sim`: 두 `scripted:balanced` 봇의 실제 60Hz 전투 / `dice`: 선택형 빠른 전투의 보드 주사위 판정. 관측 `obs_v1`은 그대로 |
-| `outcome_model`, `outcome_skill_noise` | `None`, `0.5` | 외부 모델 JSON 경로를 선택적으로 지정한다. 경로가 없으면 내장 `rush-4`/`combat-2` 모델을 쓴다. 전투 가중치는 `rush-3`에서 이전했다. 모델 버전이 규칙과 다르면 reset 오류다. skill noise는 outcome 샘플의 승률 로짓 이동 크기 |
+| `outcome_model`, `outcome_skill_noise` | `None`, `0.5` | 외부 모델 JSON 경로를 선택적으로 지정한다. 경로가 없으면 내장 `rush-6`/`combat-2` 모델을 쓴다. 전투 가중치는 `rush-3`에서 이전했으며 현재 분포에 재보정하지 않았다. 모델 버전이 규칙과 다르면 reset 오류다. skill noise는 outcome 샘플의 승률 로짓 이동 크기 |
 | `rules`, `reward_shaping`, `return_events` | `"default"`, `None`, `False` | 보드 규칙 일부 덮어쓰기 / §5 보상 계수 / 전이 이벤트 포함 |
 | `server_cmd`, `cwd` | — | env 서버 실행 커맨드와 저장소 루트 (환경변수 `RPGBOARD_ENV_CMD`, `RPGBOARD_ROOT`) |
 
@@ -161,9 +161,11 @@ env.obs_layout                   # [{"name", "offset", "length"}, ...] 서버가
 - **셀프플레이**: `reward`는 좌석별 `(4,)` 배열이다. `info["acting_seat"]`로 그 결정을 어느 좌석 버퍼에 넣을지 고르고, 탈락이나 종료 시에는 해당 좌석 버퍼의 마지막 전이에 `reward[seat]`를 더한다.
 - **결정성**: 같은 `seed`와 같은 행동 열이면 같은 궤적이 나온다.
 
-## 7. 기준선 (`rush-4`, 실제 60Hz 전투)
+## 7. 기준선 (실제 60Hz 전투)
 
-- 현재 규칙·내장 결과 모델의 4인 휴리스틱 8,000판(`pnpm sim --games 8000 --players 4 --bots heuristic --seed 2026 --workers 4 --combat sim --outcome-model packages/ai/src/outcome/model.json`): 평균 5.93(중앙 6)/p95 10라운드, 용 처치 종료 46.5%, 직업 승률 검/궁/마/닌/광 18.9/26.2/34.7/25.5/19.6%, 3라운드 안 좌석 탈락 22.6%. 전투 결과는 실제 sim이 확정했다. 3인·2인 실측과 이전 `rush-3` 비교는 [기획서 §15](../docs/game-design.md)를 본다. 라운드 1~2 PvP 보호는 유지된다. 내장 결과 모델의 전투 가중치는 기존 것을 이전했으므로 새 분포에 대한 보정 보증은 없다.
+- 현재 `rush-6` 4인 휴리스틱 봇 4,000판(seed 2026, 4 workers, 이전 전투 가중치 모델): 평균 4.37(중앙 4)/p95 9라운드, 용 처치 종료 42.9%, 판당 PvP 1.38회, 3라운드 안 좌석 탈락 44.5%, 무승부 0%. 초반 보호·출발 칸 안전 제거로 조기 탈락이 증가했다. 이전 가중치는 새 보드 분포에서 재보정되지 않았다.
+
+- 이전 `rush-4`의 4인 휴리스틱 8,000판(`pnpm sim --games 8000 --players 4 --bots heuristic --seed 2026 --workers 4 --combat sim --outcome-model packages/ai/src/outcome/model.json` 당시 `rush-4` 메타데이터 사용): 평균 5.93(중앙 6)/p95 10라운드, 용 처치 종료 46.5%, 직업 승률 검/궁/마/닌/광 18.9/26.2/34.7/25.5/19.6%, 3라운드 안 좌석 탈락 22.6%. 전투 결과는 실제 sim이 확정했다. 3인·2인 실측과 이전 `rush-3` 비교는 [기획서 §15](../docs/game-design.md)를 본다. 이 규칙에는 라운드 1~2 PvP 보호가 있었다. 현행 `rush-6`의 재현 명령이 아니다.
 - 이전 `rush-3`·`rush-2`의 4인 실측은 역사적 기준이다. 현재 규칙의 수치로 사용하지 않는다.
 
 - `rush-2`의 4인 휴리스틱 8,000판(당시 `rush-2` 내장 모델 사용): 평균 7.67라운드, 중앙 8, p95 11, 용 처치 종료 61.3%, 직업 승률 22.1~29.1%, 3라운드 안 탈락 3.1%. 보드 턴당 10초 가정과 실제 sim 전투 시간 합산 평균 5.19분이었다. 현재 규칙·모델의 재현 명령이 아니다.

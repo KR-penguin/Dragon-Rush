@@ -107,7 +107,7 @@
 | good | GOBLIN, HERB, WOLF, TREASURE, BLACKSMITH, ORC, FOUNTAIN, TROLL (사냥 칸은 칩 두 개) |
 | bad | POISON_SWAMP, BANDIT, TRAP, PICKPOCKET, CURSED_ALTAR, ROCKFALL, SPIDER_WEB, STORM |
 | special | TRAINING, MYSTERY×2, WANDERING_MERCHANT |
-| safe | START, SHOP×2, INN |
+| corner landmarks (visual category) | START, SHOP×2, INN — 외형 분류일 뿐이다. 현행 `rush-6`에서는 START를 포함해 PvP 안전 칸이 없다 |
 
 - **모서리 랜드마크**: 명판에서 솟은 스탠디 소품, `rotateX(-40deg)` 빌보드. START = 깃발 문, SHOP = 등불 단 상인 천막(2곳 공용), INN = 굴뚝 연기 나는 목조 여관. 대기 루프 2~4초.
 - **살아 있는 둥지** (600×600, 외형 전용, 규칙 영향 없음): 현무암 분화구 + 용암 균열(`background-position` 6초 루프) + 불씨.

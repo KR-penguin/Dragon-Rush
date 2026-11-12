@@ -44,6 +44,8 @@ describe('env server (in-process)', () => {
     expect(r.ok).toBe(true);
     let envs = r.result.envs;
     expect(envs[0].obs).toHaveLength(253);
+    expect(envs[0].obs[216]).toBe(0);
+    expect(envs[0].obs[217]).toBe(1);
     expect(envs[0].episode_start.num_players).toBe(4);
     let finished = 0;
     for (let i = 1; i < 3000 && finished < 5; i++) {
@@ -151,7 +153,7 @@ describe('env server (in-process)', () => {
     expect(
       call(new EnvServer(), 1, 'reset', { config: { combat_resolver: 'outcome' } }).result
         ?.outcome_model_id,
-    ).toBe('outcome-v1-rush5-transfer');
+    ).toBe('outcome-v1-rush6-transfer');
   });
 
   it('rejects bad configs', () => {
