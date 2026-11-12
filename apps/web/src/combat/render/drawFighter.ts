@@ -15,6 +15,7 @@ export interface FighterPose {
   readonly y: number;
   readonly f: FighterState;
   readonly look: FighterLookInput;
+  readonly image: HTMLImageElement | null;
   /** +1 faces right, -1 faces left (overhead 3/4 sprite mirrored, art-direction §10). */
   readonly flip: 1 | -1;
   /** White hit flash strength 0..1. */
@@ -120,53 +121,97 @@ function squash(f: FighterState): [number, number] {
   }
 }
 
-const HEAD: Readonly<Record<JobId, (ctx: CanvasRenderingContext2D, trim: string) => void>> = {
-  swordsman: (ctx, trim) => {
-    ctx.fillStyle = '#8E99A8';
-    ctx.beginPath();
-    ctx.arc(0, -37, 7.5, Math.PI, 0);
-    ctx.fill();
-    ctx.fillStyle = trim;
-    ctx.fillRect(-1, -46, 2, 5);
-  },
-  archer: (ctx) => {
-    ctx.fillStyle = '#3F5A31';
-    ctx.beginPath();
-    ctx.moveTo(-8, -34);
-    ctx.quadraticCurveTo(0, -50, 9, -36);
-    ctx.lineTo(4, -38);
-    ctx.closePath();
-    ctx.fill();
-  },
-  mage: (ctx, trim) => {
-    ctx.fillStyle = '#3B2F63';
-    ctx.beginPath();
-    ctx.moveTo(-10, -38);
-    ctx.lineTo(10, -38);
-    ctx.lineTo(3, -58);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = trim;
-    ctx.fillRect(-9, -39.5, 18, 2);
-  },
-  ninja: (ctx, trim) => {
-    ctx.fillStyle = '#1E1B26';
-    ctx.fillRect(-7.5, -38, 15, 4);
-    ctx.fillStyle = trim;
-    ctx.fillRect(-9, -41, 3, 9);
-  },
-  berserker: (ctx) => {
-    ctx.fillStyle = '#E8DCC4';
-    ctx.beginPath();
-    ctx.moveTo(-6, -41);
-    ctx.quadraticCurveTo(-13, -46, -11, -53);
-    ctx.lineTo(-4, -43);
-    ctx.moveTo(6, -41);
-    ctx.quadraticCurveTo(13, -46, 11, -53);
-    ctx.lineTo(4, -43);
-    ctx.fill();
-  },
-};
+/** Source art is a single transparent right-facing cutout with its foot at the bottom. */
+function drawCutout(ctx: CanvasRenderingContext2D, image: HTMLImageElement): void {
+  const scale = Math.min(64 / image.naturalWidth, 64 / image.naturalHeight);
+  const w = image.naturalWidth * scale;
+  const h = image.naturalHeight * scale;
+  ctx.drawImage(image, -w / 2, -h, w, h);
+}
+
+/** Missing-art stand-ins are enchanted tools, with a glowing eye and no human anatomy. */
+function drawToolMascot(ctx: CanvasRenderingContext2D, job: JobId, now: number): void {
+  const style = JOB_LOOK[job];
+  ctx.strokeStyle = style.body;
+  ctx.fillStyle = style.trim;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  switch (job) {
+    case 'swordsman':
+      ctx.lineWidth = 9;
+      ctx.beginPath();
+      ctx.moveTo(0, -13);
+      ctx.lineTo(0, -52);
+      ctx.stroke();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = style.trim;
+      ctx.beginPath();
+      ctx.moveTo(-13, -18);
+      ctx.lineTo(13, -18);
+      ctx.stroke();
+      break;
+    case 'archer':
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.moveTo(-10, -54);
+      ctx.quadraticCurveTo(18, -31, -10, -9);
+      ctx.stroke();
+      ctx.strokeStyle = style.trim;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-10, -54);
+      ctx.lineTo(-10, -9);
+      ctx.stroke();
+      break;
+    case 'mage':
+      ctx.lineWidth = 7;
+      ctx.beginPath();
+      ctx.moveTo(-5, -8);
+      ctx.lineTo(7, -48);
+      ctx.stroke();
+      ctx.fillStyle = style.trim;
+      ctx.beginPath();
+      ctx.arc(9, -53, 8 + Math.sin(now / 180), 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    case 'ninja':
+      ctx.lineWidth = 7;
+      ctx.beginPath();
+      ctx.moveTo(-15, -11);
+      ctx.lineTo(13, -50);
+      ctx.stroke();
+      ctx.fillStyle = style.trim;
+      ctx.beginPath();
+      ctx.moveTo(13, -56);
+      ctx.lineTo(19, -43);
+      ctx.lineTo(8, -47);
+      ctx.closePath();
+      ctx.fill();
+      break;
+    case 'berserker':
+      ctx.lineWidth = 8;
+      ctx.beginPath();
+      ctx.moveTo(-7, -8);
+      ctx.lineTo(5, -49);
+      ctx.stroke();
+      ctx.fillStyle = style.trim;
+      ctx.beginPath();
+      ctx.moveTo(1, -54);
+      ctx.quadraticCurveTo(20, -62, 23, -40);
+      ctx.lineTo(8, -34);
+      ctx.closePath();
+      ctx.fill();
+      break;
+  }
+  ctx.fillStyle = '#FFFFFF';
+  ctx.beginPath();
+  ctx.arc(3, -30, 3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = style.body;
+  ctx.beginPath();
+  ctx.arc(4, -30, 1.3, 0, Math.PI * 2);
+  ctx.fill();
+}
 
 /** Weapon along the aim (full 8-way), from the hand. */
 function drawWeapon(
@@ -273,14 +318,13 @@ function drawWeapon(
   ctx.restore();
 }
 
-/** The standee: legs, torso, head and job hat, weapon, rage aura, parry shield, name + crest. */
+/** Cutout or enchanted-tool stand-in, with shared combat state overlays. */
 export function drawFighterBody(
   ctx: CanvasRenderingContext2D,
   p: FighterPose,
   rules: CombatRules,
 ): void {
   const { f, look } = p;
-  const job = JOB_LOOK[f.job];
   const [sx, sy] = squash(f);
   ctx.save();
   ctx.translate(p.x + p.shakeX, p.y + p.shakeY);
@@ -297,32 +341,18 @@ export function drawFighterBody(
   }
   if (p.fall > 0) ctx.rotate((p.flip > 0 ? -1 : 1) * (Math.PI / 2) * p.fall);
   ctx.scale(sx * p.flip, sy);
-  // legs
-  ctx.fillStyle = '#2B1D14';
-  const step = f.mode === 'move' ? Math.sin(p.now / 70) * 2.5 : 0;
-  ctx.fillRect(-6, -9 + step * 0.3, 4, 9 - step * 0.3);
-  ctx.fillRect(2, -9 - step * 0.3, 4, 9 + step * 0.3);
-  // torso
-  ctx.fillStyle = f.mode === 'ko' ? '#4A4440' : job.body;
-  ctx.strokeStyle = PAL.outline;
-  ctx.lineWidth = 1;
-  roundRect(ctx, -9, -31, 18, 23, 5);
-  ctx.fill();
-  ctx.stroke();
-  ctx.fillStyle = job.trim;
-  ctx.fillRect(-9, -15, 18, 2.5);
-  // head
-  ctx.fillStyle = '#E9C9A1';
-  ctx.beginPath();
-  ctx.arc(0, -37, 7, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-  ctx.fillStyle = PAL.ink;
-  ctx.fillRect(2.5, -38.5, 2, 2);
-  HEAD[f.job](ctx, job.trim);
+  if (f.mode === 'ko') ctx.globalAlpha *= 0.65;
+  if (p.image) drawCutout(ctx, p.image);
+  else drawToolMascot(ctx, f.job, p.now);
+  if (p.image && p.flash > 0) {
+    ctx.globalAlpha = p.alpha * p.flash * (p.softFlash ? 0.5 : 0.85);
+    ctx.filter = p.softFlash ? 'sepia(1) saturate(3)' : 'brightness(0) invert(1)';
+    drawCutout(ctx, p.image);
+    ctx.filter = 'none';
+  }
   ctx.restore();
 
-  if (f.mode !== 'ko') {
+  if (f.mode === 'attack' || f.mode === 'skill' || f.move === 'draw' || f.nocked) {
     ctx.save();
     ctx.translate(p.x + p.shakeX, p.y + p.shakeY);
     ctx.globalAlpha = p.alpha;
@@ -337,14 +367,14 @@ export function drawFighterBody(
     ctx.restore();
   }
 
-  if (p.flash > 0) {
+  if (p.flash > 0 && (!p.image || p.softFlash)) {
     ctx.save();
     ctx.translate(p.x + p.shakeX, p.y + p.shakeY);
     ctx.globalAlpha = p.flash * (p.softFlash ? 0.5 : 0.85) * p.alpha;
     ctx.fillStyle = p.softFlash ? look.color : '#FFFFFF';
     ctx.beginPath();
     ctx.ellipse(0, -24, 12, 22, 0, 0, Math.PI * 2);
-    ctx.fill();
+    if (!p.image) ctx.fill();
     if (p.softFlash) {
       ctx.globalAlpha = p.alpha;
       ctx.lineWidth = 2;
@@ -465,21 +495,4 @@ export function drawParry(
   ctx.ellipse(x, y - 14, 24, 16, 0, a - half, a + half);
   ctx.stroke();
   ctx.restore();
-}
-
-function roundRect(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  r: number,
-): void {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
 }

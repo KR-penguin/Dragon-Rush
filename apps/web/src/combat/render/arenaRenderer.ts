@@ -7,6 +7,7 @@ import {
   type Side,
 } from '@dragon-rush/combat';
 import type { ArenaFx } from '../../fx/runtime/arenaFx';
+import type { JobId } from '@dragon-rush/engine';
 import type { FightFrame } from '../../services/fight/types';
 import { drawDragon, drawDragonShadow, drawProjectile } from './drawDragon';
 import {
@@ -33,8 +34,8 @@ import { JOB_LOOK, PAL } from './palette';
 export interface ArenaLooks {
   readonly a: FighterLookInput;
   readonly b: FighterLookInput | null;
-  /** The dragon sprite once its asset has loaded (null: procedural placeholder). */
-  readonly dragonImage: () => CanvasImageSource | null;
+  readonly fighterImage: (job: JobId) => HTMLImageElement | null;
+  readonly dragonImage: () => HTMLImageElement | null;
 }
 
 export interface RenderEnv {
@@ -244,6 +245,7 @@ export class ArenaRenderer {
         now: env.now,
         fall: this.fall('dragon', env.now),
         image: this.looks.dragonImage(),
+        softFlash: env.softFlash,
       };
       drawDragonShadow(ctx, pose);
       items.push({ y: y + 30, draw: () => drawDragon(ctx, pose, rules) });
@@ -287,6 +289,7 @@ export class ArenaRenderer {
       y,
       f,
       look,
+      image: this.looks.fighterImage(f.job),
       flip: this.flip.get(side) ?? 1,
       flash: this.flashAmount(side, env.now),
       shakeX,
@@ -332,8 +335,11 @@ export class ArenaRenderer {
       ctx.globalAlpha = 0.5 * k;
       ctx.fillStyle = a.color;
       ctx.beginPath();
-      ctx.ellipse(a.x, a.y - 20, 9, 14, 0, 0, Math.PI * 2);
-      ctx.arc(a.x, a.y - 37, 6, 0, Math.PI * 2);
+      ctx.moveTo(a.x, a.y - 54);
+      ctx.lineTo(a.x + 9, a.y - 30);
+      ctx.lineTo(a.x + 3, a.y - 10);
+      ctx.lineTo(a.x - 8, a.y - 26);
+      ctx.closePath();
       ctx.fill();
       ctx.restore();
     }

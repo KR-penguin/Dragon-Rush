@@ -10,7 +10,8 @@ export interface DragonPose {
   readonly now: number;
   /** KO presentation 0..1. */
   readonly fall: number;
-  readonly image: CanvasImageSource | null;
+  readonly image: HTMLImageElement | null;
+  readonly softFlash: boolean;
 }
 
 export function headPos(
@@ -47,7 +48,7 @@ export function drawDragonShadow(ctx: CanvasRenderingContext2D, p: DragonPose): 
   ctx.restore();
 }
 
-/** Procedural placeholder dragon (or `dragon.png` when the asset exists), head toward the arena. */
+/** Dragon cutout or procedural fallback, with state cues in either path. */
 export function drawDragon(ctx: CanvasRenderingContext2D, p: DragonPose, rules: CombatRules): void {
   const { d, now } = p;
   if (d.airborne) return;
@@ -56,7 +57,23 @@ export function drawDragon(ctx: CanvasRenderingContext2D, p: DragonPose, rules: 
   ctx.save();
   ctx.globalAlpha = 1 - 0.5 * p.fall;
   if (p.image) {
-    ctx.drawImage(p.image, x - 96, y - 92, 192, 144);
+    const image = p.image;
+    const scale = Math.min(192 / image.naturalWidth, 144 / image.naturalHeight);
+    const w = image.naturalWidth * scale;
+    const h = image.naturalHeight * scale;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(bamToRad(d.facing) - Math.PI / 2);
+    if (d.maneuver === 'charge' && d.stage === 'active') ctx.scale(0.9, 1.05);
+    if (d.stage === 'roar') ctx.scale(1.03 + 0.02 * Math.sin(now / 100), 1.03);
+    if (d.stage === 'stunned') ctx.filter = 'grayscale(0.65)';
+    ctx.drawImage(image, -w / 2, -h * 0.55, w, h);
+    if (p.flash > 0) {
+      ctx.globalAlpha = p.flash * (p.softFlash ? 0.5 : 0.85);
+      ctx.filter = p.softFlash ? 'sepia(1) saturate(3)' : 'brightness(0) invert(1)';
+      ctx.drawImage(image, -w / 2, -h * 0.55, w, h);
+    }
+    ctx.restore();
   } else {
     const flap = Math.sin(now / 260) * (d.stage === 'roar' ? 16 : 7);
     // wings
@@ -116,20 +133,6 @@ export function drawDragon(ctx: CanvasRenderingContext2D, p: DragonPose, rules: 
     ctx.moveTo(x, y + 6);
     ctx.lineTo(head.x, head.y);
     ctx.stroke();
-    const charging =
-      d.maneuver === 'breath' && d.stage === 'telegraph'
-        ? d.stageTick / Math.max(1, d.stageLen)
-        : 0;
-    if (charging > 0 || (d.maneuver === 'breath' && d.stage === 'active')) {
-      const k = d.stage === 'active' ? 1 : charging;
-      const glow = ctx.createRadialGradient(head.x, head.y, 2, head.x, head.y, 34);
-      glow.addColorStop(0, `rgba(255, 178, 91, ${0.85 * k})`);
-      glow.addColorStop(1, 'rgba(255, 122, 61, 0)');
-      ctx.fillStyle = glow;
-      ctx.beginPath();
-      ctx.arc(head.x, head.y, 34, 0, Math.PI * 2);
-      ctx.fill();
-    }
     ctx.fillStyle = DRAGON_LOOK.scale;
     ctx.strokeStyle = PAL.outline;
     ctx.lineWidth = 1.5;
@@ -154,15 +157,35 @@ export function drawDragon(ctx: CanvasRenderingContext2D, p: DragonPose, rules: 
     ctx.ellipse(head.x + 9, head.y - 4, 4, 2.5, -0.3, 0, Math.PI * 2);
     ctx.fill();
   }
-  if (p.flash > 0) {
-    ctx.globalAlpha = 0.6 * p.flash;
-    ctx.fillStyle = '#FFFFFF';
+  if (p.flash > 0 && !p.image) {
+    ctx.globalAlpha = (p.softFlash ? 0.3 : 0.6) * p.flash;
+    ctx.fillStyle = p.softFlash ? DRAGON_LOOK.eye : '#FFFFFF';
     ctx.beginPath();
     ctx.ellipse(x, y, 74, 44, 0, 0, Math.PI * 2);
     ctx.ellipse(head.x, head.y, 26, 22, 0, 0, Math.PI * 2);
     ctx.fill();
+    if (p.softFlash) {
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.stroke();
+    }
   }
   ctx.restore();
+
+  const charging =
+    d.maneuver === 'breath' && d.stage === 'telegraph' ? d.stageTick / Math.max(1, d.stageLen) : 0;
+  if (charging > 0 || (d.maneuver === 'breath' && d.stage === 'active')) {
+    const k = d.stage === 'active' ? 1 : charging;
+    ctx.save();
+    const glow = ctx.createRadialGradient(head.x, head.y, 2, head.x, head.y, 34);
+    glow.addColorStop(0, `rgba(255, 178, 91, ${0.85 * k})`);
+    glow.addColorStop(1, 'rgba(255, 122, 61, 0)');
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(head.x, head.y, 34, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
 
   // weak point and stun marks
   if (d.headLowered > 0 && p.fall === 0) {

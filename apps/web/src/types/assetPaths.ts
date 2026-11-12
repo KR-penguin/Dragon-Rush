@@ -2,6 +2,8 @@ import type { ItemId, JobId, TileId } from '@dragon-rush/engine';
 
 /** Asset paths are relative to `public/assets/`. */
 export const jobImagePath = (job: JobId): string => `images/jobs/${job}.png`;
+export const combatJobImagePath = (job: JobId): string => `images/combat/${job}.png`;
+export const combatDragonImagePath = 'images/combat/dragon.png';
 export const tileImagePath = (tile: TileId): string => `images/tiles/${tile.toLowerCase()}.png`;
 export const itemImagePath = (item: ItemId): string => `images/items/${item}.png`;
 export const DRAGON_IMAGE_PATH = 'images/dragon/dragon.png';
