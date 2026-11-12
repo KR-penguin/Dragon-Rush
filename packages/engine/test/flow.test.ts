@@ -109,6 +109,7 @@ describe('movement and tiles', () => {
       effect: 'hp',
       delta: -2,
       after: 18,
+      cause: 'coinShortfall',
     });
   });
 
@@ -129,6 +130,7 @@ describe('movement and tiles', () => {
       effect: 'hp',
       delta: -2,
       after: 1,
+      cause: 'coinShortfall',
     });
   });
 

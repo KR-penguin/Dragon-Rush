@@ -277,6 +277,7 @@ export type GameEvent =
       effect: EffectSpec['kind'];
       delta: number;
       after: number;
+      cause?: 'coinShortfall';
       item?: ItemId;
       stat?: 'atk' | 'def';
     }

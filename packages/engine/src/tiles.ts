@@ -29,6 +29,7 @@ const HANDLERS: { [K in EffectSpec['kind']]: EffectHandler<K> } = {
         effect: 'hp',
         delta: hpAfter - hpBefore,
         after: hpAfter,
+        cause: 'coinShortfall',
       });
     }
   },

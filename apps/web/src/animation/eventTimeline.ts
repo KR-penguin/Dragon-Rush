@@ -120,7 +120,11 @@ function describeEffect(
     case 'coins':
       return e.delta === 0 ? null : `${n} 코인 ${e.delta > 0 ? '+' : ''}${e.delta}`;
     case 'hp':
-      return e.delta === 0 ? null : `${n} HP ${e.delta > 0 ? '+' : ''}${e.delta}`;
+      return e.delta === 0
+        ? null
+        : e.cause === 'coinShortfall'
+          ? `${n} 코인 부족으로 HP ${e.delta}`
+          : `${n} HP ${e.delta > 0 ? '+' : ''}${e.delta}`;
     case 'stat':
       return `${n} ${STAT_LABEL[e.stat ?? 'atk']} +${e.delta}`;
     case 'maxHp':

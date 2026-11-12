@@ -23,6 +23,22 @@ import { createGameStore } from '../src/store/gameStore';
 import { ICON_NAMES } from '../src/types/icons';
 
 describe('event timeline', () => {
+  it('explains HP lost because an event could not collect enough coins', () => {
+    expect(
+      describeEvent(
+        {
+          type: 'EffectApplied',
+          seat: 0,
+          effect: 'hp',
+          delta: -4,
+          after: 12,
+          cause: 'coinShortfall',
+        },
+        () => '검사',
+        () => 'BANDIT',
+      ),
+    ).toBe('검사 코인 부족으로 HP -4');
+  });
   it('keeps the rise, reveal, and fade while shortening the readable hold by 300 ms', () => {
     expect(EVENT_CARD_RISE_MS).toBe(200);
     expect(EVENT_CARD_FLIP_MS).toBe(180);
