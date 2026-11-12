@@ -81,6 +81,7 @@ export const RoomSelectJobSchema = z
   .strict();
 export const RoomSetReadySchema = z.object({ ready: z.boolean() }).strict();
 export const RoomStartSchema = z.object({}).strict();
+export const RoomRematchSchema = z.object({}).strict();
 export const GameActionSchema = z
   .object({ action: ActionSchema, stateVersion: z.number().int().min(0) })
   .strict();

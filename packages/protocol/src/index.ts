@@ -10,6 +10,7 @@ export {
   RoomSelectJobSchema,
   RoomSetReadySchema,
   RoomStartSchema,
+  RoomRematchSchema,
   GameActionSchema,
   GameRequestSnapshotSchema,
   HandshakeAuthSchema,

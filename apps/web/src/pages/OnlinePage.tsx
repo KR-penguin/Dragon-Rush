@@ -90,8 +90,9 @@ export function OnlinePage({ onBack }: OnlinePageProps) {
             <RoomStatusBanner
               status={view.status}
               busy={busy || !connected}
+              isHost={view.isHost}
               onOpenGame={lobby.openGame}
-              onNewRoom={() => void lobby.createRoom()}
+              onRematch={() => void lobby.rematch()}
             />
           )}
 

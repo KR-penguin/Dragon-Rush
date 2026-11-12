@@ -4,12 +4,19 @@ import { GameIcon } from '../icons/GameIcon';
 interface RoomStatusBannerProps {
   status: Exclude<RoomStatus, 'lobby'>;
   busy: boolean;
+  isHost: boolean;
   onOpenGame: () => void;
-  onNewRoom: () => void;
+  onRematch: () => void;
 }
 
 /** Shown on the room screen after leaving the Game page while the room is no longer in the lobby. */
-export function RoomStatusBanner({ status, busy, onOpenGame, onNewRoom }: RoomStatusBannerProps) {
+export function RoomStatusBanner({
+  status,
+  busy,
+  isHost,
+  onOpenGame,
+  onRematch,
+}: RoomStatusBannerProps) {
   if (status === 'playing') {
     return (
       <section className="panel lobby-banner is-playing">
@@ -40,15 +47,21 @@ export function RoomStatusBanner({ status, busy, onOpenGame, onNewRoom }: RoomSt
       </span>
       <div className="lobby-banner-text">
         <strong>게임이 끝났습니다</strong>
-        <p className="muted">다시 하려면 새 방을 만들어 친구에게 새 코드를 알려 주세요.</p>
+        <p className="muted">
+          {isHost
+            ? '같은 방과 코드로 다시 시작할 수 있습니다.'
+            : '방장이 다시 시작하면 같은 방에서 준비할 수 있습니다.'}
+        </p>
       </div>
       <div className="lobby-banner-actions">
         <button type="button" className="btn btn-ghost" onClick={onOpenGame}>
           <GameIcon name="trophy" /> 결과 보기
         </button>
-        <button type="button" className="btn btn-primary" disabled={busy} onClick={onNewRoom}>
-          <GameIcon name="castle" /> 새 방 만들기
-        </button>
+        {isHost && (
+          <button type="button" className="btn btn-primary" disabled={busy} onClick={onRematch}>
+            <GameIcon name="restart" /> 같은 방에서 다시 하기
+          </button>
+        )}
       </div>
     </section>
   );

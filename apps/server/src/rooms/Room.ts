@@ -86,9 +86,10 @@ export class Room {
     if (existing) {
       existing.connected = true;
       existing.nickname = nickname;
+      this.members.add(playerId);
       return existing;
     }
-    this.assertLobby();
+    if (this.status === 'playing') throw new ProtocolError('ROOM_IN_PROGRESS');
     const open = this.seats.find((s) => s.kind === 'human' && s.playerId === null);
     if (!open) throw new ProtocolError('ROOM_FULL');
     this.occupy(open, playerId, nickname);
@@ -100,9 +101,9 @@ export class Room {
   leave(playerId: string): boolean {
     this.members.delete(playerId);
     const seat = this.seatOf(playerId);
-    if (seat && this.status === 'lobby') Object.assign(seat, emptySeat(seat.seat, 'human'));
+    if (seat && this.status !== 'playing') Object.assign(seat, emptySeat(seat.seat, 'human'));
     if (this.hostId === playerId) {
-      const next = this.seats.find((s) => s.playerId !== null && s.playerId !== playerId);
+      const next = this.seats.find((s) => s.playerId !== null && this.members.has(s.playerId));
       if (next?.playerId) this.hostId = next.playerId;
     }
     return !this.seats.some((s) => s.playerId !== null && this.members.has(s.playerId));
@@ -149,9 +150,23 @@ export class Room {
         throw new ProtocolError('SEAT_OCCUPIED');
     } else seat = this.seatOf(playerId);
     if (!seat) throw new ProtocolError('NOT_IN_ROOM');
-    if (job && this.seats.some((s) => s !== seat && s.job === job && s.kind !== 'empty'))
-      throw new ProtocolError('JOB_TAKEN');
     seat.job = job;
+  }
+
+  /** Returns a completed room to its lobby while retaining the code, seats and options. */
+  rematch(playerId: string): void {
+    if (this.status !== 'finished') throw new ProtocolError('ROOM_IN_PROGRESS');
+    this.assertHost(playerId);
+    this.game?.dispose();
+    this.game = null;
+    for (const seat of this.seats) {
+      if (seat.kind === 'human' && seat.playerId !== null && !this.members.has(seat.playerId)) {
+        Object.assign(seat, emptySeat(seat.seat, 'human'));
+      } else {
+        seat.ready = seat.kind === 'bot' || seat.kind === 'model';
+      }
+    }
+    this.status = 'lobby';
   }
 
   setReady(playerId: string, ready: boolean): void {

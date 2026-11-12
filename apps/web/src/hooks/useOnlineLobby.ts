@@ -48,6 +48,7 @@ export function useOnlineLobby(store: OnlineLobbyStore = onlineLobbyStore) {
     selectJob: actions.selectJob,
     setReady: actions.setReady,
     start: actions.start,
+    rematch: actions.rematch,
     openGame: actions.openGame,
   };
 }

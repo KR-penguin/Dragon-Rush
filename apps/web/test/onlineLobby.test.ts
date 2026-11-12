@@ -142,11 +142,10 @@ describe('online lobby store against a real server', () => {
     expect((await alice.sessions[0]!.configure(3, true)).ok).toBe(true);
     await until(() => alice.lobby.getState().room?.options.quickCombat === true);
     expect(await a.selectJob('mage')).toBe(true);
-    expect(await b.selectJob('mage')).toBe(false);
-    expect(bob.lobby.getState().error).toBe(errorText('JOB_TAKEN'));
-    expect(await b.selectJob('ninja')).toBe(true);
+    expect(await b.selectJob('mage')).toBe(true);
+    expect(bob.lobby.getState().error).toBeNull();
     expect(await a.selectJob('archer', 2)).toBe(true);
-    await until(() => alice.lobby.getState().room?.seats[1]?.job === 'ninja');
+    await until(() => alice.lobby.getState().room?.seats[1]?.job === 'mage');
 
     const blocked = buildRoomView(alice.lobby.getState().room!, alice.lobby.getState().playerId!);
     expect(blocked.start.reasons).toEqual(['Bob님이 아직 준비하지 않았습니다.']);
@@ -171,6 +170,10 @@ describe('online lobby store against a real server', () => {
     expect(route.session.exitTo).toBe('online');
     expect(route.session.restart).toBeNull();
     expect(route.session.store.getState().client?.mode).toBe('online');
+    await until(() => route.session.store.getState().latest !== null);
+    expect(
+      route.session.store.getState().latest?.publicState.players.filter((p) => p.job === 'mage'),
+    ).toHaveLength(2);
 
     await until(() => gameOver(alice) && gameOver(bob), 60_000);
     const latest = route.session.store.getState().latest!;
@@ -192,6 +195,28 @@ describe('online lobby store against a real server', () => {
 
     for (const stop of stops) stop();
     alice.nav.getState().go('online');
+    expect(await b.rematch()).toBe(false);
+    expect(bob.lobby.getState().errorCode).toBe('NOT_HOST');
+    expect(await a.rematch()).toBe(true);
+    await until(() => bob.lobby.getState().room?.status === 'lobby');
+    expect(bob.nav.getState().route.page).toBe('online');
+    expect(alice.lobby.getState().room).toMatchObject({ roomCode: code, status: 'lobby' });
+    expect(bob.lobby.getState().room?.seats[1]?.ready).toBe(false);
+    expect(await a.start()).toBe(false);
+    expect(alice.lobby.getState().errorCode).toBe('NOT_READY');
+    expect(await b.setReady(true)).toBe(true);
+    expect(await a.start()).toBe(true);
+    await until(
+      () => alice.nav.getState().route.page === 'game' && bob.nav.getState().route.page === 'game',
+    );
+    const rematchRoute = alice.nav.getState().route;
+    if (rematchRoute.page !== 'game') throw new Error('rematch game not open');
+    await until(() => rematchRoute.session.store.getState().latest !== null);
+    expect(rematchRoute.session.store.getState().latest!.version).toBeLessThan(latest.version);
+    expect(rematchRoute.session.store.getState().latest?.publicState.outcome).toBeNull();
+    expect(rematchRoute.session.store.getState().latest?.fight).toBeNull();
+    alice.nav.getState().go('online');
+    bob.nav.getState().go('online');
     expect(await a.leaveRoom()).toBe(true);
     expect(alice.lobby.getState().room).toBeNull();
     a.disconnect();

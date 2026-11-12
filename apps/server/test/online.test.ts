@@ -14,6 +14,7 @@ import { io as connectClient, type Socket } from 'socket.io-client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { startServer, type ServerHandle } from '../src/app';
 import type { ServerConfig } from '../src/config';
+import { RoomManager } from '../src/rooms/RoomManager';
 
 const baseConfig = (over: Partial<ServerConfig> = {}): ServerConfig => ({
   port: 0,
@@ -88,7 +89,7 @@ function autoplay(c: Client): void {
     if (!u.legalActions?.length) return;
     const action: Action =
       u.legalActions.find((a) => a.type !== 'CHALLENGE_DRAGON') ?? u.legalActions[0]!;
-    void call(c, C2S.gameAction, { action, stateVersion: u.version });
+    void call(c, C2S.gameAction, { action, stateVersion: u.version }).catch(() => {});
   });
 }
 
@@ -127,6 +128,17 @@ afterEach(async () => {
 });
 
 describe('online multiplayer', () => {
+  it('keeps a finished room while a human is still connected', () => {
+    let now = 1000;
+    const manager = new RoomManager(() => now);
+    const room = manager.create('host', 'Alice');
+    room.status = 'finished';
+    now += 200;
+    expect(manager.sweep(100, () => true)).toEqual([]);
+    expect(manager.get(room.code)).toBe(room);
+    expect(manager.sweep(100, () => false)).toEqual([room.code]);
+  });
+
   it('serves health and an empty model list', async () => {
     expect(await (await fetch(`${server.url}/health`)).json()).toEqual({ ok: true });
     expect(await (await fetch(`${server.url}/api/models`)).json()).toEqual({ models: [] });
@@ -150,10 +162,7 @@ describe('online multiplayer', () => {
   it('enforces lobby rules', async () => {
     const { a, b, code } = await lobbyWithTwoHumans();
     expect(await call(b, C2S.roomStart)).toMatchObject({ ok: false, error: { code: 'NOT_HOST' } });
-    expect(await call(b, C2S.roomSelectJob, { job: 'swordsman' })).toMatchObject({
-      ok: false,
-      error: { code: 'JOB_TAKEN' },
-    });
+    expect((await call(b, C2S.roomSelectJob, { job: 'swordsman' })).ok).toBe(true);
     expect(await call(a, C2S.roomJoin, { roomCode: 'ZZZZZZ', nickname: 'x' })).toMatchObject({
       ok: false,
       error: { code: 'ROOM_NOT_FOUND' },
@@ -167,7 +176,112 @@ describe('online multiplayer', () => {
       ok: false,
       error: { code: 'ROOM_FULL' },
     });
+    expect((await call(a, C2S.roomStart)).ok).toBe(true);
+    await until(() => a.updates.length > 0 && b.updates.length > 0);
+    expect(latest(a).publicState.players.map((p) => p.job)).toEqual(['swordsman', 'swordsman']);
   });
+
+  it('resets a finished game for a rematch in the same room', async () => {
+    const { a, b, code } = await lobbyWithTwoHumans(1, 1);
+    autoplay(a);
+    autoplay(b);
+    expect(await call(a, C2S.roomRematch)).toMatchObject({
+      ok: false,
+      error: { code: 'ROOM_IN_PROGRESS' },
+    });
+    expect((await call(a, C2S.roomStart)).ok).toBe(true);
+    await until(() => a.rooms.at(-1)?.status === 'finished', 30_000);
+    const oldGame = server.rooms.get(code)?.game;
+    expect(oldGame?.publicState.outcome).not.toBeNull();
+    expect(await call(b, C2S.roomRematch)).toMatchObject({
+      ok: false,
+      error: { code: 'NOT_HOST' },
+    });
+    expect(await call(a, C2S.roomRematch, { unexpected: true })).toMatchObject({
+      ok: false,
+      error: { code: 'INVALID_PAYLOAD' },
+    });
+    expect((await call(a, C2S.roomRematch)).ok).toBe(true);
+    await until(() => b.rooms.at(-1)?.status === 'lobby');
+    const room = server.rooms.get(code)!;
+    expect(room.code).toBe(code);
+    expect(room.game).toBeNull();
+    expect(room.options).toEqual({ maxRounds: 1, quickCombat: true });
+    expect(room.toState()).toMatchObject({ roomCode: code, status: 'lobby' });
+    expect(room.seats[0]).toMatchObject({
+      playerId: a.welcome.playerId,
+      job: 'swordsman',
+      ready: false,
+      connected: true,
+    });
+    expect(room.seats[1]).toMatchObject({
+      playerId: b.welcome.playerId,
+      job: 'archer',
+      ready: false,
+      connected: true,
+    });
+    expect(room.seats[2]).toMatchObject({ kind: 'bot', botName: 'heuristic:growth', ready: true });
+    const beforeSnapshot = b.updates.length;
+    expect((await call(b, C2S.gameRequestSnapshot)).ok).toBe(true);
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(b.updates).toHaveLength(beforeSnapshot);
+    expect(await call(a, C2S.roomStart)).toMatchObject({
+      ok: false,
+      error: { code: 'NOT_READY' },
+    });
+    expect((await call(b, C2S.roomSetReady, { ready: true })).ok).toBe(true);
+    const secondUpdates = a.updates.length;
+    expect((await call(a, C2S.roomStart)).ok).toBe(true);
+    await until(() => a.updates.length > secondUpdates);
+    const fresh = a.updates[secondUpdates]!;
+    expect(fresh.version).toBe(0);
+    expect(fresh.publicState.outcome).toBeNull();
+    expect(fresh.publicState.combat).toBeNull();
+    expect(fresh.pending?.phase).not.toBe('COMBAT');
+    expect(server.rooms.get(code)?.game).not.toBe(oldGame);
+  }, 40_000);
+
+  it('frees a human seat left during the previous game before the next lobby', async () => {
+    const { a, b, code } = await lobbyWithTwoHumans(0, 1);
+    autoplay(b);
+    expect((await call(a, C2S.roomStart)).ok).toBe(true);
+    expect((await call(a, C2S.roomLeave)).ok).toBe(true);
+    await until(() => b.rooms.at(-1)?.status === 'finished', 30_000);
+    expect((await call(b, C2S.roomRematch)).ok).toBe(true);
+    const room = server.rooms.get(code)!;
+    expect(room.seats[0]).toMatchObject({ kind: 'human', playerId: null, job: null, ready: false });
+    expect(room.seats[1]).toMatchObject({ playerId: b.welcome.playerId, ready: false });
+    const c = await connect();
+    expect((await call(c, C2S.roomJoin, { roomCode: code, nickname: 'Carol' })).ok).toBe(true);
+    expect(room.seats[0]?.playerId).toBe(c.welcome.playerId);
+  }, 40_000);
+
+  it('lets a new human join a finished room after a player leaves', async () => {
+    const { a, b, code } = await lobbyWithTwoHumans(0, 1);
+    autoplay(a);
+    autoplay(b);
+    expect((await call(a, C2S.roomStart)).ok).toBe(true);
+    await until(() => a.rooms.at(-1)?.status === 'finished', 30_000);
+    expect((await call(a, C2S.roomLeave)).ok).toBe(true);
+    const c = await connect();
+    expect((await call(c, C2S.roomJoin, { roomCode: code, nickname: 'Carol' })).ok).toBe(true);
+    expect(server.rooms.get(code)?.hostId).toBe(b.welcome.playerId);
+    expect((await call(b, C2S.roomRematch)).ok).toBe(true);
+    await until(() => c.rooms.at(-1)?.status === 'lobby');
+    expect(c.rooms.at(-1)?.seats[0]).toMatchObject({
+      playerId: c.welcome.playerId,
+      nickname: 'Carol',
+      job: null,
+      ready: false,
+    });
+    expect((await call(c, C2S.roomSelectJob, { job: 'swordsman' })).ok).toBe(true);
+    expect((await call(c, C2S.roomSetReady, { ready: true })).ok).toBe(true);
+    const beforeStart = c.updates.length;
+    expect((await call(b, C2S.roomStart)).ok).toBe(true);
+    await until(() => c.updates.length > beforeStart);
+    expect(latest(c).yourSeat).not.toBeNull();
+    expect(latest(c).publicState.outcome).toBeNull();
+  }, 40_000);
 
   it('rejects stale versions and actions from the wrong seat', async () => {
     const { a, b } = await lobbyWithTwoHumans();

@@ -113,6 +113,9 @@ export class OnlineSession {
   start() {
     return this.call(C2S.roomStart);
   }
+  rematch() {
+    return this.call(C2S.roomRematch);
+  }
 
   createGameClient(): OnlineGameClient {
     return new OnlineGameClient(this);

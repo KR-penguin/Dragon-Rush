@@ -54,6 +54,7 @@ export interface OnlineLobbyState {
   selectJob(job: JobId | null, seat?: number): Promise<boolean>;
   setReady(ready: boolean): Promise<boolean>;
   start(): Promise<boolean>;
+  rematch(): Promise<boolean>;
   /** Shows the room's game (running or finished) on the Game page again. */
   openGame(): void;
 }
@@ -107,6 +108,9 @@ export const createOnlineLobbyStore = (deps: OnlineLobbyDeps) => {
       }
       set({ room, resumeCode: null });
       if (room.status === 'lobby') {
+        if (prev?.code === room.roomCode && prev.status === 'finished') {
+          if (deps.nav.getState().route.page === 'game') deps.nav.getState().go('online');
+        }
         if (!pendingClient && session) pendingClient = session.createGameClient();
         return;
       }
@@ -286,6 +290,10 @@ export const createOnlineLobbyStore = (deps: OnlineLobbyDeps) => {
 
       start() {
         return command((s) => s.start());
+      },
+
+      rematch() {
+        return command((s) => s.rematch());
       },
 
       openGame() {

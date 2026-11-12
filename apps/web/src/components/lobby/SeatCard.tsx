@@ -111,7 +111,6 @@ export function SeatCard({ seat, groups, disabled, onConfigure, onSelectJob }: S
         <JobChooser
           seatNumber={seat.seat + 1}
           value={seat.job}
-          taken={seat.takenJobs}
           optional={seat.jobOptional}
           disabled={disabled}
           onChange={onSelectJob}

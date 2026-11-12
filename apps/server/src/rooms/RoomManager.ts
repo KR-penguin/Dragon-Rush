@@ -31,13 +31,13 @@ export class RoomManager {
     this.rooms.delete(code);
   }
 
-  /** Drops rooms idle for longer than ttl (finished games, abandoned lobbies). Returns removed codes. */
+  /** Drops rooms with no connected human after the idle timeout. */
   sweep(ttlMs: number, hasConnectedHuman: (room: Room) => boolean): string[] {
     const now = this.clock();
     const removed: string[] = [];
     for (const room of this.rooms.values()) {
       const idle = now - room.lastActivity > ttlMs;
-      if (idle && (room.status === 'finished' || !hasConnectedHuman(room))) {
+      if (idle && !hasConnectedHuman(room)) {
         this.delete(room.code);
         removed.push(room.code);
       }

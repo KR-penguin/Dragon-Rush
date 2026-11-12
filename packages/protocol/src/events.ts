@@ -11,6 +11,7 @@ export const C2S = {
   roomSelectJob: 'room:selectJob',
   roomSetReady: 'room:setReady',
   roomStart: 'room:start',
+  roomRematch: 'room:rematch',
   gameAction: 'game:action',
   gameRequestSnapshot: 'game:requestSnapshot',
 } as const;

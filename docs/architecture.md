@@ -256,8 +256,8 @@ apps/server/src/
 
 | 구성요소 | 책임 |
 |---|---|
-| `RoomManager` | 6자리 방 코드 발급(CSPRNG, 혼동 문자 제외), 생성/입장/퇴장, 빈 방·종료된 방 TTL 정리 |
-| `Room` | 로비 상태: 호스트(이탈 시 다음 사람에게 이양), 좌석 2~4(human/bot/model), 직업 중복 금지, 준비, 시작 |
+| `RoomManager` | 6자리 방 코드 발급(CSPRNG, 혼동 문자 제외), 생성/입장/퇴장, 접속한 사람이 없는 방의 TTL 정리 |
+| `Room` | 로비 상태: 호스트(이탈 시 다음 사람에게 이양), 좌석 2~4(human/bot/model), 직업 선택, 준비, 시작, 종료 후 재경기 |
 | `GameSession` | `GameState`(rng 포함)·`version` 보유. **모든 보드 입력(사람·타이머·정책)이 `submit(seat, action, stateVersion, source)` 하나로 수렴** → 동일한 검증·버전 검사. 전투 결과는 `submitCombatResult` |
 | `FightRoom` | `FightAuthority` 소유, 전투 참가 소켓·입력·확정 스트림·동기화·봇 인계 관리. 서버가 확정한 결과를 `GameSession.submitCombatResult(fightId, result)`로 전달 |
 | `TurnTimer` | 사람 좌석 결정 대기 시간(`TURN_TIMEOUT_MS`). `(actor, phase)`가 바뀔 때만 재시작(같은 phase 내 연속 행동으로 연장 불가). 만료 시 `timeoutAction` 제출. 좌석별 연속 시간 초과 카운터(사람 입력 시 0, 3회면 대리 전환, §8.3) |
@@ -278,9 +278,10 @@ apps/server/src/
 | C→S | `room:leave` | `{}` | 퇴장 |
 | C→S | `room:configure` | `{ maxRounds: number \| null, quickCombat?: boolean }` | 호스트 전용, 로비에서만. 빠른 전투는 주사위로 해결 |
 | C→S | `room:configureSeat` | `{ seat, kind, botName?, modelId? }` | 호스트 전용. kind = human/bot/model/empty |
-| C→S | `room:selectJob` | `{ job \| null, seat? }` | 직업 선택(중복 불가, null = 해제). `seat`는 호스트가 AI 좌석을 지정할 때만 |
+| C→S | `room:selectJob` | `{ job \| null, seat? }` | 직업 선택(중복 가능, null = 해제). `seat`는 호스트가 AI 좌석을 지정할 때만 |
 | C→S | `room:setReady` | `{ ready }` | 준비 토글 |
 | C→S | `room:start` | `{}` | 호스트 전용. 2명 이상 + 사람 전원 준비 |
+| C→S | `room:rematch` | `{}` | 종료된 방의 호스트 전용. 같은 코드·좌석·설정을 유지하고 로비로 복귀 |
 | C→S | `game:action` | `{ action, stateVersion }` | 행동 의도 |
 | C→S | `game:requestSnapshot` | `{}` | 버전 갭 감지 시 전체 상태 재요청 |
 | S→C | `session:welcome` | `{ sessionToken, playerId, resume? }` | 연결 직후. `resume`이면 기존 방·좌석으로 복귀 |
@@ -291,10 +292,10 @@ apps/server/src/
 | S→C | `seat:takeover` | `{ seat, name }` | 접속 중이던 사람이 퇴장·끊김으로 봇에게 제어권을 넘길 때 한 번 알림. 스냅샷·유예 만료·시간 초과 대리에는 보내지 않음 |
 | S→C | `error` | `{ code, message }` | ack가 없는 비동기 오류 |
 
-- `pending` = `{ actor, phase, timeLeftMs }`. 시계 동기화 없이 남은 시간만 보낸다. 게임 종료는 `GameEnded` 이벤트 + `room:state.status = 'finished'`.
+- `pending` = `{ actor, phase, timeLeftMs }`. 시계 동기화 없이 남은 시간만 보낸다. 게임 종료는 `GameEnded` 이벤트 + `room:state.status = 'finished'`. 종료된 방은 빈 사람 좌석에 새 참가자가 들어올 수 있다. 호스트의 `room:rematch`는 완료된 세션을 폐기하고 `status = 'lobby'`로 되돌린다. 방 코드, 남은 사람·AI 좌석, 직업과 옵션은 유지하고 사람의 준비 상태는 해제한다. 새 `room:start`는 버전 0의 새 세션을 만든다. 방에 서로 같은 직업을 고른 좌석이 있어도 시작할 수 있다.
 - 실시간 전투 중에는 `pending.phase = 'COMBAT'`, 보드 행동은 `[]`이다. 전투 메시지는 §12.3의 `fight:*` 계약을 따른다. 전투 결과 확정 뒤 보드 `version`이 증가하고 `game:update`가 발행된다.
 - **zod 검증**: 서버는 모든 수신 페이로드를 `safeParse`, 실패 시 `INVALID_PAYLOAD`. 타입은 `z.infer`로 생성하고, `z.infer<typeof ActionSchema>`와 엔진 `Action`의 동일성을 타입 테스트로 고정한다. 송신 검증은 dev/test에서만.
-- **오류 코드**: `PROTOCOL_MISMATCH`, `INVALID_PAYLOAD`, `SESSION_INVALID`, `ROOM_NOT_FOUND`, `ROOM_FULL`, `ROOM_IN_PROGRESS`, `NOT_IN_ROOM`, `NOT_HOST`, `SEAT_OCCUPIED`, `JOB_TAKEN`, `NOT_READY`, `NOT_YOUR_TURN`, `STALE_VERSION`, `ILLEGAL_ACTION`, `MODEL_NOT_FOUND`, `RATE_LIMITED`, `INTERNAL`. 정본은 `packages/protocol/src/errors.ts`.
+- **오류 코드**: `PROTOCOL_MISMATCH`, `INVALID_PAYLOAD`, `SESSION_INVALID`, `ROOM_NOT_FOUND`, `ROOM_FULL`, `ROOM_IN_PROGRESS`, `NOT_IN_ROOM`, `NOT_HOST`, `SEAT_OCCUPIED`, `JOB_TAKEN`(기존 클라이언트 호환용), `NOT_READY`, `NOT_YOUR_TURN`, `STALE_VERSION`, `ILLEGAL_ACTION`, `MODEL_NOT_FOUND`, `RATE_LIMITED`, `INTERNAL`. 정본은 `packages/protocol/src/errors.ts`.
 - **stateVersion**: 게임 시작 시 0, 보드 행동 1건 또는 확정 전투 결과 1건을 적용할 때마다 +1(단조 증가). 행동 제출 시 `stateVersion !== session.version`이면 `STALE_VERSION`. 더블클릭 중복 제출, 타이머 기본 행동과 늦은 사람 입력의 경합, 대리 봇과 복귀한 사람의 경합을 모두 "먼저 도착한 하나만 적용"으로 해결한다. 클라이언트는 `version ≤ 현재`인 update를 무시하고, `version > 현재 + 1`이면 `game:requestSnapshot`.
 
 ## 8. 동기화
@@ -372,7 +373,7 @@ Python (사용자 트레이너) ─┬─ RPGBoardEnv/RPGBoardVecEnv ── stdi
 - 서버 권위: 보드 클라이언트는 `Action` 의도만 보내고 룰렛·보상은 서버 엔진이 계산한다. 실시간 전투 클라이언트는 틱별 입력 마스크를 보내며 서버 `FightAuthority`가 전투 결과를 확정한다. 좌석은 서버가 연결에서 결정한다.
 - 보드 RNG 상태 비공개(`toPublicState`), 보드 시드는 서버 CSPRNG로 생성한다. `fight:start`의 별도 전투 시드는 클라이언트 예측·롤백을 위해 공개한다.
 - 객체 입력은 zod, 전투의 평면 정수 배열은 전용 길이·범위 디코더로 검증한다. Socket.IO `maxHttpBufferSize` 제한, 소켓별 rate limit, 방 코드 대입 시도 제한, 닉네임 길이·문자 제한을 둔다.
-- `sessionToken`: CSPRNG 128비트, 핸드셰이크 `auth`로만 전송(URL 금지), 방·좌석에 귀속, 게임 종료 시 폐기. 모델 파일은 데이터로만 해석(§9).
+- `sessionToken`: CSPRNG 128비트, 핸드셰이크 `auth`로만 전송(URL 금지), 방·좌석에 귀속. 게임 종료 후 재경기를 위해 세션은 유지하고, 방에서 나가거나 방이 삭제되면 방 소속은 해제한다. 모델 파일은 데이터로만 해석(§9).
 
 **배포 개요**
 - 단일 Node 서비스: `pnpm build` → Vite 정적 산출물 + 서버 번들. Fastify가 `apps/web/dist`를 정적 제공하고 같은 HTTP 서버·포트에서 Socket.IO를 연다(동일 출처 → CORS 불필요). 개발 시 `pnpm dev`가 Vite + 서버를 동시 실행, Vite 프록시로 `/socket.io`·`/api`를 서버에 전달.

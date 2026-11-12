@@ -26,6 +26,7 @@ import {
   RoomSelectJobSchema,
   RoomSetReadySchema,
   RoomStartSchema,
+  RoomRematchSchema,
   S2C,
   type Ack,
 } from '@dragon-rush/protocol';
@@ -307,6 +308,17 @@ export function registerGateway(io: Server, deps: GatewayDeps): { dispose(): voi
       startGame(requireRoom(), session.playerId);
     });
 
+    on(C2S.roomRematch, RoomRematchSchema, () => {
+      const r = requireRoom();
+      r.rematch(session.playerId);
+      const fight = fights.get(r.code);
+      if (fight) {
+        fight.dispose();
+        fights.delete(r.code);
+      }
+      broadcastRoom(r);
+    });
+
     on(C2S.gameAction, GameActionSchema, ({ action, stateVersion }) => {
       const game = requireRoom().game;
       if (!game) throw new ProtocolError('NOT_YOUR_TURN', 'game not started');
@@ -369,7 +381,7 @@ export function registerGateway(io: Server, deps: GatewayDeps): { dispose(): voi
       room.setConnected(s.playerId, false);
       fights.get(room.code)?.away(s.playerId);
       if (room.game && !room.game.isOver) room.game.disconnect(s.playerId);
-      else if (room.status === 'lobby') {
+      else if (room.status !== 'playing') {
         const r = room;
         lobbyGrace.set(
           s.playerId,

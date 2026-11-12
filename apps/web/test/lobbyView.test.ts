@@ -1,5 +1,9 @@
 import { ERROR_CODES, type LobbySeat, type RoomStateMsg } from '@dragon-rush/protocol';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { JobChooser } from '../src/components/lobby/JobChooser';
+import { RoomStatusBanner } from '../src/components/lobby/RoomStatusBanner';
 import {
   buildRoomView,
   CLIENT_ERROR_CODES,
@@ -15,9 +19,10 @@ import {
   seatChoiceGroups,
   seatChoiceOf,
   startEligibility,
-  takenJobsFor,
 } from '../src/types/onlineLobby';
 import { ICON_NAMES } from '../src/types/icons';
+
+vi.mock('../src/services/assets', () => ({ resolveAsset: () => null }));
 
 const seat = (index: number, patch: Partial<LobbySeat> = {}): LobbySeat => ({
   seat: index,
@@ -165,6 +170,27 @@ describe('start eligibility', () => {
     expect(startEligibility(ok, 'p_bob').canStart).toBe(false);
     expect(startEligibility({ ...ok, status: 'playing' }, 'p_alice').canStart).toBe(false);
   });
+
+  it('allows two ready humans to select the same job', () => {
+    const shared = room([
+      human(0, 'p_alice', 'Alice', { job: 'mage' }),
+      human(1, 'p_bob', 'Bob', { job: 'mage', ready: true }),
+      seat(2),
+      seat(3),
+    ]);
+    expect(startEligibility(shared, 'p_alice')).toEqual({ canStart: true, reasons: [] });
+    const html = renderToStaticMarkup(
+      createElement(JobChooser, {
+        seatNumber: 1,
+        value: 'mage',
+        optional: false,
+        disabled: false,
+        onChange: () => {},
+      }),
+    );
+    expect(html).not.toContain('disabled=');
+    expect(html).not.toContain('다른 좌석이 선택함');
+  });
 });
 
 describe('room view', () => {
@@ -180,11 +206,6 @@ describe('room view', () => {
     }),
     seat(3, { kind: 'human' }),
   ]);
-
-  it('lists jobs held by other non-empty seats', () => {
-    expect(takenJobsFor(full, 0)).toEqual(['archer', 'ninja']);
-    expect(takenJobsFor(full, 3)).toEqual(['archer', 'mage', 'ninja']);
-  });
 
   it('gives the host seat controls for open and AI seats only', () => {
     const v = buildRoomView(full, 'p_alice');
@@ -232,6 +253,33 @@ describe('room view', () => {
     const v = buildRoomView({ ...full, status: 'finished' }, 'p_alice');
     expect(v.seats.some((s) => s.configurable || s.jobEditable)).toBe(false);
     expect(v.me.needsReady).toBe(false);
+  });
+});
+
+describe('finished room banner', () => {
+  it('offers the host a rematch in the same room', () => {
+    const host = renderToStaticMarkup(
+      createElement(RoomStatusBanner, {
+        status: 'finished',
+        busy: false,
+        isHost: true,
+        onOpenGame: () => {},
+        onRematch: () => {},
+      }),
+    );
+    expect(host).toContain('같은 방에서 다시 하기');
+    expect(host).not.toContain('새 방 만들기');
+    const guest = renderToStaticMarkup(
+      createElement(RoomStatusBanner, {
+        status: 'finished',
+        busy: false,
+        isHost: false,
+        onOpenGame: () => {},
+        onRematch: () => {},
+      }),
+    );
+    expect(guest).toContain('방장이 다시 시작하면');
+    expect(guest).not.toContain('같은 방에서 다시 하기');
   });
 });
 

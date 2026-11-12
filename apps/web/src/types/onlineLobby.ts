@@ -1,4 +1,4 @@
-import { JOB_IDS, type JobId } from '@dragon-rush/engine';
+import type { JobId } from '@dragon-rush/engine';
 import {
   ERROR_CODES,
   NicknameSchema,
@@ -214,7 +214,6 @@ export interface SeatView {
   readonly jobEditable: boolean;
   /** AI seats may leave the job empty; the server picks a free one at start. */
   readonly jobOptional: boolean;
-  readonly takenJobs: readonly JobId[];
 }
 
 export interface StartEligibility {
@@ -248,13 +247,6 @@ const isAi = (s: LobbySeat) => s.kind === 'bot' || s.kind === 'model';
 /** Seats that will play when the game starts (mirrors the server's start check). */
 export const activeSeats = (room: RoomStateMsg): LobbySeat[] =>
   room.seats.filter((s) => isAi(s) || (s.kind === 'human' && s.playerId !== null));
-
-/** Jobs held by other seats (empty seats never hold one). */
-export function takenJobsFor(room: RoomStateMsg, seat: number): JobId[] {
-  return JOB_IDS.filter((job) =>
-    room.seats.some((s) => s.seat !== seat && s.kind !== 'empty' && s.job === job),
-  );
-}
 
 const seatName = (s: LobbySeat) => s.nickname ?? `좌석 ${s.seat + 1}`;
 
@@ -361,7 +353,6 @@ export function seatView(room: RoomStateMsg, s: LobbySeat, playerId: string): Se
     choice: seatChoiceOf(s),
     jobEditable: lobby && (isMe || (amHost && isAi(s))),
     jobOptional: isAi(s),
-    takenJobs: takenJobsFor(room, s.seat),
   };
 }
 
