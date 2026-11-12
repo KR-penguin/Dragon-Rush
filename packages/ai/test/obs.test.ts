@@ -1,24 +1,41 @@
 import { applyAction, getLegalActions } from '@dragon-rush/engine';
 import { describe, expect, it } from 'vitest';
-import { encodeObservation, maskFromLegal, OBS_DIM, OBS_V3_LAYOUT, OBS_VERSION } from '../src/index';
+import {
+  encodeObservation,
+  maskFromLegal,
+  OBS_DIM,
+  OBS_V3_LAYOUT,
+  OBS_V4_LAYOUT,
+  OBS_VERSION,
+} from '../src/index';
 import { newGame, view, walk } from './helpers';
 
 const field = (name: string) => {
-  const f = OBS_V3_LAYOUT.find((x) => x.name === name);
+  const f = OBS_V4_LAYOUT.find((x) => x.name === name);
   if (!f) throw new Error(`no field ${name}`);
   return f;
 };
 
-describe('obs_v3', () => {
-  it('has a contiguous layout totalling 258', () => {
-    expect(OBS_VERSION).toBe('obs_v3');
-    expect(OBS_DIM).toBe(258);
+describe('obs_v4', () => {
+  it('keeps the 258 legacy fields and appends 24 ten-scalar tile blocks', () => {
+    expect(OBS_VERSION).toBe('obs_v4');
+    expect(OBS_DIM).toBe(498);
     let offset = 0;
-    for (const f of OBS_V3_LAYOUT) {
+    for (const f of OBS_V4_LAYOUT) {
       expect(f.offset).toBe(offset);
       offset += f.length;
     }
-    expect(offset).toBe(258);
+    expect(offset).toBe(498);
+    expect(OBS_V4_LAYOUT.slice(0, OBS_V3_LAYOUT.length)).toEqual(OBS_V3_LAYOUT);
+    expect(OBS_V3_LAYOUT.at(-1)).toEqual({
+      name: 'g.paidUpgradesRemaining',
+      offset: 257,
+      length: 1,
+    });
+    expect(field('tile00.coins').offset).toBe(258);
+    expect(field('tile00.mystery').offset).toBe(267);
+    expect(field('tile23.coins').offset).toBe(488);
+    expect(field('tile23.mystery').offset).toBe(497);
     expect(field('opp1.present').offset).toBe(51);
     expect(field('opp2.present').offset).toBe(105);
     expect(field('opp3.present').offset).toBe(159);
@@ -37,9 +54,13 @@ describe('obs_v3', () => {
       for (const s of walk(n, 7)) {
         if (!s.pending) continue;
         const obs = encodeObservation(view(s), s.pending.actor);
-        expect(obs).toHaveLength(258);
-        for (const v of obs) {
+        expect(obs).toHaveLength(498);
+        for (const v of obs.slice(0, 258)) {
           expect(v).toBeGreaterThanOrEqual(0);
+          expect(v).toBeLessThanOrEqual(2);
+        }
+        for (const v of obs.slice(258)) {
+          expect(v).toBeGreaterThanOrEqual(-2);
           expect(v).toBeLessThanOrEqual(2);
         }
         for (const f of oneHots) {
@@ -48,6 +69,72 @@ describe('obs_v3', () => {
         }
       }
     }
+  });
+
+  it('derives tile values from effects, including stacked signed amounts and flags', () => {
+    const initial = view(newGame(2, 1));
+    const board = initial.rules.board.map((tile) => ({ ...tile }));
+    board[7] = {
+      ...board[7]!,
+      effects: [
+        { kind: 'coins', amount: 6 },
+        { kind: 'coins', amount: -10 },
+        { kind: 'hp', amount: -5 },
+        { kind: 'stat', stat: 'atk', amount: 2 },
+        { kind: 'stat', stat: 'def', amount: -1 },
+        { kind: 'maxHp', amount: 5 },
+        { kind: 'skipTurn' },
+        { kind: 'randomItem' },
+        { kind: 'training' },
+        { kind: 'shop' },
+        { kind: 'mystery' },
+      ],
+    };
+    const obs = encodeObservation({ ...initial, rules: { ...initial.rules, board } }, 0);
+    const expected = [-4 / 20, -5 / 20, 2 / 5, -1 / 5, 5 / 10, 1, 1, 1, 1, 1];
+    for (const [index, value] of expected.entries()) expect(obs[328 + index]).toBeCloseTo(value);
+  });
+
+  it('distinguishes boards even when tile IDs and all other public state match', () => {
+    const initial = view(newGame(2, 1));
+    const originalEffects = initial.rules.board[1]!.effects;
+    const originalCoins = originalEffects.reduce(
+      (sum, effect) => sum + (effect.kind === 'coins' ? effect.amount : 0),
+      0,
+    );
+    const changedCoins = originalCoins === 0 ? 20 : 0;
+    const changed = initial.rules.board.map((tile, index) =>
+      index === 1 ? { ...tile, effects: [{ kind: 'coins' as const, amount: changedCoins }] } : tile,
+    );
+    const original = encodeObservation(initial, 0);
+    const alternate = encodeObservation(
+      { ...initial, rules: { ...initial.rules, board: changed } },
+      0,
+    );
+    expect([...original.slice(0, 258)]).toEqual([...alternate.slice(0, 258)]);
+    expect(original[field('tile01.coins').offset]).toBeCloseTo(
+      Math.min(2, Math.max(-2, originalCoins / 20)),
+    );
+    expect(alternate[field('tile01.coins').offset]).toBe(changedCoins / 20);
+    expect(original).not.toEqual(alternate);
+  });
+
+  it('encodes distinct seeded game boards in the appended map segment', () => {
+    const first = encodeObservation(view(newGame(2, 1)), 0);
+    const second = encodeObservation(view(newGame(2, 2)), 0);
+    expect([...first.slice(258)]).not.toEqual([...second.slice(258)]);
+  });
+
+  it('shows the cooldown consumed by a zero ninja adjustment', () => {
+    const state = newGame(2, 42);
+    state.players[state.current]!.job = 'ninja';
+    const rolled = applyAction(state, { type: 'ROLL_DICE' }).state;
+    expect(rolled.pending?.phase).toBe('MOVE_ADJUST');
+    const adjusted = applyAction(rolled, { type: 'ADJUST_MOVE', delta: 0 }).state;
+    expect(adjusted.players[state.current]!.passive.ninjaCooldown).toBe(2);
+    expect(
+      encodeObservation(view(adjusted), state.current)[field('self.ninjaCooldown').offset],
+    ).toBe(1);
   });
 
   it('encodes every movement roll and clears the dice field before rolling', () => {
@@ -126,6 +213,8 @@ describe('obs_v3', () => {
       expect(encodeObservation(view(state), 0)[offset]).toBeCloseTo((2 - index) / 3);
     }
     expect(getLegalActions(state).some((action) => action.type === 'UPGRADE')).toBe(false);
-    expect([...maskFromLegal(view(state), 0, getLegalActions(state)).slice(3, 6)]).toEqual([0, 0, 0]);
+    expect([...maskFromLegal(view(state), 0, getLegalActions(state)).slice(3, 6)]).toEqual([
+      0, 0, 0,
+    ]);
   });
 });

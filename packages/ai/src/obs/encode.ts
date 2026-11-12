@@ -10,12 +10,22 @@ import {
   type PlayerState,
   type PublicGameState,
   type SeatId,
+  type TileDef,
 } from '@dragon-rush/engine';
-import { GLOBAL_OFFSET, OBS_DIM, OBS_V3_SCALES as S, OPP_BLOCK, SELF_BLOCK } from './layout';
+import {
+  BOARD_OFFSET,
+  GLOBAL_OFFSET,
+  OBS_DIM,
+  OBS_V4_SCALES as S,
+  OPP_BLOCK,
+  SELF_BLOCK,
+  TILE_BLOCK,
+} from './layout';
 
 const OBS_DICE_SIDES = 10;
 
 const n = (x: number, scale: number): number => Math.min(2, Math.max(0, x / scale));
+const signed = (x: number, scale: number): number => Math.min(2, Math.max(-2, x / scale));
 
 class Writer {
   constructor(
@@ -150,11 +160,72 @@ function writeGlobal(w: Writer, view: PublicGameState, seat: SeatId): void {
   );
 }
 
-/** obs_v3: ego-centric float32 vector from the acting seat's point of view (docs/ai-interface-spec.md §3). */
+function writeTile(w: Writer, tile: TileDef): void {
+  let coins = 0;
+  let hp = 0;
+  let atk = 0;
+  let def = 0;
+  let maxHp = 0;
+  let skipTurn = false;
+  let randomItem = false;
+  let training = false;
+  let shop = false;
+  let mystery = false;
+  for (const effect of tile.effects) {
+    switch (effect.kind) {
+      case 'coins':
+        coins += effect.amount;
+        break;
+      case 'hp':
+        hp += effect.amount;
+        break;
+      case 'stat':
+        if (effect.stat === 'atk') atk += effect.amount;
+        else def += effect.amount;
+        break;
+      case 'maxHp':
+        maxHp += effect.amount;
+        break;
+      case 'skipTurn':
+        skipTurn = true;
+        break;
+      case 'randomItem':
+        randomItem = true;
+        break;
+      case 'training':
+        training = true;
+        break;
+      case 'shop':
+        shop = true;
+        break;
+      case 'mystery':
+        mystery = true;
+        break;
+      default: {
+        const unknownEffect: never = effect;
+        throw new Error(`unsupported tile effect ${JSON.stringify(unknownEffect)}`);
+      }
+    }
+  }
+  w.put(signed(coins, S.TILE_COIN_S));
+  w.put(signed(hp, S.TILE_HP_S));
+  w.put(signed(atk, S.TILE_ATK_S));
+  w.put(signed(def, S.TILE_DEF_S));
+  w.put(signed(maxHp, S.TILE_MAX_HP_S));
+  w.put(skipTurn);
+  w.put(randomItem);
+  w.put(training);
+  w.put(shop);
+  w.put(mystery);
+}
+
+/** obs_v4: ego-centric float32 vector from the acting seat's point of view (docs/ai-interface-spec.md §3). */
 export function encodeObservation(view: PublicGameState, seat: SeatId): Float32Array {
   if (view.rules.movement.rollSides > OBS_DICE_SIDES) {
-    throw new RangeError(`obs_v3 supports at most ${OBS_DICE_SIDES} movement roll sides`);
+    throw new RangeError(`obs_v4 supports at most ${OBS_DICE_SIDES} movement roll sides`);
   }
+  if (view.rules.board.length !== BOARD_SIZE)
+    throw new RangeError(`obs_v4 requires ${BOARD_SIZE} tiles`);
   const buf = new Float32Array(OBS_DIM);
   const me = view.players[seat];
   if (!me) throw new RangeError(`no seat ${seat}`);
@@ -170,5 +241,8 @@ export function encodeObservation(view: PublicGameState, seat: SeatId): Float32A
     );
   }
   writeGlobal(new Writer(buf, GLOBAL_OFFSET), view, seat);
+  view.rules.board.forEach((tile, index) =>
+    writeTile(new Writer(buf, BOARD_OFFSET + index * TILE_BLOCK), tile),
+  );
   return buf;
 }

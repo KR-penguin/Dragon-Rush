@@ -1,4 +1,4 @@
-export const OBS_VERSION = 'obs_v3';
+export const OBS_VERSION = 'obs_v4';
 
 export const OBS_V3_SCALES = {
   HP_S: 120,
@@ -106,7 +106,41 @@ export const OBS_V3_LAYOUT: readonly ObsField[] = buildLayout();
 export const OBS_V2_LAYOUT: readonly ObsField[] = OBS_V3_LAYOUT.slice(0, -1);
 /** The existing scale constants are unchanged in obs_v3. */
 export const OBS_V2_SCALES = OBS_V3_SCALES;
+export const OBS_V4_SCALES = {
+  ...OBS_V3_SCALES,
+  TILE_COIN_S: 20,
+  TILE_HP_S: 20,
+  TILE_ATK_S: 5,
+  TILE_DEF_S: 5,
+  TILE_MAX_HP_S: 10,
+} as const;
 export const SELF_BLOCK = 51;
 export const OPP_BLOCK = 54;
 export const GLOBAL_OFFSET = SELF_BLOCK + OPP_BLOCK * 3;
-export const OBS_DIM = GLOBAL_OFFSET + 45;
+export const BOARD_OFFSET = GLOBAL_OFFSET + 45;
+export const TILE_BLOCK = 10;
+
+const TILE_FIELDS = [
+  'coins',
+  'hp',
+  'atk',
+  'def',
+  'maxHp',
+  'skipTurn',
+  'randomItem',
+  'training',
+  'shop',
+  'mystery',
+] as const;
+
+export const OBS_V4_LAYOUT: readonly ObsField[] = [
+  ...OBS_V3_LAYOUT,
+  ...Array.from({ length: 24 }, (_, tile) =>
+    TILE_FIELDS.map((name, field) => ({
+      name: `tile${String(tile).padStart(2, '0')}.${name}`,
+      offset: BOARD_OFFSET + tile * TILE_BLOCK + field,
+      length: 1,
+    })),
+  ).flat(),
+];
+export const OBS_DIM = BOARD_OFFSET + 24 * TILE_BLOCK;

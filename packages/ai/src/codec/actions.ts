@@ -7,7 +7,7 @@ import {
   type SeatId,
 } from '@dragon-rush/engine';
 
-export const ACT_VERSION = 'act_v2';
+export const ACT_VERSION = 'act_v3';
 export const ACTION_DIM = 47;
 
 const IDX = {

@@ -12,9 +12,9 @@ import {
 } from '../src/index';
 import { newGame, view, walk } from './helpers';
 
-describe('act_v2 codec', () => {
+describe('act_v3 codec', () => {
   it('has 47 named actions', () => {
-    expect(ACT_VERSION).toBe('act_v2');
+    expect(ACT_VERSION).toBe('act_v3');
     expect(ACTION_DIM).toBe(47);
     expect(ACTION_NAMES).toHaveLength(47);
     expect(new Set(ACTION_NAMES).size).toBe(47);

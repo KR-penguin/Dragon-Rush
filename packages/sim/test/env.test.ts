@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { DEFAULT_RULES } from '@dragon-rush/engine';
 import { EnvServer } from '../src/index';
 
 type Res = { id: number; ok: boolean; result?: any; error?: { code: string; env_index?: number } }; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -18,10 +19,10 @@ describe('env server (in-process)', () => {
     const r = call(new EnvServer(), 1, 'info');
     expect(r.result).toMatchObject({
       protocol: 'rpgboard-env/2',
-      obs_dim: 258,
+      obs_dim: 498,
       action_dim: 47,
-      obs_version: 'obs_v3',
-      act_version: 'act_v2',
+      obs_version: 'obs_v4',
+      act_version: 'act_v3',
     });
     expect(r.result.action_names).toHaveLength(47);
     expect(r.result.action_names[0]).toBe('ROLL_DICE');
@@ -31,6 +32,28 @@ describe('env server (in-process)', () => {
       offset: 232,
       length: 10,
     });
+    expect(r.result.obs_layout.at(-1)).toEqual({ name: 'tile23.mystery', offset: 497, length: 1 });
+  });
+
+  it('returns different map observations for different 24-tile rules boards', () => {
+    const reset = (board: typeof DEFAULT_RULES.board) =>
+      call(new EnvServer(), 1, 'reset', {
+        seed: 42,
+        encoding: 'json',
+        config: { rules: { board }, combat_resolver: 'dice' },
+      });
+    const changed = DEFAULT_RULES.board.map((tile, index) =>
+      index === 1 ? { ...tile, effects: [{ kind: 'coins' as const, amount: -20 }] } : tile,
+    );
+    const baseline = reset(DEFAULT_RULES.board);
+    const alternate = reset(changed);
+    expect(baseline.ok).toBe(true);
+    expect(alternate.ok).toBe(true);
+    expect(baseline.result.envs[0].obs.slice(0, 258)).toEqual(
+      alternate.result.envs[0].obs.slice(0, 258),
+    );
+    expect(baseline.result.envs[0].obs[268]).toBeCloseTo(6 / 20);
+    expect(alternate.result.envs[0].obs[268]).toBe(-1);
   });
 
   it('rejects step before reset and unknown commands', () => {
@@ -50,7 +73,7 @@ describe('env server (in-process)', () => {
     });
     expect(r.ok).toBe(true);
     let envs = r.result.envs;
-    expect(envs[0].obs).toHaveLength(258);
+    expect(envs[0].obs).toHaveLength(498);
     expect(envs[0].obs[216]).toBe(0);
     expect(envs[0].obs[217]).toBe(1);
     expect(envs[0].episode_start.num_players).toBe(4);
@@ -158,7 +181,9 @@ describe('env server (in-process)', () => {
       call(new EnvServer(), 1, 'reset', { expect: { combat_resolver: 'dice' } }).error?.code,
     ).toBe('VERSION_MISMATCH');
     expect(call(new EnvServer(), 1, 'reset', {}).result?.combat_resolver).toBe('sim');
-    expect(call(new EnvServer(), 1, 'reset', { config: { combat_resolver: 'outcome' } }).error?.code).toBe('BAD_CONFIG');
+    expect(
+      call(new EnvServer(), 1, 'reset', { config: { combat_resolver: 'outcome' } }).error?.code,
+    ).toBe('BAD_CONFIG');
   });
 
   it('rejects bad configs', () => {
