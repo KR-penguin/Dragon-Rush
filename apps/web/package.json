@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@dragon-rush/ai": "workspace:*",
+    "@dragon-rush/combat": "workspace:*",
     "@dragon-rush/engine": "workspace:*",
     "@dragon-rush/protocol": "workspace:*",
     "react": "^19.3.1",
