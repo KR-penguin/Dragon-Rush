@@ -14,13 +14,15 @@ if (!Number.isSafeInteger(n) || n < 1 || !Number.isSafeInteger(reaction) || reac
   throw new Error('n and reaction must be nonnegative integers');
 
 type Totals = Record<string, number>;
-const eventsByJob: Record<JobId, Totals> = Object.fromEntries(JOBS.map((job) => [job, {}])) as Record<JobId, Totals>;
+const eventsByJob: Record<JobId, Totals> = Object.fromEntries(
+  JOBS.map((job) => [job, {}]),
+) as Record<JobId, Totals>;
 const add = (job: JobId, key: string, amount = 1): void => {
   const totals = eventsByJob[job];
   totals[key] = (totals[key] ?? 0) + amount;
 };
 const count = (event: CombatEvent, a: JobId, b: JobId): void => {
-  const job = (side: 'a' | 'b') => side === 'a' ? a : b;
+  const job = (side: 'a' | 'b') => (side === 'a' ? a : b);
   switch (event.type) {
     case 'Hit':
       if (event.attacker === 'a' || event.attacker === 'b') {
@@ -29,10 +31,18 @@ const count = (event: CombatEvent, a: JobId, b: JobId): void => {
         add(source, `damage:${event.kind}`, event.dmg);
       }
       break;
-    case 'SkillUsed': add(job(event.who), `skill:${event.skill}`); break;
-    case 'AttackStart': add(job(event.who), `attack:${event.move}`); break;
-    case 'Dash': add(job(event.who), `dash:${event.dash}`); break;
-    case 'Parry': add(job(event.who), `parry:${event.kind}`); break;
+    case 'SkillUsed':
+      add(job(event.who), `skill:${event.skill}`);
+      break;
+    case 'AttackStart':
+      add(job(event.who), `attack:${event.move}`);
+      break;
+    case 'Dash':
+      add(job(event.who), `dash:${event.dash}`);
+      break;
+    case 'Parry':
+      add(job(event.who), `parry:${event.kind}`);
+      break;
     case 'TelegraphStart':
       if (event.kind === 'meteor') add('mage', 'meteorMarks');
       break;
@@ -49,7 +59,10 @@ for (let seed = 1; seed <= n; seed++) {
     const b = swapped ? jobA : jobB;
     const result = runCombat(
       { kind: 'duel', a: baseFighter(a), b: baseFighter(b) },
-      [bot, bot], seed, undefined, { recordEvents: true },
+      [bot, bot],
+      seed,
+      undefined,
+      { recordEvents: true },
     );
     if ((result.result.winner === 'a' ? a : b) === jobA) winsA++;
     if (result.result.timedOut) timeouts++;
@@ -58,9 +71,27 @@ for (let seed = 1; seed <= n; seed++) {
   }
 }
 const rounds = 2 * n;
-console.log(JSON.stringify({
-  pair: [jobA, jobB], rounds, winPctA: 100 * winsA / rounds,
-  timeoutPct: 100 * timeouts / rounds, meanSeconds: totalTicks / rounds / 60,
-  eventsPerFight: Object.fromEntries([jobA, jobB].map((job) => [job,
-    Object.fromEntries(Object.entries(eventsByJob[job]).map(([key, value]) => [key, Number((value / rounds).toFixed(2))]))])),
-}, null, 2));
+console.log(
+  JSON.stringify(
+    {
+      pair: [jobA, jobB],
+      rounds,
+      winPctA: (100 * winsA) / rounds,
+      timeoutPct: (100 * timeouts) / rounds,
+      meanSeconds: totalTicks / rounds / 60,
+      eventsPerFight: Object.fromEntries(
+        [jobA, jobB].map((job) => [
+          job,
+          Object.fromEntries(
+            Object.entries(eventsByJob[job]).map(([key, value]) => [
+              key,
+              Number((value / rounds).toFixed(2)),
+            ]),
+          ),
+        ]),
+      ),
+    },
+    null,
+    2,
+  ),
+);

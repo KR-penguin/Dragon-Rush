@@ -22,12 +22,7 @@ interface DecisionDialogsProps {
 }
 
 /** Renders the one dialog the decision UI asks for, wired to legal actions only. */
-export function DecisionDialogs({
-  ui,
-  state,
-  nameOf,
-  onPreviewTile,
-}: DecisionDialogsProps) {
+export function DecisionDialogs({ ui, state, nameOf, onPreviewTile }: DecisionDialogsProps) {
   const { dialog, actor, groups, locked, submit } = ui;
 
   if (dialog === null || actor === null) return null;

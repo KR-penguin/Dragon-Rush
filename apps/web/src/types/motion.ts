@@ -107,7 +107,11 @@ export function diceSpinKeyframes(value: DieFace): Keyframe[] {
   const end = diceLandingRotation(value);
   return [
     { transform: cubeTransform({ x: 0, y: 0 }), offset: 0 },
-    { transform: cubeTransform({ x: 0, y: 0 }), offset: LIFT_END, easing: 'cubic-bezier(.15,.6,.25,1)' },
+    {
+      transform: cubeTransform({ x: 0, y: 0 }),
+      offset: LIFT_END,
+      easing: 'cubic-bezier(.15,.6,.25,1)',
+    },
     { transform: cubeTransform({ x: end.x + 4, y: end.y - 4 }), offset: LAND, easing: 'ease-out' },
     { transform: cubeTransform(end), offset: 1 },
   ];

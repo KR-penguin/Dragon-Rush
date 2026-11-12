@@ -58,8 +58,8 @@ export function RoomOptions({
           행동이 적용됩니다.
         </li>
         <li>
-          <GameIcon name="bot" /> 연결이 끊기면 봇이 대신 플레이하고, 같은 브라우저로 돌아오면 이어서
-          할 수 있습니다.
+          <GameIcon name="bot" /> 연결이 끊기면 봇이 대신 플레이하고, 같은 브라우저로 돌아오면
+          이어서 할 수 있습니다.
         </li>
       </ul>
     </section>

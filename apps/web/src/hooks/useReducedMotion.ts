@@ -12,7 +12,11 @@ export function useReducedMotion(): { reduced: boolean; ambient: boolean; toggle
   const choice = useStore(fxSettings, (s) => s.reduceMotion);
   const ambient = useStore(fxSettings, (s) => s.animateBackground);
   const reduced = choice ?? system;
-  return { reduced, ambient, toggle: () => fxSettings.getState().update({ reduceMotion: !reduced }) };
+  return {
+    reduced,
+    ambient,
+    toggle: () => fxSettings.getState().update({ reduceMotion: !reduced }),
+  };
 }
 
 /** Mirrors the motion settings onto <html> so CSS can switch loops and tilt off on every screen. */

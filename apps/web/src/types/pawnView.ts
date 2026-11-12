@@ -45,12 +45,16 @@ export interface PawnInputs {
 }
 
 /** Number floating over a pawn: the roll, then a countdown per hop that bursts at 0. */
-export function pawnCount(seat: SeatId, i: Omit<PawnInputs, 'combat' | 'speed' | 'nameOf'>): number | null {
+export function pawnCount(
+  seat: SeatId,
+  i: Omit<PawnInputs, 'combat' | 'speed' | 'nameOf'>,
+): number | null {
   if (i.stepped?.seat === seat) return i.stepped.steps - i.stepped.hop;
   const e = i.current;
   if (e?.type === 'DiceRolled' && e.seat === seat) return e.value;
   if (e?.type === 'MoveAdjusted' && e.seat === seat) return e.steps;
-  if (!e && i.pending?.phase === 'MOVE_ADJUST' && i.pending.actor === seat) return i.display.turn.dice;
+  if (!e && i.pending?.phase === 'MOVE_ADJUST' && i.pending.actor === seat)
+    return i.display.turn.dice;
   return null;
 }
 
@@ -60,7 +64,8 @@ export function buildPawns(i: PawnInputs): PawnViewModel[] {
     .filter((p) => p.alive || i.combat === null || !combatIncludes(i.combat, p.seat))
     .map((p): PawnViewModel => {
       const hopping = stepped?.seat === p.seat;
-      const teleporting = current?.type === 'Moved' && current.via === 'teleport' && current.seat === p.seat;
+      const teleporting =
+        current?.type === 'Moved' && current.via === 'teleport' && current.seat === p.seat;
       return {
         seat: p.seat,
         tile: hopping ? stepped.tile : p.position,

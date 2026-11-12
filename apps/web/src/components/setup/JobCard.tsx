@@ -10,7 +10,17 @@ interface JobCardProps {
   scale: JobDef;
 }
 
-function StatRow({ icon, label, value, max }: { icon: IconName; label: string; value: number; max: number }) {
+function StatRow({
+  icon,
+  label,
+  value,
+  max,
+}: {
+  icon: IconName;
+  label: string;
+  value: number;
+  max: number;
+}) {
   return (
     <div className="stat-row">
       <span className="stat-label">

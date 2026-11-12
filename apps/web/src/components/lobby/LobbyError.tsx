@@ -11,7 +11,12 @@ export function LobbyError({ message, onDismiss }: LobbyErrorProps) {
     <div className="lobby-error parchment" role="alert">
       <GameIcon name="warning" className="lobby-error-icon" />
       <p>{message}</p>
-      <button type="button" className="icon-btn lobby-error-close" onClick={onDismiss} aria-label="오류 닫기">
+      <button
+        type="button"
+        className="icon-btn lobby-error-close"
+        onClick={onDismiss}
+        aria-label="오류 닫기"
+      >
         <GameIcon name="close" />
       </button>
     </div>

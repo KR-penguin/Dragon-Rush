@@ -34,7 +34,13 @@ interface CornerCardProps {
   dimmed?: boolean;
 }
 
-function Stat({ icon, value, label, reduced, anchor }: {
+function Stat({
+  icon,
+  value,
+  label,
+  reduced,
+  anchor,
+}: {
   icon: IconName;
   value: number;
   label: string;
@@ -50,7 +56,15 @@ function Stat({ icon, value, label, reduced, anchor }: {
 }
 
 /** Corner player card: medallion, name ribbon, HP with ghost drain, stats and item sockets. */
-export function CornerCard({ card, corner, thinking, countdown, reduced, onPick, dimmed }: CornerCardProps) {
+export function CornerCard({
+  card,
+  corner,
+  thinking,
+  countdown,
+  reduced,
+  onPick,
+  dimmed,
+}: CornerCardProps) {
   const p = card.player;
   const className = [
     'corner-card',
@@ -84,7 +98,9 @@ export function CornerCard({ card, corner, thinking, countdown, reduced, onPick,
           <Crest shape={seatCrest(card.seat)} className="cc-crest" />
           <strong className="cc-name">{card.name}</strong>
           {card.isTurn && <span className="cc-turn-tag">차례</span>}
-          {countdown !== null && card.isActor && <span className="cc-timer num">{countdown}초</span>}
+          {countdown !== null && card.isActor && (
+            <span className="cc-timer num">{countdown}초</span>
+          )}
         </div>
         <div className="cc-sub">
           <span>{JOB_LABEL[p.job]}</span>

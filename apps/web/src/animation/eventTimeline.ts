@@ -34,7 +34,11 @@ export function eventDuration(e: GameEvent): number {
 const who = (name: NameOf, ref: SeatId | 'dragon') => (ref === 'dragon' ? '용' : name(ref));
 
 /** Korean log line for an event, or null when it is not worth logging. */
-export function describeEvent(e: GameEvent, name: NameOf, tileIdAt: (tile: number) => TileId): string | null {
+export function describeEvent(
+  e: GameEvent,
+  name: NameOf,
+  tileIdAt: (tile: number) => TileId,
+): string | null {
   switch (e.type) {
     case 'RoundStarted':
       return `— ${e.round}라운드 —`;
@@ -45,7 +49,9 @@ export function describeEvent(e: GameEvent, name: NameOf, tileIdAt: (tile: numbe
     case 'DiceRolled':
       return `${name(e.seat)} 주사위 ${e.value}`;
     case 'MoveAdjusted':
-      return e.delta === 0 ? null : `${name(e.seat)} 그림자 걸음 ${e.delta > 0 ? '+1' : '−1'} → ${e.steps}칸`;
+      return e.delta === 0
+        ? null
+        : `${name(e.seat)} 그림자 걸음 ${e.delta > 0 ? '+1' : '−1'} → ${e.steps}칸`;
     case 'Moved':
       return e.via === 'teleport'
         ? `${name(e.seat)} 텔레포트 → ${TILE_LABEL[tileIdAt(e.to)]}`
@@ -73,7 +79,9 @@ export function describeEvent(e: GameEvent, name: NameOf, tileIdAt: (tile: numbe
     case 'ShieldUsed':
       return `${name(e.seat)} 방어막! 전투가 취소되었습니다`;
     case 'CombatStarted':
-      return e.kind === 'dragonFight' ? `${who(name, e.a)}의 용 도전!` : `${who(name, e.a)} vs ${who(name, e.b)} 결투`;
+      return e.kind === 'dragonFight'
+        ? `${who(name, e.a)}의 용 도전!`
+        : `${who(name, e.a)} vs ${who(name, e.b)} 결투`;
     case 'CombatHit':
       return null;
     case 'PassiveTriggered':
@@ -92,7 +100,10 @@ export function describeEvent(e: GameEvent, name: NameOf, tileIdAt: (tile: numbe
   }
 }
 
-function describeEffect(e: Extract<GameEvent, { type: 'EffectApplied' }>, name: NameOf): string | null {
+function describeEffect(
+  e: Extract<GameEvent, { type: 'EffectApplied' }>,
+  name: NameOf,
+): string | null {
   const n = name(e.seat);
   switch (e.effect) {
     case 'coins':
@@ -212,7 +223,9 @@ export function applyEventToDisplay(display: PublicGameState, e: GameEvent): Pub
     case 'ItemBought':
       return patchPlayer(e.seat, { coins: e.coinsAfter });
     case 'CombatHit':
-      return typeof e.defender === 'number' ? patchPlayer(e.defender, { hp: Math.max(0, e.hpAfter) }) : display;
+      return typeof e.defender === 'number'
+        ? patchPlayer(e.defender, { hp: Math.max(0, e.hpAfter) })
+        : display;
     case 'PlayerEliminated':
       return patchPlayer(e.seat, { alive: false, hp: 0 });
     case 'DiceRolled':

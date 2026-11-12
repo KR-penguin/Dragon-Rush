@@ -16,7 +16,11 @@ export function Toasts({ toasts, onOpenChronicle }: ToastsProps) {
         <li
           key={t.id}
           className="toast parchment"
-          style={{ '--seat-color': t.seat === null ? 'var(--gold-deep)' : seatColor(t.seat) } as CSSProperties}
+          style={
+            {
+              '--seat-color': t.seat === null ? 'var(--gold-deep)' : seatColor(t.seat),
+            } as CSSProperties
+          }
         >
           <button type="button" onClick={onOpenChronicle} title="연대기 열기">
             <GameIcon name={t.icon} className="toast-icon" />

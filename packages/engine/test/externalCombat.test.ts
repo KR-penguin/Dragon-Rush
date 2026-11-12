@@ -25,7 +25,10 @@ const withJobs = (d: GameState, jobs: JobId[]): void => {
 };
 
 /** Seat 0 teleports onto seat 1 (alone on `tile`) in round 4 with no shields, so a duel starts. */
-function duelScenario(jobs: JobId[], opts: { tile?: number; rules?: GameState['rules']; edit?: (d: GameState) => void } = {}) {
+function duelScenario(
+  jobs: JobId[],
+  opts: { tile?: number; rules?: GameState['rules']; edit?: (d: GameState) => void } = {},
+) {
   const tile = opts.tile ?? 9;
   const before = patch(newGame(jobs, 8, opts.rules ?? EXTERNAL_RULES), (d) => {
     withJobs(d, jobs);
@@ -72,7 +75,9 @@ describe('external combat: request', () => {
   });
 
   it('asks for shields before requesting the fight', () => {
-    const r1 = duelScenario(['mage', 'ninja', 'archer'], { edit: (d) => void (d.players[1]!.items.shield = 1) });
+    const r1 = duelScenario(['mage', 'ninja', 'archer'], {
+      edit: (d) => void (d.players[1]!.items.shield = 1),
+    });
     expect(r1.state.pending).toEqual({ actor: 1, phase: 'SHIELD_DECISION' });
     expect(r1.state.combat).toBeNull();
     const r2 = act(r1.state, { type: 'SHIELD_DECISION', use: false });
@@ -82,14 +87,20 @@ describe('external combat: request', () => {
 
   it('requests a dragon fight with the challenger striking first', () => {
     const { state, events } = dragonScenario(['archer', 'mage', 'ninja']);
-    expect(events).toEqual([{ type: 'CombatStarted', kind: 'dragonFight', a: 0, b: 'dragon', first: 0 }]);
+    expect(events).toEqual([
+      { type: 'CombatStarted', kind: 'dragonFight', a: 0, b: 'dragon', first: 0 },
+    ]);
     expect(state.combat).toEqual({ kind: 'dragonFight', a: 0, b: null });
     expect(state.pending).toEqual({ actor: 0, phase: 'COMBAT' });
   });
 
   it('rejects every board action while the fight is pending', () => {
     const { state } = duelScenario(['mage', 'ninja', 'archer']);
-    for (const action of [{ type: 'END_TURN' }, { type: 'ROLL_DICE' }, { type: 'UPGRADE', stat: 'atk' }] as const) {
+    for (const action of [
+      { type: 'END_TURN' },
+      { type: 'ROLL_DICE' },
+      { type: 'UPGRADE', stat: 'atk' },
+    ] as const) {
       expect(isLegalAction(state, action)).toBe(false);
       expect(() => applyAction(state, action)).toThrow(IllegalActionError);
     }
@@ -108,13 +119,23 @@ describe('external combat: applyCombatResult for duels', () => {
     const r = applyCombatResult(deepFreeze(state), { winner: 'a', hpA: 7, hpB: -3 });
     expect(r.events.slice(0, 4)).toEqual([
       { type: 'CombatEnded', kind: 'duel', winner: 0, loser: 1, capReached: false },
-      { type: 'LootTransferred', from: 1, to: 0, coins: 6, items: { teleport: 0, shield: 0, thief: 2 } },
+      {
+        type: 'LootTransferred',
+        from: 1,
+        to: 0,
+        coins: 6,
+        items: { teleport: 0, shield: 0, thief: 2 },
+      },
       { type: 'PlayerEliminated', seat: 1, by: 0, round: 4 },
       { type: 'TileResolved', seat: 0, tile: 9, tileId: 'TREASURE' },
     ]);
     const treasure = DEFAULT_RULES.board[9]!.effects.find((e) => e.kind === 'coins');
     const treasureCoins = treasure && treasure.kind === 'coins' ? treasure.amount : 0;
-    expect(r.state.players[0]).toMatchObject({ hp: 7, coins: 9 + 6 + treasureCoins, items: { teleport: 0, shield: 0, thief: 2 } });
+    expect(r.state.players[0]).toMatchObject({
+      hp: 7,
+      coins: 9 + 6 + treasureCoins,
+      items: { teleport: 0, shield: 0, thief: 2 },
+    });
     expect(r.state.players[1]).toMatchObject({ alive: false, hp: 0, coins: 0 });
     expect(r.state.combat).toBeNull();
     expect(r.state.pending).toEqual({ actor: 0, phase: 'POST_MOVE' });
@@ -126,7 +147,13 @@ describe('external combat: applyCombatResult for duels', () => {
     const r = applyCombatResult(state, { winner: 'b', hpA: 0, hpB: 12 });
     expect(r.events.slice(0, 3)).toEqual([
       { type: 'CombatEnded', kind: 'duel', winner: 1, loser: 0, capReached: false },
-      { type: 'LootTransferred', from: 0, to: 1, coins: 4, items: { teleport: 0, shield: 0, thief: 0 } },
+      {
+        type: 'LootTransferred',
+        from: 0,
+        to: 1,
+        coins: 4,
+        items: { teleport: 0, shield: 0, thief: 0 },
+      },
       { type: 'PlayerEliminated', seat: 0, by: 1, round: 4 },
     ]);
     expect(eventsOf(r.events, 'TileResolved')).toHaveLength(0);
@@ -145,7 +172,10 @@ describe('external combat: applyCombatResult for duels', () => {
   it('ends the game when the winner is the last survivor', () => {
     const { state } = duelScenario(['mage', 'berserker']);
     const r = applyCombatResult(state, { winner: 'b', hpA: -5, hpB: 30 });
-    expect(r.events.at(-1)).toEqual({ type: 'GameEnded', outcome: { kind: 'lastSurvivor', winner: 1 } });
+    expect(r.events.at(-1)).toEqual({
+      type: 'GameEnded',
+      outcome: { kind: 'lastSurvivor', winner: 1 },
+    });
     expect(r.state.outcome).toEqual({ kind: 'lastSurvivor', winner: 1 });
     expect(r.state.pending).toBeNull();
     expect(r.state.combat).toBeNull();
@@ -167,7 +197,13 @@ describe('external combat: applyCombatResult for duels', () => {
   it('marks capReached when the fight timed out', () => {
     const { state } = duelScenario(['mage', 'berserker', 'swordsman']);
     const r = applyCombatResult(state, { winner: 'a', hpA: 20, hpB: 15, timedOut: true });
-    expect(r.events[0]).toEqual({ type: 'CombatEnded', kind: 'duel', winner: 0, loser: 1, capReached: true });
+    expect(r.events[0]).toEqual({
+      type: 'CombatEnded',
+      kind: 'duel',
+      winner: 0,
+      loser: 1,
+      capReached: true,
+    });
   });
 });
 
@@ -208,7 +244,10 @@ describe('external combat: dragon results', () => {
 
   it('a loss eliminates the challenger, destroys their assets and passes the turn', () => {
     const { state } = dragonScenario(['archer', 'mage', 'ninja']);
-    const r = applyCombatResult(patch(state, (d) => void (d.players[0]!.coins = 30)), { winner: 'b', hpA: -4, hpB: null });
+    const r = applyCombatResult(
+      patch(state, (d) => void (d.players[0]!.coins = 30)),
+      { winner: 'b', hpA: -4, hpB: null },
+    );
     expect(r.events.slice(0, 2)).toEqual([
       { type: 'CombatEnded', kind: 'dragonFight', winner: 'dragon', loser: 0, capReached: false },
       { type: 'PlayerEliminated', seat: 0, by: 'dragon', round: 1 },
@@ -240,17 +279,27 @@ describe('external combat: validation', () => {
     ['a defender hp in a dragon fight', dragon, { winner: 'a', hpA: 5, hpB: 10 }],
     ['a dragon-fight loser above maxHp', dragon, { winner: 'b', hpA: 40, hpB: null }],
   ])('rejects %s', (_, state, result) => {
-    expect(() => applyCombatResult(state(), result as CombatResult)).toThrow(InvalidCombatResultError);
+    expect(() => applyCombatResult(state(), result as CombatResult)).toThrow(
+      InvalidCombatResultError,
+    );
   });
 
   it('accepts boundary hp values', () => {
-    expect(() => applyCombatResult(duel(), { winner: 'a', hpA: DEFAULT_RULES.jobs.mage.hp, hpB: DEFAULT_RULES.jobs.berserker.hp })).not.toThrow();
+    expect(() =>
+      applyCombatResult(duel(), {
+        winner: 'a',
+        hpA: DEFAULT_RULES.jobs.mage.hp,
+        hpB: DEFAULT_RULES.jobs.berserker.hp,
+      }),
+    ).not.toThrow();
     expect(() => applyCombatResult(duel(), { winner: 'b', hpA: -100, hpB: 1 })).not.toThrow();
   });
 
   it('rejects results and dice resolution when no fight is pending', () => {
     const idle = newGame(['mage', 'berserker'], 3, EXTERNAL_RULES);
-    expect(() => applyCombatResult(idle, { winner: 'a', hpA: 5, hpB: 0 })).toThrow(InvalidCombatResultError);
+    expect(() => applyCombatResult(idle, { winner: 'a', hpA: 5, hpB: 0 })).toThrow(
+      InvalidCombatResultError,
+    );
     expect(() => resolveCombatWithDice(idle)).toThrow(InvalidCombatResultError);
   });
 });

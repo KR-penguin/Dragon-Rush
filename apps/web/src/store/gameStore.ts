@@ -48,7 +48,15 @@ export const createGameStore = () => {
 
     attach(client) {
       get().detach();
-      set({ client, latest: null, display: null, queue: [], current: null, log: [], lastError: null });
+      set({
+        client,
+        latest: null,
+        display: null,
+        queue: [],
+        current: null,
+        log: [],
+        lastError: null,
+      });
       unsubscribe = client.subscribe((u) => get().receive(u));
     },
 
@@ -64,7 +72,8 @@ export const createGameStore = () => {
       if (prev && update.version <= prev.version && !update.snapshot) return;
       if (update.snapshot || !get().display) {
         set({ latest: update, display: update.publicState, queue: [], current: null });
-        if (!update.snapshot && update.events.length) set({ queue: [...update.events], display: get().display });
+        if (!update.snapshot && update.events.length)
+          set({ queue: [...update.events], display: get().display });
         return;
       }
       set({ latest: update, queue: [...get().queue, ...update.events] });
@@ -77,7 +86,8 @@ export const createGameStore = () => {
         get().snap();
         return null;
       }
-      const names = (seat: SeatId) => latest.seats.find((s) => s.seat === seat)?.name ?? `P${seat + 1}`;
+      const names = (seat: SeatId) =>
+        latest.seats.find((s) => s.seat === seat)?.name ?? `P${seat + 1}`;
       const text = describeEvent(next, names, (i) => display.rules.board[i]!.id);
       const log = text ? [...get().log, { id: ++logId, text }].slice(-MAX_LOG) : get().log;
       set({ queue: rest, current: next, display: applyEventToDisplay(display, next), log });

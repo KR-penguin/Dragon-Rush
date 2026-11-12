@@ -1,6 +1,13 @@
 import { actionKey, getLegalActions } from '@dragon-rush/engine';
 import { describe, expect, it } from 'vitest';
-import { ACTION_DIM, ACTION_NAMES, decodeAction, encodeAction, legalIndices, maskFromLegal } from '../src/index';
+import {
+  ACTION_DIM,
+  ACTION_NAMES,
+  decodeAction,
+  encodeAction,
+  legalIndices,
+  maskFromLegal,
+} from '../src/index';
 import { view, walk } from './helpers';
 
 describe('act_v1 codec', () => {

@@ -72,12 +72,19 @@ function FighterCard({
 }
 
 /** Dice-resolved fight. Restyled lightly: a real-time canvas combat screen replaces it later. */
-export function CombatOverlay({ view, lookOf, breathEvery, breathLit, onSkip }: CombatOverlayProps) {
+export function CombatOverlay({
+  view,
+  lookOf,
+  breathEvery,
+  breathLit,
+  onSkip,
+}: CombatOverlayProps) {
   const last = view.hits.at(-1) ?? null;
   const a = lookOf(view.a.ref);
   const b = lookOf(view.b.ref);
   const recent = view.hits.slice(-5);
-  const runesFor = (ref: CombatantRef) => (ref === 'dragon' ? { every: breathEvery, lit: breathLit } : null);
+  const runesFor = (ref: CombatantRef) =>
+    ref === 'dragon' ? { every: breathEvery, lit: breathLit } : null;
   return (
     <div className={`combat-overlay combat-${view.kind}`} role="dialog" aria-label="전투">
       <div className="claw-wipe" aria-hidden="true">
@@ -132,7 +139,8 @@ export function CombatOverlay({ view, lookOf, breathEvery, breathLit, onSkip }: 
         </ol>
         {view.winner !== null && (
           <div className="combat-result">
-            <GameIcon name="crown" /> {lookOf(view.winner).name} 승리!{view.capReached && ' (교환 상한)'}
+            <GameIcon name="crown" /> {lookOf(view.winner).name} 승리!
+            {view.capReached && ' (교환 상한)'}
             {view.eliminated !== null && (
               <span className="combat-out">
                 {' '}

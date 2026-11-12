@@ -15,7 +15,11 @@ export const EMBER_FX_SELECTORS = {
   pawnCard: '.pawn-card',
 } as const;
 
-function point(el: Element | null | undefined, textDy?: number, punch?: Element | null): FxPoint | null {
+function point(
+  el: Element | null | undefined,
+  textDy?: number,
+  punch?: Element | null,
+): FxPoint | null {
   if (!el) return null;
   const r = el.getBoundingClientRect();
   if (r.width === 0 && r.height === 0) return null;
@@ -82,7 +86,8 @@ export function createEmberFxResolver(
           const p = point(portrait, undefined, portrait?.firstElementChild ?? portrait);
           if (p) return p;
         }
-        if (a.ref === 'dragon') return point(tagged({ kind: 'lair' })) ?? point(q(EMBER_FX_SELECTORS.boardArea), 0);
+        if (a.ref === 'dragon')
+          return point(tagged({ kind: 'lair' })) ?? point(q(EMBER_FX_SELECTORS.boardArea), 0);
         return pawn(a.ref);
       }
       case 'board':

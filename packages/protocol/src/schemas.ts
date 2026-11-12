@@ -14,12 +14,18 @@ export const ActionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('USE_TELEPORT'), tile: z.number().int().min(0).max(23) }).strict(),
   z.object({ type: z.literal('USE_THIEF'), target: seatId }).strict(),
   z.object({ type: z.literal('CHOOSE_PVP_TARGET'), target: seatId }).strict(),
-  z.object({ type: z.literal('ADJUST_MOVE'), delta: z.union([z.literal(-1), z.literal(0), z.literal(1)]) }).strict(),
+  z
+    .object({
+      type: z.literal('ADJUST_MOVE'),
+      delta: z.union([z.literal(-1), z.literal(0), z.literal(1)]),
+    })
+    .strict(),
   z.object({ type: z.literal('SHIELD_DECISION'), use: z.boolean() }).strict(),
 ]);
 
 // Compile-time check: the schema and the engine Action type must stay identical.
-type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
+type Equal<A, B> =
+  (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
 const _actionSchemaMatchesEngine: Equal<z.infer<typeof ActionSchema>, Action> = true;
 void _actionSchemaMatchesEngine;
 
@@ -28,7 +34,10 @@ export const NicknameSchema = z
   .trim()
   .min(1)
   .max(16)
-  .refine((s) => !/[<>{}]/.test(s) && [...s].every((ch) => ch.charCodeAt(0) >= 0x20), 'invalid characters');
+  .refine(
+    (s) => !/[<>{}]/.test(s) && [...s].every((ch) => ch.charCodeAt(0) >= 0x20),
+    'invalid characters',
+  );
 
 export const ROOM_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const roomCode = z
@@ -39,27 +48,42 @@ const roomCode = z
 
 export const HandshakeAuthSchema = z.object({
   protocolVersion: z.number().int(),
-  sessionToken: z.string().regex(/^[0-9a-f]{32}$/).optional(),
+  sessionToken: z
+    .string()
+    .regex(/^[0-9a-f]{32}$/)
+    .optional(),
 });
 
 export const RoomCreateSchema = z.object({ nickname: NicknameSchema }).strict();
 export const RoomJoinSchema = z.object({ roomCode, nickname: NicknameSchema }).strict();
 export const RoomLeaveSchema = z.object({}).strict();
 export const RoomConfigureSchema = z
-  .object({ maxRounds: z.number().int().min(1).max(500).nullable(), quickCombat: z.boolean().optional() })
+  .object({
+    maxRounds: z.number().int().min(1).max(500).nullable(),
+    quickCombat: z.boolean().optional(),
+  })
   .strict();
 export const RoomConfigureSeatSchema = z
   .object({
     seat: seatId,
     kind: z.enum(['human', 'bot', 'model', 'empty']),
-    botName: z.enum(['heuristic', 'heuristic:aggro', 'heuristic:growth', 'heuristic:rush', 'random']).optional(),
-    modelId: z.string().regex(/^[a-z0-9_-]{1,64}$/).optional(),
+    botName: z
+      .enum(['heuristic', 'heuristic:aggro', 'heuristic:growth', 'heuristic:rush', 'random'])
+      .optional(),
+    modelId: z
+      .string()
+      .regex(/^[a-z0-9_-]{1,64}$/)
+      .optional(),
   })
   .strict();
-export const RoomSelectJobSchema = z.object({ job: z.enum(JOB_IDS).nullable(), seat: seatId.optional() }).strict();
+export const RoomSelectJobSchema = z
+  .object({ job: z.enum(JOB_IDS).nullable(), seat: seatId.optional() })
+  .strict();
 export const RoomSetReadySchema = z.object({ ready: z.boolean() }).strict();
 export const RoomStartSchema = z.object({}).strict();
-export const GameActionSchema = z.object({ action: ActionSchema, stateVersion: z.number().int().min(0) }).strict();
+export const GameActionSchema = z
+  .object({ action: ActionSchema, stateVersion: z.number().int().min(0) })
+  .strict();
 export const GameRequestSnapshotSchema = z.object({}).strict();
 
 export type HandshakeAuth = z.infer<typeof HandshakeAuthSchema>;

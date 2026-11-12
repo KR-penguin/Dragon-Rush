@@ -1,5 +1,11 @@
 import { NO_INPUT, type FighterInput, type MoveDir } from '@dragon-rush/combat';
-import { isValidMask, MASK_ATTACK, MASK_DASH, MASK_SKILL, MOVE_NIBBLE } from '@dragon-rush/protocol';
+import {
+  isValidMask,
+  MASK_ATTACK,
+  MASK_DASH,
+  MASK_SKILL,
+  MOVE_NIBBLE,
+} from '@dragon-rush/protocol';
 import { DECAY_RUN } from './constants';
 
 /** Precomputed frozen inputs for all 128 byte values (invalid nibbles map to NO_INPUT; decoders reject them). */
@@ -22,7 +28,9 @@ export function maskToInput(m: number): FighterInput {
 /** The only FighterInput -> mask conversion. Out-of-range moves become 0 (the sim does the same). */
 export function inputToMask(i: FighterInput): number {
   const move = Number.isInteger(i.move) && i.move >= 0 && i.move <= 8 ? i.move : 0;
-  return move | (i.attack ? MASK_ATTACK : 0) | (i.skill ? MASK_SKILL : 0) | (i.dash ? MASK_DASH : 0);
+  return (
+    move | (i.attack ? MASK_ATTACK : 0) | (i.skill ? MASK_SKILL : 0) | (i.dash ? MASK_DASH : 0)
+  );
 }
 
 /**

@@ -3,7 +3,11 @@ import { addCoins, healOrHurtByEvent } from './economy';
 import { enterPostMove } from './turn';
 import { ITEM_IDS, type EffectSpec, type ItemId, type SeatId } from './types';
 
-type EffectHandler<K extends EffectSpec['kind']> = (ctx: Ctx, seat: SeatId, e: Extract<EffectSpec, { kind: K }>) => void;
+type EffectHandler<K extends EffectSpec['kind']> = (
+  ctx: Ctx,
+  seat: SeatId,
+  e: Extract<EffectSpec, { kind: K }>,
+) => void;
 
 const HANDLERS: { [K in EffectSpec['kind']]: EffectHandler<K> } = {
   coins: (ctx, seat, e) => {
@@ -21,7 +25,14 @@ const HANDLERS: { [K in EffectSpec['kind']]: EffectHandler<K> } = {
   stat: (ctx, seat, e) => {
     const p = playerAt(ctx.s, seat);
     p[e.stat] += e.amount;
-    emit(ctx, { type: 'EffectApplied', seat, effect: 'stat', stat: e.stat, delta: e.amount, after: p[e.stat] });
+    emit(ctx, {
+      type: 'EffectApplied',
+      seat,
+      effect: 'stat',
+      stat: e.stat,
+      delta: e.amount,
+      after: p[e.stat],
+    });
   },
   maxHp: (ctx, seat, e) => {
     const p = playerAt(ctx.s, seat);
@@ -37,7 +48,14 @@ const HANDLERS: { [K in EffectSpec['kind']]: EffectHandler<K> } = {
     const item = ITEM_IDS[roll(ctx, ITEM_IDS.length) - 1] as ItemId;
     const p = playerAt(ctx.s, seat);
     p.items[item] += 1;
-    emit(ctx, { type: 'EffectApplied', seat, effect: 'randomItem', item, delta: 1, after: p.items[item] });
+    emit(ctx, {
+      type: 'EffectApplied',
+      seat,
+      effect: 'randomItem',
+      item,
+      delta: 1,
+      after: p.items[item],
+    });
   },
   training: () => {},
   shop: (ctx) => {

@@ -19,7 +19,8 @@ export interface FxAnchor {
 
 export const FX_ANCHOR_ATTR = 'data-fx-anchor';
 
-export const fxAnchorKey = (a: FxAnchor): string => (a.id === undefined ? a.kind : `${a.kind}:${a.id}`);
+export const fxAnchorKey = (a: FxAnchor): string =>
+  a.id === undefined ? a.kind : `${a.kind}:${a.id}`;
 
 /** Spread onto an element: `<div {...fxAnchorProps({ kind: 'seat', id: 0 })}>`. */
 export const fxAnchorProps = (a: FxAnchor): Record<typeof FX_ANCHOR_ATTR, string> => ({
@@ -43,4 +44,9 @@ export const anchorFromRect = (r: {
   top: number;
   width: number;
   height: number;
-}): ScreenAnchor => ({ x: r.left + r.width / 2, y: r.top + r.height / 2, width: r.width, height: r.height });
+}): ScreenAnchor => ({
+  x: r.left + r.width / 2,
+  y: r.top + r.height / 2,
+  width: r.width,
+  height: r.height,
+});

@@ -14,9 +14,13 @@ export interface ServerConfig {
   messagesPerSecond: number;
 }
 
-const num = (v: string | undefined, fallback: number) => (v !== undefined && v !== '' && !Number.isNaN(Number(v)) ? Number(v) : fallback);
+const num = (v: string | undefined, fallback: number) =>
+  v !== undefined && v !== '' && !Number.isNaN(Number(v)) ? Number(v) : fallback;
 
-export function loadConfig(env: NodeJS.ProcessEnv = process.env, cwd = process.cwd()): ServerConfig {
+export function loadConfig(
+  env: NodeJS.ProcessEnv = process.env,
+  cwd = process.cwd(),
+): ServerConfig {
   const root = findRepoRoot(cwd);
   const webDist = env.WEB_DIST_DIR ?? resolve(root, 'apps/web/dist');
   return {

@@ -1,4 +1,9 @@
-import { decodeFightPong, encodeFightPing, FIGHT_C2S, type FightC2SEvent } from '@dragon-rush/protocol';
+import {
+  decodeFightPong,
+  encodeFightPing,
+  FIGHT_C2S,
+  type FightC2SEvent,
+} from '@dragon-rush/protocol';
 import { ClockSync, PingSchedule } from './clock';
 
 /** Outgoing half of a fight connection (Socket.IO in the app, a simulated link in tests). */
@@ -21,7 +26,8 @@ export class NetClock {
 
   poll(nowMs: number): void {
     const id = this.schedule.poll(nowMs);
-    if (id !== null) this.transport.send(FIGHT_C2S.ping, encodeFightPing({ pingId: id, clientMs: nowMs }));
+    if (id !== null)
+      this.transport.send(FIGHT_C2S.ping, encodeFightPing({ pingId: id, clientMs: nowMs }));
   }
 
   burst(nowMs: number): void {

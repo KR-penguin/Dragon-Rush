@@ -38,11 +38,17 @@ export function Pawn({ view, spot, reduced }: PawnProps) {
       // Cross-fade in place of a hop (reduced motion) or a teleport blink. Opacity only on the
       // standee art leaf: opacity on a preserve-3d ancestor would flatten the billboard.
       const ms = reduced ? 80 : (m?.ms ?? 300);
-      artRef.current?.animate([{ opacity: 0 }, { opacity: 1 }], { duration: ms, easing: 'ease-out' });
+      artRef.current?.animate([{ opacity: 0 }, { opacity: 1 }], {
+        duration: ms,
+        easing: 'ease-out',
+      });
       return;
     }
     if (!m) {
-      root.animate([{ transform: at(from) }, { transform: at(spot) }], { duration: 160, easing: 'ease-out' });
+      root.animate([{ transform: at(from) }, { transform: at(spot) }], {
+        duration: 160,
+        easing: 'ease-out',
+      });
       return;
     }
     root.animate([{ transform: at(from) }, { transform: at(spot) }], {
@@ -57,16 +63,16 @@ export function Pawn({ view, spot, reduced }: PawnProps) {
       `[data-fx-anchor="tile:${view.tile}"] .tile-face`,
     );
     tileFace?.animate(
-      [{ transform: 'translateZ(0px)' }, { transform: 'translateZ(-2px)' }, { transform: 'translateZ(0px)' }],
+      [
+        { transform: 'translateZ(0px)' },
+        { transform: 'translateZ(-2px)' },
+        { transform: 'translateZ(0px)' },
+      ],
       { duration: 80, delay: m.ms * 0.85 },
     );
   }, [spot, reduced, view.tile, view.motion]);
 
-  const className = [
-    'pawn',
-    view.active ? 'is-active' : '',
-    view.out ? 'is-out' : '',
-  ].join(' ');
+  const className = ['pawn', view.active ? 'is-active' : '', view.out ? 'is-out' : ''].join(' ');
 
   return (
     <div

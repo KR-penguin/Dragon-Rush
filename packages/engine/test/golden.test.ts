@@ -55,6 +55,11 @@ describe('engine golden event log', () => {
   });
 
   it('keeps the timeout-relevant legal action order', () => {
-    expect(getLegalActions({ ...createGameWithEvents({ seats: [{ job: 'mage' }, { job: 'archer' }] }, DEFAULT_RULES, 1).state })[0]).toEqual({ type: 'ROLL_DICE' });
+    expect(
+      getLegalActions({
+        ...createGameWithEvents({ seats: [{ job: 'mage' }, { job: 'archer' }] }, DEFAULT_RULES, 1)
+          .state,
+      })[0],
+    ).toEqual({ type: 'ROLL_DICE' });
   });
 });

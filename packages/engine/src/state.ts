@@ -2,7 +2,14 @@ import type { Ctx } from './ctx';
 import { createRng, shuffle } from './rng';
 import { validateRules, validateSetup } from './rules/validateRules';
 import { beginTurn, emptyItems, freshTurn } from './turn';
-import { ITEM_IDS, type GameEvent, type GameSetup, type GameState, type PlayerState, type RulesConfig } from './types';
+import {
+  ITEM_IDS,
+  type GameEvent,
+  type GameSetup,
+  type GameState,
+  type PlayerState,
+  type RulesConfig,
+} from './types';
 
 export function createGame(setup: GameSetup, rules: RulesConfig, seed: number): GameState {
   return createGameWithEvents(setup, rules, seed).state;

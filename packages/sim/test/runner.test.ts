@@ -18,15 +18,32 @@ describe('sim runner', () => {
   });
 
   it('settles fights with the real-time sim when asked, reproducibly', () => {
-    const run = () => runBatch({ games: 6, players: 4, bots: 'heuristic', baseSeed: 3, combat: 'sim', logFights: true });
+    const run = () =>
+      runBatch({
+        games: 6,
+        players: 4,
+        bots: 'heuristic',
+        baseSeed: 3,
+        combat: 'sim',
+        logFights: true,
+      });
     const a = run();
     expect(a).toEqual(run());
     const fights = a.flatMap((r) => r.fights ?? []);
     expect(fights.length).toBeGreaterThan(0);
     expect(fights.every((f) => f.ticks !== null && f.ticks > 0)).toBe(true);
     expect(a.reduce((n, r) => n + r.combatTicks, 0)).toBe(fights.reduce((n, f) => n + f.ticks!, 0));
-    for (const r of a) expect(r.outcome === 'dragon' || r.outcome === 'lastSurvivor' || r.outcome === 'draw').toBe(true);
-    const dice = runBatch({ games: 6, players: 4, bots: 'heuristic', baseSeed: 3, logFights: true });
+    for (const r of a)
+      expect(r.outcome === 'dragon' || r.outcome === 'lastSurvivor' || r.outcome === 'draw').toBe(
+        true,
+      );
+    const dice = runBatch({
+      games: 6,
+      players: 4,
+      bots: 'heuristic',
+      baseSeed: 3,
+      logFights: true,
+    });
     expect(dice.flatMap((r) => r.fights ?? []).every((f) => f.ticks === null)).toBe(true);
     const dist = statDistFromRecords(dice, 'dice');
     expect(dist.version).toBe('stat_dist_v1');

@@ -9,11 +9,26 @@ import { AssetImage } from '../common/AssetImage';
 function GateArt() {
   return (
     <svg viewBox="0 0 140 130" className="landmark-svg">
-      <path d="M8 128V40h10v-8h8v8h8v-8h8v8h10v88Z" fill="#7b6a58" stroke="#2b1d14" strokeWidth="3" />
-      <path d="M88 128V40h10v-8h8v8h8v-8h8v8h10v88Z" fill="#7b6a58" stroke="#2b1d14" strokeWidth="3" />
+      <path
+        d="M8 128V40h10v-8h8v8h8v-8h8v8h10v88Z"
+        fill="#7b6a58"
+        stroke="#2b1d14"
+        strokeWidth="3"
+      />
+      <path
+        d="M88 128V40h10v-8h8v8h8v-8h8v8h10v88Z"
+        fill="#7b6a58"
+        stroke="#2b1d14"
+        strokeWidth="3"
+      />
       <path d="M52 128V66h36v62Z" fill="#8a7864" stroke="#2b1d14" strokeWidth="3" />
       <path d="M58 128v-34a12 12 0 0 1 24 0v34Z" fill="#1a1210" stroke="#2b1d14" strokeWidth="3" />
-      <path d="M52 66h36V56h-6v6h-6v-6h-6v6h-6v-6h-6v6h-6Z" fill="#7b6a58" stroke="#2b1d14" strokeWidth="3" />
+      <path
+        d="M52 66h36V56h-6v6h-6v-6h-6v6h-6v-6h-6v6h-6Z"
+        fill="#7b6a58"
+        stroke="#2b1d14"
+        strokeWidth="3"
+      />
       <g className="landmark-flag">
         <path d="M30 32V4" stroke="#2b1d14" strokeWidth="3" />
         <path d="M31 5h26l-6 7 6 7H31Z" fill="#c8402a" stroke="#2b1d14" strokeWidth="2.5" />
@@ -30,8 +45,20 @@ function GateArt() {
 function TentArt() {
   return (
     <svg viewBox="0 0 140 130" className="landmark-svg">
-      <path d="M70 6 6 92h128Z" fill="#ead9b5" stroke="#2b1d14" strokeWidth="3" strokeLinejoin="round" />
-      <path d="M70 6 38 92h16L70 6l16 86h16Z" fill="#c8402a" stroke="#2b1d14" strokeWidth="2.5" strokeLinejoin="round" />
+      <path
+        d="M70 6 6 92h128Z"
+        fill="#ead9b5"
+        stroke="#2b1d14"
+        strokeWidth="3"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M70 6 38 92h16L70 6l16 86h16Z"
+        fill="#c8402a"
+        stroke="#2b1d14"
+        strokeWidth="2.5"
+        strokeLinejoin="round"
+      />
       <path d="M10 92h120v8H10Z" fill="#5a3a22" stroke="#2b1d14" strokeWidth="3" />
       <path d="M24 100v28M116 100v28" stroke="#3b2618" strokeWidth="6" />
       <path d="M20 108h100v20H20Z" fill="#8a5a32" stroke="#2b1d14" strokeWidth="3" />
@@ -40,7 +67,14 @@ function TentArt() {
       <path d="M62 96h16v8H62Z" fill="#6b4fa8" stroke="#2b1d14" strokeWidth="2" />
       <g className="landmark-lantern">
         <path d="M118 52v12" stroke="#2b1d14" strokeWidth="2.5" />
-        <circle className="landmark-lantern-glow" cx="118" cy="72" r="14" fill="#ffb25b" opacity="0.35" />
+        <circle
+          className="landmark-lantern-glow"
+          cx="118"
+          cy="72"
+          r="14"
+          fill="#ffb25b"
+          opacity="0.35"
+        />
         <path d="M112 64h12l-2 16h-8Z" fill="#ffb25b" stroke="#2b1d14" strokeWidth="2.5" />
       </g>
     </svg>
@@ -51,11 +85,23 @@ function InnArt() {
   return (
     <svg viewBox="0 0 140 130" className="landmark-svg">
       <path d="M98 30h14v34H98Z" fill="#7b6a58" stroke="#2b1d14" strokeWidth="3" />
-      <path d="M8 66 70 18l62 48Z" fill="#8a3a22" stroke="#2b1d14" strokeWidth="3" strokeLinejoin="round" />
+      <path
+        d="M8 66 70 18l62 48Z"
+        fill="#8a3a22"
+        stroke="#2b1d14"
+        strokeWidth="3"
+        strokeLinejoin="round"
+      />
       <path d="M20 66h100v62H20Z" fill="#ead9b5" stroke="#2b1d14" strokeWidth="3" />
       <path d="M20 66l100 62M120 66 20 128M70 66v62M20 96h100" stroke="#5a3a22" strokeWidth="4" />
       <path d="M58 98h24v30H58Z" fill="#3b2618" stroke="#2b1d14" strokeWidth="3" />
-      <path d="M30 76h18v14H30ZM92 76h18v14H92Z" fill="#ffb25b" stroke="#2b1d14" strokeWidth="3" className="landmark-window" />
+      <path
+        d="M30 76h18v14H30ZM92 76h18v14H92Z"
+        fill="#ffb25b"
+        stroke="#2b1d14"
+        strokeWidth="3"
+        className="landmark-window"
+      />
       <path d="M60 44h20v12H60Z" fill="#d9a441" stroke="#2b1d14" strokeWidth="2.5" />
       <g className="landmark-smoke">
         <circle cx="105" cy="22" r="6" />

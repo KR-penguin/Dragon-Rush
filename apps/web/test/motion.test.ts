@@ -42,7 +42,9 @@ describe('pawn hops', () => {
 
   it('fits the hops inside the 160 ms-per-step Moved budget', () => {
     expect(diceMoveMs(3)).toBe(480);
-    expect(eventDuration({ type: 'Moved', seat: 0, from: 0, to: 3, steps: 3, via: 'dice' })).toBe(diceMoveMs(3));
+    expect(eventDuration({ type: 'Moved', seat: 0, from: 0, to: 3, steps: 3, via: 'dice' })).toBe(
+      diceMoveMs(3),
+    );
     for (let steps = 1; steps <= 8; steps++) {
       const hops = hopSchedule(steps).reduce((a, b) => a + b, 0);
       expect(hops).toBeLessThanOrEqual(steps * MOVE_STEP_BUDGET_MS);

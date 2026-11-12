@@ -38,7 +38,10 @@ export function useCameraDirector(
       if (!el || typeof el.animate !== 'function') return;
       const now = getComputedStyle(el).transform;
       const next = el.animate(
-        [{ transform: now && now !== 'none' ? now : poseTransform(pose) }, { transform: poseTransform(beat.pose) }],
+        [
+          { transform: now && now !== 'none' ? now : poseTransform(pose) },
+          { transform: poseTransform(beat.pose) },
+        ],
         { duration: beat.ms / speed, easing: beat.easing, fill: 'forwards' },
       );
       anim?.cancel();

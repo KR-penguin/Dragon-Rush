@@ -29,7 +29,11 @@ export function HomePage({ onLocal, onOnline }: HomePageProps) {
         <p className="home-tagline">주사위를 굴려 강해지고, 결투에서 살아남아, 용을 쓰러뜨려라.</p>
         <ul className="home-jobs" aria-label="직업">
           {JOB_IDS.map((j, i) => (
-            <li key={j} style={{ '--seat-color': seatColor(i) } as CSSProperties} title={JOB_LABEL[j]}>
+            <li
+              key={j}
+              style={{ '--seat-color': seatColor(i) } as CSSProperties}
+              title={JOB_LABEL[j]}
+            >
               <JobArt job={j} className="home-job-art" />
               <span>{JOB_LABEL[j]}</span>
             </li>

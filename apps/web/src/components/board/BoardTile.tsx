@@ -34,7 +34,13 @@ interface BoardTileProps {
   onHover?: (index: number | null, el: HTMLElement | null) => void;
 }
 
-export function EffectChips({ chips, className = '' }: { chips: readonly EffectChip[]; className?: string }) {
+export function EffectChips({
+  chips,
+  className = '',
+}: {
+  chips: readonly EffectChip[];
+  className?: string;
+}) {
   if (chips.length === 0) return null;
   return (
     <span className={`effect-chips ${className}`}>
@@ -49,7 +55,18 @@ export function EffectChips({ chips, className = '' }: { chips: readonly EffectC
 }
 
 /** Parchment plaque with a category gem and effect chips; corners carry a landmark standee. */
-export function BoardTile({ index, tile, category, chips, side, row, col, flags, onPick, onHover }: BoardTileProps) {
+export function BoardTile({
+  index,
+  tile,
+  category,
+  chips,
+  side,
+  row,
+  col,
+  flags,
+  onPick,
+  onHover,
+}: BoardTileProps) {
   const name = TILE_LABEL[tile.id];
   const landmark = side === 'corner' ? landmarkOf(tile.id) : null;
   const className = [
@@ -96,7 +113,12 @@ export function BoardTile({ index, tile, category, chips, side, row, col, flags,
     );
   }
   return (
-    <div className={className} style={style} {...fxAnchorProps({ kind: 'tile', id: index })} {...hover}>
+    <div
+      className={className}
+      style={style}
+      {...fxAnchorProps({ kind: 'tile', id: index })}
+      {...hover}
+    >
       {body}
     </div>
   );

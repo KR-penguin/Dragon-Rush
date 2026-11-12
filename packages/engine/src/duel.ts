@@ -47,7 +47,12 @@ export function shieldDecision(ctx: Ctx, use: boolean): void {
   if (use) {
     const p = playerAt(ctx.s, actor);
     p.items.shield -= 1;
-    emit(ctx, { type: 'ItemUsed', seat: actor, item: 'shield', target: actor === arriver ? target : arriver });
+    emit(ctx, {
+      type: 'ItemUsed',
+      seat: actor,
+      item: 'shield',
+      target: actor === arriver ? target : arriver,
+    });
     emit(ctx, { type: 'ShieldUsed', seat: actor, against: actor === arriver ? target : arriver });
     ctx.s.pvp = null;
     resolveTile(ctx, arriver);

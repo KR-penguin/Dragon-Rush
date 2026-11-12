@@ -77,8 +77,15 @@ const LEGAL_BY_PHASE: Record<Phase, LegalGenerator> = {
     { type: 'SHIELD_DECISION', use: false },
     { type: 'SHIELD_DECISION', use: true },
   ],
-  TRAINING_CHOICE: () => UPGRADE_STATS.map((stat) => ({ type: 'CHOOSE_TRAINING_STAT' as const, stat })),
-  POST_MOVE: (s) => [{ type: 'END_TURN' }, ...purchases(s), ...upgrades(s), ...thieves(s), ...teleports(s)],
+  TRAINING_CHOICE: () =>
+    UPGRADE_STATS.map((stat) => ({ type: 'CHOOSE_TRAINING_STAT' as const, stat })),
+  POST_MOVE: (s) => [
+    { type: 'END_TURN' },
+    ...purchases(s),
+    ...upgrades(s),
+    ...thieves(s),
+    ...teleports(s),
+  ],
   // A pending fight is settled by applyCombatResult / resolveCombatWithDice, never by a board action.
   COMBAT: () => [],
 };

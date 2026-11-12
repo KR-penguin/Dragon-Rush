@@ -14,8 +14,12 @@ import {
 import { cloneState } from '../src/state';
 
 /** Board flow tests assert dice-resolved fights inside applyAction (pre-external behaviour). */
-export const DICE_RULES: RulesConfig = withRules({ combat: { ...DEFAULT_RULES.combat, mode: 'dice' } });
-export const EXTERNAL_RULES: RulesConfig = withRules({ combat: { ...DEFAULT_RULES.combat, mode: 'external' } });
+export const DICE_RULES: RulesConfig = withRules({
+  combat: { ...DEFAULT_RULES.combat, mode: 'dice' },
+});
+export const EXTERNAL_RULES: RulesConfig = withRules({
+  combat: { ...DEFAULT_RULES.combat, mode: 'external' },
+});
 
 export function newGame(jobs: JobId[], seed = 1, rules: RulesConfig = DICE_RULES): GameState {
   return createGame({ seats: jobs.map((job) => ({ job })) }, rules, seed);

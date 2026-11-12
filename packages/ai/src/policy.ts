@@ -1,4 +1,11 @@
-import { createRng, nextFloat, type Action, type PublicGameState, type RngState, type SeatId } from '@dragon-rush/engine';
+import {
+  createRng,
+  nextFloat,
+  type Action,
+  type PublicGameState,
+  type RngState,
+  type SeatId,
+} from '@dragon-rush/engine';
 
 export interface DecisionContext {
   readonly view: PublicGameState;

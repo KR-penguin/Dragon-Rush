@@ -22,7 +22,12 @@ export function AnvilTray({ options, coins, disabled, onUpgrade, onClose }: Anvi
         <span className="anvil-tray-coins">
           <GameIcon name="coins" /> <b className="impact">{coins}</b>
         </span>
-        <button type="button" className="icon-btn anvil-close" onClick={onClose} aria-label="강화 닫기">
+        <button
+          type="button"
+          className="icon-btn anvil-close"
+          onClick={onClose}
+          aria-label="강화 닫기"
+        >
           <GameIcon name="close" />
         </button>
       </header>

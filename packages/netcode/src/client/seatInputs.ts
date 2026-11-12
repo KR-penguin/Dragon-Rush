@@ -117,7 +117,8 @@ export class SeatInputs {
   knownAt(t: number): number {
     const i = t & MASK;
     if (this.tickOf[i] === t) return this.mask[i] ?? 0;
-    if (this.own && this.ownTick[i] === t && this.controllerAt(t) === 'human') return this.ownMask[i] ?? 0;
+    if (this.own && this.ownTick[i] === t && this.controllerAt(t) === 'human')
+      return this.ownMask[i] ?? 0;
     return -1;
   }
 
@@ -131,10 +132,12 @@ export class SeatInputs {
     for (let n = t - 1; n >= floor && n > t - INPUT_RING; n--) {
       const i = n & MASK;
       if (this.tickOf[i] === n) {
-        if (this.kind[i] === KIND_SUBST) return substitute(this.base[i] ?? 0, (this.run[i] ?? 0) + (t - n));
+        if (this.kind[i] === KIND_SUBST)
+          return substitute(this.base[i] ?? 0, (this.run[i] ?? 0) + (t - n));
         return this.mask[i] ?? 0;
       }
-      if (this.own && this.ownTick[i] === n && this.controllerAt(n) === 'human') return this.ownMask[i] ?? 0;
+      if (this.own && this.ownTick[i] === n && this.controllerAt(n) === 'human')
+        return this.ownMask[i] ?? 0;
     }
     return 0;
   }

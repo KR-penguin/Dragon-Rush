@@ -34,9 +34,16 @@ export function ResultOverlay({
   return (
     <div className="result-overlay" role="dialog" aria-label="게임 결과">
       <div className="result-rays" aria-hidden="true" />
-      <div className="result-card" style={{ '--seat-color': winnerColor ?? 'var(--gold)' } as CSSProperties}>
+      <div
+        className="result-card"
+        style={{ '--seat-color': winnerColor ?? 'var(--gold)' } as CSSProperties}
+      >
         <div className="result-hero">
-          {winnerJob ? <JobArt job={winnerJob} className="result-standee" /> : <DragonArt className="result-standee is-draw" />}
+          {winnerJob ? (
+            <JobArt job={winnerJob} className="result-standee" />
+          ) : (
+            <DragonArt className="result-standee is-draw" />
+          )}
           <GameIcon name="crown" className="result-crown" />
         </div>
         <div className="result-banner">

@@ -76,7 +76,11 @@ export function DiceTray({ value, roll, speed, reduced }: DiceTrayProps) {
     if (!roll.local) {
       const card = getFxAnchor({ kind: 'seat', id: roll.seat });
       const r = tray.getBoundingClientRect();
-      if (card) from = clampThrow({ x: card.x - (r.left + r.width / 2), y: card.y - (r.top + r.height / 2) });
+      if (card)
+        from = clampThrow({
+          x: card.x - (r.left + r.width / 2),
+          y: card.y - (r.top + r.height / 2),
+        });
     }
     path.animate(diceThrowKeyframes(from.x, from.y), { duration: ms });
     cube.animate(diceSpinKeyframes(roll.value), { duration: ms });
@@ -106,7 +110,11 @@ export function DiceTray({ value, roll, speed, reduced }: DiceTrayProps) {
       <div className="dice-felt">
         <div ref={pathRef} className="die-path">
           <div className="die-shadow" />
-          <div ref={cubeRef} className="die-cube" style={{ transform: cubeTransform(REST_ROTATION[face]) }}>
+          <div
+            ref={cubeRef}
+            className="die-cube"
+            style={{ transform: cubeTransform(REST_ROTATION[face]) }}
+          >
             {DIE_FACES.map((f) => (
               <div
                 key={f}

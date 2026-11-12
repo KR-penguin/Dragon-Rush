@@ -62,7 +62,8 @@ export function checkParity(
     if (maskedArgmax(out, s.mask) !== maskedArgmax(s.actor, s.mask)) argmaxMismatches.push(index);
     if (s.value !== undefined && model.value) {
       const err = Math.abs(model.value(Float32Array.from(s.obs)) - s.value);
-      if (!(err <= tol.abs + tol.rel * Math.abs(s.value))) failures.push({ index, field: 'value', maxAbsError: err });
+      if (!(err <= tol.abs + tol.rel * Math.abs(s.value)))
+        failures.push({ index, field: 'value', maxAbsError: err });
     }
   });
   return {

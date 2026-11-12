@@ -1,4 +1,11 @@
-import { applyAction, createGameWithEvents, DEFAULT_RULES, getLegalActions, toPublicState, type GameEvent } from '@dragon-rush/engine';
+import {
+  applyAction,
+  createGameWithEvents,
+  DEFAULT_RULES,
+  getLegalActions,
+  toPublicState,
+  type GameEvent,
+} from '@dragon-rush/engine';
 import { describe, expect, it } from 'vitest';
 import {
   applyEventToDisplay,
@@ -12,8 +19,16 @@ import { ICON_NAMES } from '../src/types/icons';
 describe('event timeline', () => {
   it('describes every event of a full game without throwing and replays positions', () => {
     // Dice mode resolves fights inside applyAction (same events the temporary client-side resolver produces).
-    const rules = { ...DEFAULT_RULES, maxRounds: 30, combat: { ...DEFAULT_RULES.combat, mode: 'dice' as const } };
-    const created = createGameWithEvents({ seats: [{ job: 'mage' }, { job: 'ninja' }, { job: 'archer' }] }, rules, 4);
+    const rules = {
+      ...DEFAULT_RULES,
+      maxRounds: 30,
+      combat: { ...DEFAULT_RULES.combat, mode: 'dice' as const },
+    };
+    const created = createGameWithEvents(
+      { seats: [{ job: 'mage' }, { job: 'ninja' }, { job: 'archer' }] },
+      rules,
+      4,
+    );
     let state = created.state;
     const events = created.events;
     const all: GameEvent[] = [...events];
@@ -41,6 +56,10 @@ describe('event timeline', () => {
       const seat = eventSeat(e);
       if (seat !== null) expect(seat).toBeGreaterThanOrEqual(0);
     }
-    expect(all.some((e) => describeEvent(e, name, (t) => DEFAULT_RULES.board[t]!.id)?.includes('라운드'))).toBe(true);
+    expect(
+      all.some((e) =>
+        describeEvent(e, name, (t) => DEFAULT_RULES.board[t]!.id)?.includes('라운드'),
+      ),
+    ).toBe(true);
   });
 });

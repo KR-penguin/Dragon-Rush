@@ -338,12 +338,7 @@ export function GamePage({ session, onExit, onRestart }: GamePageProps) {
         </TargetBanner>
       )}
 
-      <DecisionDialogs
-        ui={ui}
-        state={state}
-        nameOf={nameOf}
-        onPreviewTile={setPreview}
-      />
+      <DecisionDialogs ui={ui} state={state} nameOf={nameOf} onPreviewTile={setPreview} />
 
       <CombatLayer store={store} />
 

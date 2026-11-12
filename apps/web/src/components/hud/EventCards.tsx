@@ -25,7 +25,10 @@ function EventCard({ card, reduced }: { card: LiveCard; reduced: boolean }) {
     const dx = tile ? tile.x - (r.left + r.width / 2) : 0;
     const dy = tile ? tile.y - (r.top + r.height / 2) : 40;
     el.animate(
-      [{ transform: `translate(${dx}px, ${dy}px) scale(0.4)` }, { transform: 'translate(0, 0) scale(1)' }],
+      [
+        { transform: `translate(${dx}px, ${dy}px) scale(0.4)` },
+        { transform: 'translate(0, 0) scale(1)' },
+      ],
       { duration: 200 / card.speed, easing: 'cubic-bezier(.34,1.56,.64,1)' },
     );
     // Runs once per card: later updates only turn the card over.
@@ -37,7 +40,11 @@ function EventCard({ card, reduced }: { card: LiveCard; reduced: boolean }) {
     '--flip-delay': `${200 / card.speed}ms`,
   } as CSSProperties;
   return (
-    <div ref={ref} className={`event-card tone-${face.tone}${reduced ? ' is-reduced' : ''}`} style={style}>
+    <div
+      ref={ref}
+      className={`event-card tone-${face.tone}${reduced ? ' is-reduced' : ''}`}
+      style={style}
+    >
       <div className={`event-card-inner${card.revealed ? ' is-revealed' : ''}`}>
         <div className="event-card-back">
           <GameIcon name={face.kind === 'cave' ? 'cave' : 'dragon'} />
@@ -67,7 +74,10 @@ function FlyingChip({ flyer }: { flyer: Flyer }) {
     el.animate(
       [
         { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 },
-        { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(0.7)`, opacity: 0.9 },
+        {
+          transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(0.7)`,
+          opacity: 0.9,
+        },
       ],
       { duration: flyer.ms, easing: 'cubic-bezier(.55,0,1,.45)', fill: 'forwards' },
     );
@@ -85,7 +95,15 @@ function FlyingChip({ flyer }: { flyer: Flyer }) {
 }
 
 /** Event cards rising from tiles and their effect chips flying to the corner cards (§1.8). */
-export function EventCards({ cards, flyers, reduced }: { cards: readonly LiveCard[]; flyers: readonly Flyer[]; reduced: boolean }) {
+export function EventCards({
+  cards,
+  flyers,
+  reduced,
+}: {
+  cards: readonly LiveCard[];
+  flyers: readonly Flyer[];
+  reduced: boolean;
+}) {
   return (
     <div className="event-layer" aria-hidden="true">
       {cards.map((c) => (

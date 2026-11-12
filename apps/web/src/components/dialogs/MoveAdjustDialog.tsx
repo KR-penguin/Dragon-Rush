@@ -16,7 +16,13 @@ interface MoveAdjustDialogProps {
 const deltaLabel = (d: MoveDelta): string => (d < 0 ? '−1' : d > 0 ? '+1' : '그대로');
 
 /** Ninja's shadow step: arrow buttons docked beside the die, each naming where it lands. */
-export function MoveAdjustDialog({ dice, options, locked, onChoose, onPreview }: MoveAdjustDialogProps) {
+export function MoveAdjustDialog({
+  dice,
+  options,
+  locked,
+  onChoose,
+  onPreview,
+}: MoveAdjustDialogProps) {
   return (
     <div className="move-adjust" role="dialog" aria-label="그림자 걸음">
       <header>

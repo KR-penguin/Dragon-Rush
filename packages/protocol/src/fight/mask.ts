@@ -10,5 +10,11 @@ export const MASK_BUTTONS = MASK_ATTACK | MASK_SKILL | MASK_DASH;
 export const MAX_MASK = 0x7f;
 
 export function isValidMask(m: unknown): m is number {
-  return typeof m === 'number' && Number.isInteger(m) && m >= 0 && m <= MAX_MASK && (m & MOVE_NIBBLE) <= 8;
+  return (
+    typeof m === 'number' &&
+    Number.isInteger(m) &&
+    m >= 0 &&
+    m <= MAX_MASK &&
+    (m & MOVE_NIBBLE) <= 8
+  );
 }
