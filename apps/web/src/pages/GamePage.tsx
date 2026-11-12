@@ -321,6 +321,8 @@ export function GamePage({ session, onExit, onRestart }: GamePageProps) {
           upgrades={
             showActions && actor !== null ? statOptions(state, actor, ui.groups.upgrades) : null
           }
+          upgradeUsed={state.turn.paidUpgradesUsed}
+          upgradeLimit={state.rules.maxPaidUpgradesPerTurn}
           items={showActions && actor !== null ? playerOf(state, actor).items : null}
           coins={actor !== null ? playerOf(state, actor).coins : 0}
           onRoll={() => void ui.submit({ type: 'ROLL_DICE' })}

@@ -63,8 +63,7 @@ describe('event timeline', () => {
   });
   it('shows a paid stat upgrade while the same turn is still animating', () => {
     const before = toPublicState(
-      createGameWithEvents({ seats: [{ job: 'mage' }, { job: 'ninja' }] }, DEFAULT_RULES, 42)
-        .state,
+      createGameWithEvents({ seats: [{ job: 'mage' }, { job: 'ninja' }] }, DEFAULT_RULES, 42).state,
     );
     const after = applyEventToDisplay(before, {
       type: 'StatUpgraded',
@@ -78,6 +77,14 @@ describe('event timeline', () => {
     });
     expect(after.players[0]!.atk).toBe(before.players[0]!.atk + 1);
     expect(after.players[0]!.coins).toBe(before.players[0]!.coins - 3);
+    expect(after.turn.paidUpgradesUsed).toBe(before.turn.paidUpgradesUsed + 1);
+    const next = applyEventToDisplay(after, {
+      type: 'TurnStarted',
+      seat: 1,
+      round: 1,
+      resting: false,
+    });
+    expect(next.turn.paidUpgradesUsed).toBe(0);
   });
   it('explains HP lost because an event could not collect enough coins', () => {
     expect(

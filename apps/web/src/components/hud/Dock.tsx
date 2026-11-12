@@ -19,6 +19,8 @@ interface DockProps {
   groups: ActionGroups;
   shopAvailable: boolean;
   upgrades: readonly StatOption[] | null;
+  upgradeUsed: number;
+  upgradeLimit: number;
   /** Items of the seat deciding here, or null. */
   items: Readonly<Record<ItemId, number>> | null;
   coins: number;
@@ -133,7 +135,7 @@ export function Dock(props: DockProps) {
               onClick={() => setAnvilOpen((o) => !o)}
               aria-expanded={anvilOpen}
               aria-controls="dock-anvil-tray"
-              title="코인으로 스탯 강화"
+              title={`코인으로 스탯 강화 · 이번 턴 ${props.upgradeUsed}/${props.upgradeLimit}`}
             >
               <GameIcon name="anvil" />
               <span>강화</span>
@@ -143,6 +145,8 @@ export function Dock(props: DockProps) {
                 <AnvilTray
                   options={props.upgrades}
                   coins={props.coins}
+                  used={props.upgradeUsed}
+                  limit={props.upgradeLimit}
                   disabled={locked}
                   onUpgrade={props.onUpgrade}
                   onClose={() => setAnvilOpen(false)}

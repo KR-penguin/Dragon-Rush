@@ -226,6 +226,8 @@ export function applyEventToDisplay(display: PublicGameState, e: GameEvent): Pub
     players: display.players.map((p) => (p.seat === seat ? { ...p, ...patch } : p)),
   });
   switch (e.type) {
+    case 'TurnStarted':
+      return { ...display, turn: { ...display.turn, paidUpgradesUsed: 0 } };
     case 'Moved':
       return patchPlayer(e.seat, { position: e.to });
     case 'StartBonus':
@@ -240,17 +242,22 @@ export function applyEventToDisplay(display: PublicGameState, e: GameEvent): Pub
       }
       return display;
     case 'StatUpgraded':
-      return patchPlayer(e.seat, {
-        coins: e.coinsAfter,
-        [e.stat]: e.valueAfter,
-        ...(e.stat === 'maxHp'
-          ? {
-              hp:
-                display.players.find((p) => p.seat === e.seat)!.hp +
-                display.rules.upgrades.maxHp.amount,
-            }
-          : {}),
-      });
+      return {
+        ...patchPlayer(e.seat, {
+          coins: e.coinsAfter,
+          [e.stat]: e.valueAfter,
+          ...(e.stat === 'maxHp'
+            ? {
+                hp:
+                  display.players.find((p) => p.seat === e.seat)!.hp +
+                  display.rules.upgrades.maxHp.amount,
+              }
+            : {}),
+        }),
+        turn: e.free
+          ? display.turn
+          : { ...display.turn, paidUpgradesUsed: display.turn.paidUpgradesUsed + 1 },
+      };
     case 'ItemBought':
       return patchPlayer(e.seat, { coins: e.coinsAfter });
     case 'CombatHit':

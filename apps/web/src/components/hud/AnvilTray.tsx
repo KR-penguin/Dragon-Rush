@@ -7,18 +7,28 @@ import { GameIcon } from '../icons/GameIcon';
 interface AnvilTrayProps {
   options: readonly StatOption[];
   coins: number;
+  used: number;
+  limit: number;
   disabled: boolean;
   onUpgrade: (stat: UpgradeStat) => void;
   onClose: () => void;
 }
 
 /** Stat upgrades as cards laid on an anvil tray that opens from the dock. */
-export function AnvilTray({ options, coins, disabled, onUpgrade, onClose }: AnvilTrayProps) {
+export function AnvilTray({
+  options,
+  coins,
+  used,
+  limit,
+  disabled,
+  onUpgrade,
+  onClose,
+}: AnvilTrayProps) {
   return (
     <div className="anvil-tray" role="group" aria-label="스탯 강화">
       <header className="anvil-tray-head">
         <GameIcon name="anvil" />
-        <strong>대장간 강화</strong>
+        <strong>이번 턴 강화 {used}/{limit}</strong>
         <span className="anvil-tray-coins">
           <GameIcon name="coins" /> <b className="impact">{coins}</b>
         </span>
