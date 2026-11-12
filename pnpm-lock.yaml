@@ -119,6 +119,15 @@ importers:
         specifier: workspace:*
         version: link:../engine
 
+  packages/combat-ai:
+    dependencies:
+      '@dragon-rush/combat':
+        specifier: workspace:*
+        version: link:../combat
+      '@dragon-rush/engine':
+        specifier: workspace:*
+        version: link:../engine
+
   packages/engine: {}
 
   packages/protocol:
