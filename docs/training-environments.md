@@ -17,6 +17,8 @@ python python/examples/random_combat_agent.py --mode dragon --envs 2 --steps 40
 
 보드 예제의 `sim`은 실제 전투를 스크립트 봇으로 해결한다. `outcome`은 현재 보드·전투 규칙 버전과 호환되는 결과 예측 JSON이 있을 때 선택한다. 이 예측 JSON은 전투 **정책** 가중치가 아니다.
 
+현재 보드 규칙은 `rush-4`다. PvP/용전 전투를 실제 보드에서 만나는 스탯 분포로 학습하려면 전투 환경에 `stat_sampler="file:packages/sim/data/rush4_stat_dist_v1.json"`을 전달한다. 기본 `uniform_board`는 더 넓은 범위의 스탯을 균등하게 뽑는다.
+
 ## Python 계약
 
 | 과제 | 생성자와 기본 제어 | `reset()` 관측 | `step()` 행동 | 현재 마스크 | 보상과 종료 |

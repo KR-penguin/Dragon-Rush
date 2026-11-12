@@ -153,7 +153,7 @@ env.obs_layout                   # [{"name", "offset", "length"}, ...] 서버가
 | `jobs` | `"random"` | 좌석별 직업 목록으로 고정 가능 |
 | `max_rounds` | 100 | `None`이면 무제한 |
 | `combat_resolver` | `"outcome"` | `outcome`: 내장 `outcome_v1`을 게임 RNG로 샘플링 / `sim`: 두 `scripted:balanced` 봇의 실제 60Hz 전투 / `dice`: 선택형 빠른 전투의 보드 주사위 판정. 관측 `obs_v1`은 그대로 |
-| `outcome_model`, `outcome_skill_noise` | `None`, `0.5` | 외부 모델 JSON 경로를 선택적으로 지정한다. 경로가 없으면 내장 `rush-3`/`combat-2` 모델을 쓴다. 모델 버전이 규칙과 다르면 reset 오류다. skill noise는 outcome 샘플의 승률 로짓 이동 크기 |
+| `outcome_model`, `outcome_skill_noise` | `None`, `0.5` | 외부 모델 JSON 경로를 선택적으로 지정한다. 경로가 없으면 내장 `rush-4`/`combat-2` 모델을 쓴다. 전투 가중치는 `rush-3`에서 이전했다. 모델 버전이 규칙과 다르면 reset 오류다. skill noise는 outcome 샘플의 승률 로짓 이동 크기 |
 | `rules`, `reward_shaping`, `return_events` | `"default"`, `None`, `False` | 보드 규칙 일부 덮어쓰기 / §5 보상 계수 / 전이 이벤트 포함 |
 | `server_cmd`, `cwd` | — | env 서버 실행 커맨드와 저장소 루트 (환경변수 `RPGBOARD_ENV_CMD`, `RPGBOARD_ROOT`) |
 
@@ -161,10 +161,10 @@ env.obs_layout                   # [{"name", "offset", "length"}, ...] 서버가
 - **셀프플레이**: `reward`는 좌석별 `(4,)` 배열이다. `info["acting_seat"]`로 그 결정을 어느 좌석 버퍼에 넣을지 고르고, 탈락이나 종료 시에는 해당 좌석 버퍼의 마지막 전이에 `reward[seat]`를 더한다.
 - **결정성**: 같은 `seed`와 같은 행동 열이면 같은 궤적이 나온다.
 
-## 7. 기준선 (`rush-3`, 실제 60Hz 전투)
+## 7. 기준선 (`rush-4`, 실제 60Hz 전투)
 
-- 현재 규칙·내장 결과 모델의 4인 휴리스틱 8,000판(`pnpm sim --games 8000 --players 4 --bots heuristic --seed 2026 --workers 4 --combat sim --outcome-model packages/ai/src/outcome/model.json`): 평균 5.90(중앙 6)/p95 9라운드, 용 처치 종료 46.8%, 직업 승률 검/궁/마/닌/광 18.8/26.1/34.8/25.4/19.8%, 3라운드 안 좌석 탈락 22.6%. 전투 결과는 실제 sim이 확정했다. 분포 수집 시점의 모델 미적용 실측과 비교는 [기획서 §15](../docs/game-design.md)를 본다. 라운드 1~2 PvP 보호는 유지된다.
-- 이전 `rush-2`의 4인 실측은 아래 역사적 기준이다. 현재 규칙의 수치로 사용하지 않는다.
+- 현재 규칙·내장 결과 모델의 4인 휴리스틱 8,000판(`pnpm sim --games 8000 --players 4 --bots heuristic --seed 2026 --workers 4 --combat sim --outcome-model packages/ai/src/outcome/model.json`): 평균 5.93(중앙 6)/p95 10라운드, 용 처치 종료 46.5%, 직업 승률 검/궁/마/닌/광 18.9/26.2/34.7/25.5/19.6%, 3라운드 안 좌석 탈락 22.6%. 전투 결과는 실제 sim이 확정했다. 3인·2인 실측과 이전 `rush-3` 비교는 [기획서 §15](../docs/game-design.md)를 본다. 라운드 1~2 PvP 보호는 유지된다. 내장 결과 모델의 전투 가중치는 기존 것을 이전했으므로 새 분포에 대한 보정 보증은 없다.
+- 이전 `rush-3`·`rush-2`의 4인 실측은 역사적 기준이다. 현재 규칙의 수치로 사용하지 않는다.
 
 - `rush-2`의 4인 휴리스틱 8,000판(당시 `rush-2` 내장 모델 사용): 평균 7.67라운드, 중앙 8, p95 11, 용 처치 종료 61.3%, 직업 승률 22.1~29.1%, 3라운드 안 탈락 3.1%. 보드 턴당 10초 가정과 실제 sim 전투 시간 합산 평균 5.19분이었다. 현재 규칙·모델의 재현 명령이 아니다.
 - `rush-1`의 주사위 전투 결과(4인 용 처치 종료 87.5%)나 그 규칙에서 학습한 보드 정책을 현재 기준선으로 사용하지 않는다. 전투 정책과 보드 정책은 각각 별도 env에서 학습한다.
@@ -276,7 +276,7 @@ env.close()
 | `opponent` | `"scripted:pool"` | `scripted:balanced`·`aggressive`·`cautious`·`idle`·`random`·`pool`(에피소드마다 앞의 세 성향 중 하나). `p0`에서 사용 |
 | `mode_mix` | `{"pvp": 0.75, "dragon": 0.25}` | 에피소드별 결투/용전 확률 |
 | `jobs` | `"uniform"` | 또는 슬롯별 목록, 예 `["ninja", "uniform"]` (같은 직업 대결 허용) |
-| `stat_sampler` | `"uniform_board"` | `rush-3`에서도 유지된 직업 시작 스탯 + 강화 단계(과거 보드 휴리스틱 로그의 p5~p95 범위)에서 균등 표본 / `"start"`(시작 스탯) / `"file:<path>"`(`packages/sim/data/rush3_stat_dist_v1.json` 또는 `pnpm sim --combat sim --log-fights <path>`의 `stat_dist_v1`) |
+| `stat_sampler` | `"uniform_board"` | 현재도 유지된 직업 시작 스탯 + 강화 단계(과거 보드 휴리스틱 로그의 p5~p95 범위)에서 균등 표본 / `"start"`(시작 스탯) / `"file:<path>"`(`packages/sim/data/rush4_stat_dist_v1.json` 또는 `pnpm sim --combat sim --log-fights <path>`의 `stat_dist_v1`) |
 | `action_repeat` / `obs_delay` | 4 / `(4, 18)` | 결정당 라이브 틱 / 반응 지연 범위(정수면 고정) |
 | `flat_actions` / `mirror` | False / True | |
 | `reward`, `return_events` | None, False | shaping 계수(`k_start`, `k_end`, `anneal_decisions`, `approach`) / 전투 이벤트 포함 |

@@ -145,7 +145,7 @@ type Action =                                                     // UpgradeStat
 interface RulesConfig {
   version: string;                                   // 리플레이·시뮬 결과·모델 메타에 기록
   startingCoins: number; startingItems: Partial<Record<ItemId, number>>; startBonus: { coins: number; hp: number };
-  maxRounds: number | null; pvpGraceRounds: number; eventHpFloor: number;   // eventHpFloor: 칸 이벤트 HP 하한
+  maxRounds: number | null; pvpGraceRounds: number; eventHpFloor: number; coinShortfallHpPerCoin: number;
   jobs: Record<JobId, JobDef>;                       // 직업별 기본 스탯. 패시브 수치는 passives에 둠
   upgrades: Record<UpgradeStat, { baseCost: number; costStep: number; amount: number }>;   // 스탯 상한 없음
   items: Record<ItemId, ItemDef>;                    // price, perTurnLimit(teleport: null = 무제한, thief: 1)

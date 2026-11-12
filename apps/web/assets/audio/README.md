@@ -4,8 +4,8 @@
 `apps/web/public/assets/audio/bgm/` are original music made for Dragon Rush on
 2026-11-12. Codex (OpenAI) wrote the note sequences and synthesized the sound
 with `render_result_music.py`; no third-party melody, recording, or sample was
-used. The score, generator, and rendered files are provided under **CC0-1.0**
-(https://creativecommons.org/publicdomain/zero/1.0/). No attribution is required.
+used. The score, generator, and rendered files are included in this project;
+the project owner can choose their distribution license.
 
 To regenerate, run `python apps/web/assets/audio/render_result_music.py` from the
 repository root with an `ffmpeg` executable that supports `libmp3lame`. The
