@@ -27,7 +27,7 @@ const labels: Record<ItemId, string> = {
 
 describe('random item event presentation', () => {
   it('uses the grant in a seeded merchant event sequence', () => {
-    const rules = withRules({ startingItems: { teleport: 1 } });
+    const rules = withRules({ startingItems: { teleport: 1 }, boardVariation: null });
     const state = createGame({ seats: [{ job: 'swordsman' }, { job: 'archer' }] }, rules, 1);
     const { events } = applyAction(state, { type: 'USE_TELEPORT', tile: merchantTile });
     const index = events.findIndex((event) => event.type === 'TileResolved');

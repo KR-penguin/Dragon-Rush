@@ -70,6 +70,14 @@ export const TILE_LABEL: Record<TileId, string> = {
   SPIDER_WEB: '거미줄 늪',
   WANDERING_MERCHANT: '떠돌이 상인',
   STORM: '폭풍',
+  MOONWELL: '달빛 우물',
+  RUNESTONE: '룬 각인석',
+  SUPPLY_CARAVAN: '보급 마차',
+  FORTUNE_IDOL: '행운의 수호상',
+  HAUNTED_GROVE: '망령의 숲',
+  TOLL_GATE: '산적 검문소',
+  SINKHOLE: '깊은 싱크홀',
+  BURNING_RUINS: '불타는 폐허',
 };
 
 /** @deprecated Emoji placeholders; use `components/icons/GameIcon`. */
@@ -96,6 +104,14 @@ export const TILE_ICON: Record<TileId, string> = {
   SPIDER_WEB: '🕸️',
   WANDERING_MERCHANT: '🧳',
   STORM: '⛈️',
+  MOONWELL: '🌙',
+  RUNESTONE: '🔮',
+  SUPPLY_CARAVAN: '🛒',
+  FORTUNE_IDOL: '🗿',
+  HAUNTED_GROVE: '👻',
+  TOLL_GATE: '🗡️',
+  SINKHOLE: '🕳️',
+  BURNING_RUINS: '🔥',
 };
 
 const CARD_LABEL: Record<string, string> = {
@@ -160,6 +176,14 @@ export const TILE_FLAVOR: Record<TileId, string> = {
   SPIDER_WEB: '끈적한 거미줄에 발이 묶였다.',
   WANDERING_MERCHANT: '떠돌이 상인이 쓸 만한 물건 하나를 건넨다.',
   STORM: '번개와 비바람이 짐과 체력을 앗아 간다.',
+  MOONWELL: '달빛이 비치는 우물에서 상처를 씻는다.',
+  RUNESTONE: '오래된 룬이 무기에 힘을 불어넣는다.',
+  SUPPLY_CARAVAN: '지나가던 마차가 보급품을 나눠 준다.',
+  FORTUNE_IDOL: '수호상 앞에서 작은 재물과 가호를 얻는다.',
+  HAUNTED_GROVE: '숲의 망령이 생기를 빼앗는다.',
+  TOLL_GATE: '산적이 길을 막고 통행료를 걷는다.',
+  SINKHOLE: '땅이 꺼져 발이 묶인다.',
+  BURNING_RUINS: '불길 속에서 짐을 잃고 다친다.',
 };
 
 const CARD_FLAVOR: Record<string, string> = {

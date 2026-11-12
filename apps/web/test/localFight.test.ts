@@ -228,9 +228,12 @@ describe('bot-only fights', () => {
       if (g.updates.some((u) => eventTypes(u).includes('PlayerEliminated'))) break;
     }
     const events = g.updates.flatMap((u) => u.events);
-    const landed = events.findIndex((e) => e.type === 'PvpTriggered');
     const started = events.findIndex(
-      (e, i) => i > landed && e.type === 'CombatStarted' && e.kind === 'duel',
+      (e) => e.type === 'CombatStarted' && e.kind === 'duel',
+    );
+    const landed = events.reduce(
+      (found, e, i) => (i < started && e.type === 'PvpTriggered' ? i : found),
+      -1,
     );
     expect(landed).toBeGreaterThanOrEqual(0);
     expect(started).toBeGreaterThan(landed);

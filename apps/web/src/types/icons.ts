@@ -136,6 +136,14 @@ export const TILE_ICON_NAME: Record<TileId, IconName> = {
   SPIDER_WEB: 'web',
   WANDERING_MERCHANT: 'merchant',
   STORM: 'storm',
+  MOONWELL: 'fountain',
+  RUNESTONE: 'rune',
+  SUPPLY_CARAVAN: 'merchant',
+  FORTUNE_IDOL: 'giant',
+  HAUNTED_GROVE: 'dark',
+  TOLL_GATE: 'bandit',
+  SINKHOLE: 'rockfall',
+  BURNING_RUINS: 'storm',
 };
 
 export const ITEM_ICON_NAME: Record<ItemId, IconName> = {

@@ -8,7 +8,6 @@ import {
   MAX_ROUND_OPTIONS,
   MAX_SEATS,
   MIN_SEATS,
-  takenJobs,
 } from '../types/setupForm';
 
 const JOB_SCALE = jobStatScale(DEFAULT_RULES.jobs);
@@ -75,7 +74,6 @@ export function LocalSetupPage({ onBack }: LocalSetupPageProps) {
             key={i}
             index={i}
             seat={seat}
-            taken={takenJobs(form, i)}
             jobs={DEFAULT_RULES.jobs}
             scale={JOB_SCALE}
             onChange={(patch) => setup.updateSeat(i, patch)}

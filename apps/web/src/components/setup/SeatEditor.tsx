@@ -15,7 +15,6 @@ import { BOT_STYLE_HELP } from './botStyleHelp';
 interface SeatEditorProps {
   index: number;
   seat: SeatForm;
-  taken: ReadonlySet<JobId>;
   jobs: Readonly<Record<JobId, JobDef>>;
   scale: JobDef;
   onChange: (patch: Partial<SeatForm>) => void;
@@ -24,7 +23,7 @@ interface SeatEditorProps {
 const isKind = (v: string): v is SeatKindChoice => v === 'human' || v === 'bot' || v === 'model';
 const isBot = (v: string): v is BotOptionId => BOT_OPTIONS.some((o) => o.id === v);
 
-export function SeatEditor({ index, seat, taken, jobs, scale, onChange }: SeatEditorProps) {
+export function SeatEditor({ index, seat, jobs, scale, onChange }: SeatEditorProps) {
   const id = `seat-${index}`;
   return (
     <section className="seat-editor" style={{ '--seat-color': seatColor(index) } as CSSProperties}>
@@ -84,7 +83,6 @@ export function SeatEditor({ index, seat, taken, jobs, scale, onChange }: SeatEd
       )}
       <div className="job-picker" role="radiogroup" aria-label="직업">
         {JOB_IDS.map((job) => {
-          const isTaken = taken.has(job);
           return (
             <button
               key={job}
@@ -92,8 +90,7 @@ export function SeatEditor({ index, seat, taken, jobs, scale, onChange }: SeatEd
               role="radio"
               aria-checked={seat.job === job}
               className={`job-pick${seat.job === job ? ' is-on' : ''}`}
-              disabled={isTaken}
-              title={isTaken ? `${JOB_LABEL[job]} (다른 좌석이 선택함)` : JOB_LABEL[job]}
+              title={JOB_LABEL[job]}
               onClick={() => onChange({ job })}
             >
               <JobArt job={job} className="job-pick-art" />

@@ -72,16 +72,10 @@ export function setSeatCount(form: SetupForm, count: number): SetupForm {
   return { ...form, seats };
 }
 
-/** Jobs other seats already hold. */
-export function takenJobs(form: SetupForm, index: number): Set<JobId> {
-  return new Set(form.seats.filter((_, i) => i !== index).map((s) => s.job));
-}
-
-/** Applies a seat edit. A job that another seat holds is refused (jobs are unique). */
+/** Applies a seat edit. Multiple seats may select the same job. */
 export function updateSeat(form: SetupForm, index: number, patch: Partial<SeatForm>): SetupForm {
   const seat = form.seats[index];
   if (!seat) return form;
-  if (patch.job !== undefined && takenJobs(form, index).has(patch.job)) return form;
   let next: SeatForm = { ...seat, ...patch };
   if (
     patch.kind !== undefined &&
@@ -101,8 +95,6 @@ export function setupErrors(form: SetupForm): string[] {
     errors.push(`좌석은 ${MIN_SEATS}~${MAX_SEATS}개여야 합니다.`);
   }
   if (form.seats.some((s) => s.name.trim() === '')) errors.push('이름을 입력하세요.');
-  if (new Set(form.seats.map((s) => s.job)).size !== form.seats.length)
-    errors.push('직업은 중복될 수 없습니다.');
   if (form.seats.some((s) => s.kind === 'model')) errors.push('모델 좌석은 아직 준비 중입니다.');
   return errors;
 }

@@ -1,5 +1,4 @@
 import {
-  BOARD_SIZE,
   ITEM_IDS,
   UPGRADE_STATS,
   upgradeCost,
@@ -12,12 +11,17 @@ import {
 } from '@dragon-rush/engine';
 import type { MoveDelta } from './actionGroups';
 import { playerOf } from './playerView';
+import { effectChips, type EffectChip } from './tileView';
 
 export interface MoveOption {
   readonly delta: MoveDelta;
   readonly steps: number;
   readonly tile: number;
   readonly tileId: TileId;
+  readonly tileName: string;
+  readonly effects: readonly EffectChip[];
+  readonly startBonus: PublicGameState['rules']['startBonus'] | null;
+  readonly cooldownTurns: number;
 }
 
 /** Destination preview for each legal move adjustment of the player who rolled. */
@@ -28,8 +32,18 @@ export function moveOptions(state: PublicGameState, deltas: readonly MoveDelta[]
     .sort((a, b) => a - b)
     .map((delta) => {
       const steps = dice + delta;
-      const tile = (p.position + steps) % BOARD_SIZE;
-      return { delta, steps, tile, tileId: state.rules.board[tile]!.id };
+      const tile = (p.position + steps) % state.rules.board.length;
+      const destination = state.rules.board[tile]!;
+      return {
+        delta,
+        steps,
+        tile,
+        tileId: destination.id,
+        tileName: destination.name,
+        effects: effectChips(destination.effects),
+        startBonus: p.position + steps >= state.rules.board.length ? state.rules.startBonus : null,
+        cooldownTurns: state.rules.passives.ninjaAdjustCooldown,
+      };
     });
 }
 

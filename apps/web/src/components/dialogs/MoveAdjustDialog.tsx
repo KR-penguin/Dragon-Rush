@@ -1,6 +1,6 @@
 import type { MoveDelta } from '../../types/actionGroups';
 import type { MoveOption } from '../../types/decisionView';
-import { TILE_LABEL } from '../../types/labels';
+import { signed } from '../../types/tileView';
 import { TileArt } from '../icons/Art';
 import { GameIcon } from '../icons/GameIcon';
 
@@ -15,7 +15,7 @@ interface MoveAdjustDialogProps {
 
 const deltaLabel = (d: MoveDelta): string => (d < 0 ? '−1' : d > 0 ? '+1' : '그대로');
 
-/** Ninja's shadow step: each option names its destination. */
+/** Ninja's shadow step: destination and effects stay readable inside each choice. */
 export function MoveAdjustDialog({
   dice,
   options,
@@ -29,7 +29,7 @@ export function MoveAdjustDialog({
         <GameIcon name="footsteps" />
         <strong>그림자 걸음</strong>
         <span>
-          룰렛 <b className="impact">{dice ?? '?'}</b> · ±1 사용 후 4번째 내 턴에 재사용
+          룰렛 <b className="impact">{dice ?? '?'}</b> · 도착 칸을 선택하세요
         </span>
       </header>
       <div className="move-options" onPointerLeave={() => onPreview?.(null)}>
@@ -47,10 +47,37 @@ export function MoveAdjustDialog({
             onFocus={() => onPreview?.(o.tile)}
             onBlur={() => onPreview?.(null)}
           >
-            <span className="move-delta impact">{deltaLabel(o.delta)}</span>
-            <TileArt tileId={o.tileId} className="move-tile-art" />
+            <span className="move-choice-head">
+              <span className="move-delta impact">{deltaLabel(o.delta)}</span>
+              <span className="move-steps">{o.steps}칸 이동</span>
+            </span>
             <span className="move-dest">
-              {o.steps}칸 → {TILE_LABEL[o.tileId]}
+              <span aria-hidden="true" className="move-tile-icon">
+                <TileArt tileId={o.tileId} className="move-tile-art" />
+              </span>
+              <span className="move-dest-text">
+                <small>{o.tile}번 칸</small>
+                <strong>{o.tileName}</strong>
+              </span>
+            </span>
+            <span className="move-effects">
+              {o.effects.length === 0 && !o.startBonus && (
+                <span className="move-effect move-effect-neutral">도착 효과 없음</span>
+              )}
+              {o.effects.map((effect, index) => (
+                <span className={`move-effect move-effect-${effect.tone}`} key={index}>
+                  {effect.label}
+                  {effect.amount === null ? '' : ` ${signed(effect.amount)}`}
+                </span>
+              ))}
+              {o.startBonus && (
+                <span className="move-start-bonus">
+                  출발 통과 보너스: 코인 {signed(o.startBonus.coins)} · HP {signed(o.startBonus.hp)}
+                </span>
+              )}
+            </span>
+            <span className="move-cooldown">
+              {o.cooldownTurns === 2 ? '다음 내 턴 사용 불가' : `쿨다운 ${o.cooldownTurns}`}
             </span>
           </button>
         ))}

@@ -1,4 +1,4 @@
-import { DEFAULT_RULES, type JobId } from '@dragon-rush/engine';
+import { DEFAULT_RULES } from '@dragon-rush/engine';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
@@ -26,7 +26,6 @@ describe('bot style explanations', () => {
         createElement(SeatEditor, {
           index: 1,
           seat: { ...seat, bot },
-          taken: new Set<JobId>(),
           jobs: DEFAULT_RULES.jobs,
           scale: jobStatScale(DEFAULT_RULES.jobs),
           onChange: () => undefined,

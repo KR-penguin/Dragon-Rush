@@ -5,7 +5,6 @@ import {
   jobStatScale,
   setSeatCount,
   setupErrors,
-  takenJobs,
   toLocalConfig,
   updateSeat,
 } from '../src/types/setupForm';
@@ -26,13 +25,12 @@ describe('local setup form', () => {
     expect(setSeatCount(four, 2).seats).toEqual(four.seats.slice(0, 2));
   });
 
-  it('refuses a job another seat holds', () => {
+  it('lets multiple seats choose the same job', () => {
     const form = defaultSetup();
     const other = form.seats[1]!.job;
-    expect(takenJobs(form, 0).has(other)).toBe(true);
-    expect(updateSeat(form, 0, { job: other })).toBe(form);
-    const free = JOB_IDS.find((j) => !takenJobs(form, 0).has(j) && j !== form.seats[0]!.job)!;
-    expect(updateSeat(form, 0, { job: free }).seats[0]!.job).toBe(free);
+    const updated = updateSeat(form, 0, { job: other });
+    expect(updated.seats.map((s) => s.job)).toEqual([other, other]);
+    expect(setupErrors(updated)).toEqual([]);
   });
 
   it('renames default names when the seat kind changes, but keeps custom names', () => {
