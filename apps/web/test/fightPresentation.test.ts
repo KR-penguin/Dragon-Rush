@@ -161,8 +161,21 @@ describe('sim event → effects', () => {
       dir: 0,
       pos: { x: 0, y: 0 },
     });
-    expect(sounds(fightFxFor(swing, ctx))).toEqual(['swing']);
+    expect(sounds(fightFxFor(swing, ctx))).toEqual(['blade']);
     expect(fightFxFor(swing, { ...ctx, replay: true })).toEqual([]);
+  });
+
+  it('gives each melee and ranged job its own attack cue', () => {
+    const cue = (move: 'slash1' | 'dagger1' | 'greataxe' | 'quickShot' | 'bolt' | 'kunai') =>
+      sounds(
+        fightFxFor(ev({ type: 'AttackStart', who: 'a', move, dir: 0, pos: { x: 0, y: 0 } }), ctx),
+      );
+    expect(cue('slash1')).toEqual(['blade']);
+    expect(cue('dagger1')).toEqual(['dagger']);
+    expect(cue('greataxe')).toEqual(['axe']);
+    expect(cue('quickShot')).toEqual(['shot']);
+    expect(cue('bolt')).toEqual(['magic']);
+    expect(cue('kunai')).toEqual(['kunai']);
   });
 });
 

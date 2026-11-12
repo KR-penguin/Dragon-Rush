@@ -538,6 +538,26 @@ export const PROCEDURAL_SFX: Readonly<Record<SoundName, SynthRecipe>> = {
     noise(c, { decay: 0.07, gain: 0.25, type: 'bandpass', f0: 3200, f1: 1200, q: 2 });
     return 0.16;
   },
+  blade(c) {
+    noise(c, { attack: 0.012, decay: 0.14, gain: 0.3, type: 'highpass', f0: 1800 });
+    tone(c, { type: 'sine', f0: 1800, f1: 1100, decay: 0.16, gain: 0.08 });
+    return 0.19;
+  },
+  dagger(c) {
+    noise(c, { attack: 0.003, decay: 0.08, gain: 0.23, type: 'highpass', f0: 2800 });
+    tone(c, { type: 'triangle', f0: 1250, f1: 800, decay: 0.08, gain: 0.06 });
+    return 0.12;
+  },
+  axe(c) {
+    noise(c, { attack: 0.04, decay: 0.28, gain: 0.42, type: 'bandpass', f0: 550, f1: 1200 });
+    tone(c, { type: 'sine', f0: 120, f1: 65, decay: 0.27, gain: 0.19 });
+    return 0.33;
+  },
+  kunai(c) {
+    noise(c, { attack: 0.002, decay: 0.1, gain: 0.2, type: 'highpass', f0: 4000 });
+    tone(c, { type: 'sine', f0: 2400, f1: 1500, decay: 0.09, gain: 0.06 });
+    return 0.14;
+  },
   telegraph(c) {
     // Low rising warning swell: readable under music, never mistaken for a hit.
     tone(c, {

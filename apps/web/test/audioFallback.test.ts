@@ -87,6 +87,14 @@ describe('sound source selection', () => {
       kind: 'file',
       paths: ['audio/sfx/dragon/breath_charge.ogg'],
     });
+    expect(selectSoundSource('dagger', manifest('audio/sfx/jobs/ninja_stab_01.mp3'))).toEqual({
+      kind: 'file',
+      paths: ['audio/sfx/jobs/ninja_stab_01.mp3'],
+    });
+    expect(selectSoundSource('axe', manifest('audio/sfx/jobs/zerk_axe_swing_01.mp3'))).toEqual({
+      kind: 'file',
+      paths: ['audio/sfx/jobs/zerk_axe_swing_01.mp3'],
+    });
     expect(soundFileCandidates('breath_charge', 2)).not.toContain(
       'audio/sfx/dragon/breath_charge.ogg',
     );

@@ -26,6 +26,10 @@ export const EXTRA_SOUND_NAMES = [
   // Real-time combat
   'dash',
   'shot',
+  'blade',
+  'dagger',
+  'axe',
+  'kunai',
   'telegraph',
   'clash',
 ] as const;
@@ -117,6 +121,10 @@ export const SOUND_SPEC: Readonly<Record<SoundName, SoundSpec>> = {
   clink: spec({ volume: 0.55 }),
   dash: spec({ volume: 0.6 }),
   shot: spec({ volume: 0.7 }),
+  blade: spec({ volume: 0.7 }),
+  dagger: spec({ volume: 0.65 }),
+  axe: spec({ volume: 0.8 }),
+  kunai: spec({ volume: 0.6 }),
   // Recognition cue: identical every time, like the breath charge.
   telegraph: spec({ vary: false, maxVoices: 2 }),
   clash: spec({ maxVoices: 1, duck: true }),
@@ -154,6 +162,10 @@ const DELIVERY_SOUNDS: Readonly<Record<SoundName, { stem: string; numbered?: tru
   clink: { stem: 'audio/sfx/board/coin_gain', numbered: true },
   dash: { stem: 'audio/sfx/combat/dash', numbered: true },
   shot: { stem: 'audio/sfx/jobs/arrow_release', numbered: true },
+  blade: { stem: 'audio/sfx/combat/swing_light', numbered: true },
+  dagger: { stem: 'audio/sfx/jobs/ninja_stab', numbered: true },
+  axe: { stem: 'audio/sfx/jobs/zerk_axe_swing', numbered: true },
+  kunai: { stem: 'audio/sfx/jobs/ninja_kunai_throw', numbered: true },
   telegraph: { stem: 'audio/sfx/dragon/breath_charge' },
   clash: { stem: 'audio/sfx/board/duel_clash' },
 };
