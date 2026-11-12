@@ -4,6 +4,7 @@ import type { FightPhase } from '../../combat/fightFlow';
 import type { FighterCard } from '../../types/fightView';
 import { FightGo, FightIntro, FightPaused, FightReady, FightResultCard } from './FightOverlays';
 import type { TouchTracker } from '../../services/fight/touchInput';
+import type { TouchCooldowns } from '../../hooks/useTouchCooldowns';
 import { TouchControls } from './TouchControls';
 import { GameIcon } from '../icons/GameIcon';
 
@@ -18,6 +19,7 @@ interface CombatScreenProps {
   pointerCapable: boolean;
   online: boolean;
   touchTracker: TouchTracker | null;
+  touchCooldowns: TouchCooldowns | null;
   canvasRef: RefObject<HTMLCanvasElement | null>;
   stageRef: RefObject<HTMLDivElement | null>;
   onSkip: (() => void) | null;
@@ -45,7 +47,13 @@ export function CombatScreen(p: CombatScreenProps) {
         {p.go && <FightGo />}
         {p.phase === 'result' && p.result && <FightResultCard cards={p.cards} result={p.result} />}
         {p.paused && <FightPaused onResume={p.onResume} online={p.online} />}
-        {p.touchTracker && <TouchControls tracker={p.touchTracker} onPause={p.onPause} />}
+        {p.touchTracker && (
+          <TouchControls
+            tracker={p.touchTracker}
+            onPause={p.onPause}
+            cooldowns={p.touchCooldowns}
+          />
+        )}
         {p.replaySpeed !== null && p.phase === 'fight' && (
           <div className="combat-badge">봇 전투 ×{p.replaySpeed}</div>
         )}

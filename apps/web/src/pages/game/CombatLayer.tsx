@@ -11,6 +11,7 @@ import { useFightFlow } from '../../hooks/useFightFlow';
 import { useFightGate } from '../../hooks/useFightGate';
 import { useFightPause } from '../../hooks/useFightPause';
 import { useFightSession } from '../../hooks/useFightSession';
+import { touchControlSide, useTouchCooldowns } from '../../hooks/useTouchCooldowns';
 import { useKeyboardTest } from '../../hooks/useKeyboardTest';
 import type { PendingFight, SeatInfo } from '../../services/gameClient';
 import type { FightSession } from '../../services/fight';
@@ -73,9 +74,9 @@ function FightContainer({ fight, seats, client, onDone }: FightContainerProps) {
   const pressed = useKeyboardTest(helpOpen && testing);
   const live = fight.replay === null && flow.phase === 'fight';
   const pause = useFightPause(session, live, helpOpen);
-  const pointerCapable = fight.sides.some(
-    (side) => side.control === 'keyboard-p1' || side.control === 'keyboard-solo',
-  );
+  const touchSide = touchControlSide(fight.sides);
+  const pointerCapable = touchSide !== null;
+  const touchCooldowns = useTouchCooldowns(session, live ? touchSide : null);
   useLayoutEffect(() => {
     if (!live || pause.paused || helpOpen) bundle?.tracker.touch.releaseAll();
   }, [bundle, live, pause.paused, helpOpen]);
@@ -101,6 +102,7 @@ function FightContainer({ fight, seats, client, onDone }: FightContainerProps) {
           ? (bundle?.tracker.touch ?? null)
           : null
       }
+      touchCooldowns={touchCooldowns}
       canvasRef={canvasRef}
       stageRef={stageRef}
       onSkip={flow.skip}

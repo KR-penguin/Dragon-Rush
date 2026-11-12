@@ -1,5 +1,6 @@
 import type { PointerEvent } from 'react';
 import type { TouchAction, TouchTracker } from '../../services/fight/touchInput';
+import type { TouchCooldown, TouchCooldowns } from '../../hooks/useTouchCooldowns';
 
 const directions: readonly { action: TouchAction; glyph: string; label: string }[] = [
   { action: 'up', glyph: '↑', label: '위로 이동' },
@@ -27,12 +28,19 @@ function TouchButton({
   label,
   children,
   tracker,
+  cooldown,
 }: {
   action: TouchAction;
   label: string;
   children: string;
   tracker: TouchTracker;
+  cooldown?: TouchCooldown | null;
 }) {
+  const seconds =
+    cooldown && cooldown.charges < cooldown.maxCharges ? (cooldown.tenths / 10).toFixed(1) : null;
+  const accessibleLabel = cooldown
+    ? `${label}, ${cooldown.charges}/${cooldown.maxCharges}회${seconds ? `, 다음 충전 ${seconds}초` : ''}`
+    : label;
   const down = (event: PointerEvent<HTMLButtonElement>) => {
     event.preventDefault();
     if (tracker.press(event.pointerId, action))
@@ -49,7 +57,7 @@ function TouchButton({
     <button
       type="button"
       className={`combat-touch-button is-${action}`}
-      aria-label={label}
+      aria-label={accessibleLabel}
       onPointerDown={down}
       onPointerUp={release}
       onPointerCancel={cancel}
@@ -62,7 +70,19 @@ function TouchButton({
       }}
       onContextMenu={(event) => event.preventDefault()}
     >
-      {children}
+      <span className="combat-touch-name">
+        {children}
+        {cooldown && cooldown.maxCharges > 1 && (
+          <span className="combat-touch-charges" aria-hidden="true">
+            {cooldown.charges}/{cooldown.maxCharges}
+          </span>
+        )}
+      </span>
+      {seconds && (
+        <span className="combat-touch-cooldown" aria-hidden="true">
+          {seconds}초
+        </span>
+      )}
     </button>
   );
 }
@@ -71,9 +91,11 @@ function TouchButton({
 export function TouchControls({
   tracker,
   onPause,
+  cooldowns,
 }: {
   tracker: TouchTracker;
   onPause: () => void;
+  cooldowns: TouchCooldowns | null;
 }) {
   return (
     <div className="combat-touch-controls" aria-label="터치 전투 조작">
@@ -86,7 +108,18 @@ export function TouchControls({
       </div>
       <div className="combat-touch-actions" role="group" aria-label="전투 행동">
         {attacks.map((item) => (
-          <TouchButton key={item.action} {...item} tracker={tracker}>
+          <TouchButton
+            key={item.action}
+            {...item}
+            tracker={tracker}
+            cooldown={
+              item.action === 'skill'
+                ? cooldowns?.skill
+                : item.action === 'dash'
+                  ? cooldowns?.dash
+                  : null
+            }
+          >
             {item.label}
           </TouchButton>
         ))}
