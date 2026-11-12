@@ -520,6 +520,47 @@ export const PROCEDURAL_SFX: Readonly<Record<SoundName, SynthRecipe>> = {
     tone(c, { type: 'sine', f0: NOTE.C4 / 2, at: 0.9, decay: 1.1, gain: 0.12 });
     return end;
   },
+  dash(c) {
+    noise(c, {
+      attack: 0.01,
+      decay: 0.16,
+      gain: 0.32,
+      type: 'bandpass',
+      f0: 900,
+      f1: 2600,
+      q: 1.5,
+    });
+    noise(c, { decay: 0.04, gain: 0.12, type: 'highpass', f0: 5000 });
+    return 0.22;
+  },
+  shot(c) {
+    tone(c, { type: 'triangle', f0: 220, f1: 140, decay: 0.12, gain: 0.22 });
+    noise(c, { decay: 0.07, gain: 0.25, type: 'bandpass', f0: 3200, f1: 1200, q: 2 });
+    return 0.16;
+  },
+  telegraph(c) {
+    // Low rising warning swell: readable under music, never mistaken for a hit.
+    tone(c, {
+      type: 'sawtooth',
+      f0: 110,
+      f1: 165,
+      glide: 0.35,
+      attack: 0.08,
+      decay: 0.32,
+      gain: 0.12,
+    });
+    tone(c, { type: 'sine', f0: 220, f1: 330, glide: 0.35, attack: 0.08, decay: 0.3, gain: 0.1 });
+    noise(c, { attack: 0.06, decay: 0.3, gain: 0.08, type: 'lowpass', f0: 600 });
+    return 0.45;
+  },
+  clash(c) {
+    const drive = shaper(c, 3);
+    tone(c, { type: 'sine', f0: 140, f1: 50, decay: 0.45, gain: 0.7, dest: drive });
+    tone(c, { type: 'sine', f0: 1500, decay: 0.6, gain: 0.08 });
+    tone(c, { type: 'sine', f0: 2260, decay: 0.45, gain: 0.05 });
+    noise(c, { decay: 0.25, gain: 0.35, type: 'bandpass', f0: 2500, f1: 600, q: 1 });
+    return 0.7;
+  },
 };
 
 export const PROCEDURAL_VARIANTS = 4;

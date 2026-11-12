@@ -72,6 +72,9 @@ importers:
       '@dragon-rush/ai':
         specifier: workspace:*
         version: link:../../packages/ai
+      '@dragon-rush/combat':
+        specifier: workspace:*
+        version: link:../../packages/combat
       '@dragon-rush/engine':
         specifier: workspace:*
         version: link:../../packages/engine

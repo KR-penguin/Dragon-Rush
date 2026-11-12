@@ -49,6 +49,7 @@ import { buildPawns } from '../types/pawnView';
 import { playerCards, playerOf, seatName } from '../types/playerView';
 import { outcomeHeadline, resultRows } from '../types/resultView';
 import type { TileCategory } from '../types/tileView';
+import { CombatLayer } from './game/CombatLayer';
 import { DecisionDialogs } from './game/DecisionDialogs';
 
 const EXIT_LABEL: Record<MenuPage, string> = {
@@ -325,6 +326,8 @@ export function GamePage({ session, onExit, onRestart }: GamePageProps) {
       )}
 
       <DecisionDialogs ui={ui} state={state} nameOf={nameOf} onPreviewTile={setPreview} />
+
+      <CombatLayer store={store} />
 
       {combat && (
         <CombatOverlay

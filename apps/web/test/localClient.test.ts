@@ -26,6 +26,8 @@ describe('LocalGameClient', () => {
       {
         seed: 12,
         maxRounds: 40,
+        // Board-flow test: fights settle with dice (real-time fights are covered in localFight.test.ts).
+        fightMode: () => 'dice',
         seats: [
           { name: '나', job: 'swordsman', kind: 'human' },
           { name: '봇', job: 'mage', kind: 'bot', botName: 'heuristic:growth' },
