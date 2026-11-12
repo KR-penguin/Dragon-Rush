@@ -15,6 +15,8 @@ import { useKeyboardTest } from '../../hooks/useKeyboardTest';
 import type { PendingFight, SeatInfo } from '../../services/gameClient';
 import type { FightSession } from '../../services/fight';
 import type { FightNetStats } from '@dragon-rush/netcode';
+import { netDebugEnabled } from '../../services/fight/netDebug';
+import { NetSimPanel } from './NetSimPanel';
 import type { GameStore } from '../../store/gameStore';
 import { fightCards } from '../../types/fightView';
 import '../../styles/combat.css';
@@ -94,6 +96,7 @@ function FightContainer({ fight, seats, client, onDone }: FightContainerProps) {
       onOpenControls={() => setHelpOpen(true)}
     >
       {fight.online && <NetStatus session={session} fight={fight} />}
+      {fight.online && netDebugEnabled() && <NetSimPanel />}
       {helpOpen && (
         <ControlsPanel
           pressed={pressed}

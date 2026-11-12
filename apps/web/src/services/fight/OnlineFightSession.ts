@@ -20,6 +20,7 @@ import { KEY_LAYOUTS } from '../../types/combatControls';
 import type { PendingFight } from '../gameClient';
 import type { OnlineSession } from '../onlineSession';
 import { createKeyboardSource, type KeyTracker } from './keyboardInput';
+import { NetDebugPipe, netDebugEnabled } from './netDebug';
 import { browserPads, combineSources, createGamepadSource } from './gamepadInput';
 import type { FightFrame, FightSession, FrameListener } from './types';
 
@@ -43,6 +44,7 @@ export class OnlineFightSession implements FightSession {
   private readonly frameListeners = new Set<FrameListener>();
   private readonly endListeners = new Set<(result: CombatResult) => void>();
   private readonly offs: (() => void)[] = [];
+  private readonly timers = new Set<ReturnType<typeof setTimeout>>();
   private raf: number | null = null;
   private started = false;
   private ended = false;
@@ -62,9 +64,21 @@ export class OnlineFightSession implements FightSession {
     if (!meta) throw new Error('online fight metadata missing');
     const start = meta.start;
     this.info = { id: fight.id, setup: fight.setup, seed: fight.seed, sides: fight.sides };
+    const sim = netDebugEnabled();
+    const upstream = new NetDebugPipe(fight.seed ^ 0x55229911, (s) => s.upMs);
+    const downstream = new NetDebugPipe(fight.seed ^ 0xaaccee22, (s) => s.downMs);
+    const schedule = (delay: number, run: () => void) => {
+      const id = setTimeout(() => {
+        this.timers.delete(id);
+        if (!this.disposed) run();
+      }, delay);
+      this.timers.add(id);
+    };
     const transport: FightTransport = {
       send: (event, payload) => {
-        online.socket.emit(event, payload);
+        const delay = sim ? upstream.delay(performance.now()) : 0;
+        if (delay > 0) schedule(delay, () => online.socket.emit(event, payload));
+        else online.socket.emit(event, payload);
       },
     };
     this.clock = new NetClock(transport);
@@ -83,29 +97,38 @@ export class OnlineFightSession implements FightSession {
         ])
       : null;
     if (meta.go && this.fighter) this.fighter.receive(FIGHT_S2C.go, meta.go, performance.now());
-    const onPong = (payload: unknown) => this.clock.onPong(payload, performance.now());
+    const onPong = (payload: unknown) => {
+      const delay = sim ? downstream.delay(performance.now()) : 0;
+      if (delay > 0) schedule(delay, () => this.clock.onPong(payload, performance.now()));
+      else this.clock.onPong(payload, performance.now());
+    };
     online.socket.on(FIGHT_S2C.pong, onPong);
     this.offs.push(() => online.socket.off(FIGHT_S2C.pong, onPong));
     for (const event of SERVER_EVENTS) {
       const onPacket = (payload: unknown) => {
-        const now = performance.now();
-        const schema =
-          event === FIGHT_S2C.go
-            ? FightGoSchema
-            : event === FIGHT_S2C.control
-              ? FightControlSchema
-              : event === FIGHT_S2C.sync
-                ? FightSyncSchema
-                : event === FIGHT_S2C.retime
-                  ? FightRetimeSchema
-                  : event === FIGHT_S2C.end
-                    ? FightEndSchema
-                    : null;
-        const checked = schema ? schema.safeParse(payload) : null;
-        if (schema && !checked?.success) return;
-        const value = checked?.success ? checked.data : payload;
-        this.fighter?.receive(event, value, now);
-        this.spectator?.receive(event, value, now);
+        const receive = () => {
+          const now = performance.now();
+          const schema =
+            event === FIGHT_S2C.go
+              ? FightGoSchema
+              : event === FIGHT_S2C.control
+                ? FightControlSchema
+                : event === FIGHT_S2C.sync
+                  ? FightSyncSchema
+                  : event === FIGHT_S2C.retime
+                    ? FightRetimeSchema
+                    : event === FIGHT_S2C.end
+                      ? FightEndSchema
+                      : null;
+          const checked = schema ? schema.safeParse(payload) : null;
+          if (schema && !checked?.success) return;
+          const value = checked?.success ? checked.data : payload;
+          this.fighter?.receive(event, value, now);
+          this.spectator?.receive(event, value, now);
+        };
+        const delay = sim ? downstream.delay(performance.now()) : 0;
+        if (delay > 0) schedule(delay, receive);
+        else receive();
       };
       online.socket.on(event, onPacket);
       this.offs.push(() => online.socket.off(event, onPacket));
@@ -224,6 +247,8 @@ export class OnlineFightSession implements FightSession {
     this.disposed = true;
     if (this.raf !== null) cancelAnimationFrame(this.raf);
     for (const off of this.offs) off();
+    for (const timer of this.timers) clearTimeout(timer);
+    this.timers.clear();
     this.source?.dispose?.();
     this.frameListeners.clear();
     this.endListeners.clear();
