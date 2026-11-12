@@ -44,6 +44,7 @@ class _Base:
         rules: str | dict[str, Any] = "default",
         reward_shaping: dict[str, float] | None = None,
         return_events: bool = False,
+        combat_resolver: str = "dice",
         server_cmd: str | Sequence[str] | None = None,
         cwd: str | os.PathLike[str] | None = None,
         expect_obs_version: str = OBS_VERSION,
@@ -64,6 +65,7 @@ class _Base:
             "rules": rules,
             "reward_shaping": reward_shaping,
             "return_events": return_events,
+            "combat_resolver": combat_resolver,
         }
         self._proc = ServerProcess(server_cmd, cwd, timeout)
         info = self._proc.call("info")
