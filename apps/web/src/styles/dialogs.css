@@ -149,30 +149,6 @@
   font-weight: 700;
 }
 
-.modal .dragon-eye small {
-  color: var(--ink-soft);
-}
-
-.modal .dragon-eye-head .muted {
-  color: var(--ink-soft);
-}
-
-.modal .win-good .dragon-eye-head strong {
-  color: var(--good);
-}
-
-.modal .win-even .dragon-eye-head strong {
-  color: var(--gold-deep);
-}
-
-.modal .win-bad .dragon-eye-head strong {
-  color: var(--bad);
-}
-
-.modal .dragon-eye-track {
-  background: rgba(43, 29, 20, 0.2);
-}
-
 /* Hand-off */
 .handoff-name {
   display: inline-flex;
@@ -210,16 +186,6 @@
   display: flex;
   align-items: center;
   gap: 10px;
-}
-
-.target-chance {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-family: var(--font-impact);
-  font-size: 1.1rem;
-  color: var(--ember);
-  white-space: nowrap;
 }
 
 .versus {
