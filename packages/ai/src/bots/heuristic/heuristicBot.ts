@@ -37,7 +37,7 @@ export const STYLE_PARAMS: Readonly<Record<HeuristicStyle, StyleParams>> = {
   aggro: {
     wd: 0.35,
     wp: 0.65,
-    dragonThreshold: 0.55,
+    dragonThreshold: 0.22,
     hunt: 0.7,
     wantTeleport: 1,
     wantShield: 1,
@@ -49,7 +49,7 @@ export const STYLE_PARAMS: Readonly<Record<HeuristicStyle, StyleParams>> = {
   growth: {
     wd: 0.6,
     wp: 0.4,
-    dragonThreshold: 0.6,
+    dragonThreshold: 0.27,
     hunt: 0.8,
     wantTeleport: 1,
     wantShield: 1,
@@ -61,7 +61,7 @@ export const STYLE_PARAMS: Readonly<Record<HeuristicStyle, StyleParams>> = {
   rush: {
     wd: 1,
     wp: 0,
-    dragonThreshold: 0.48,
+    dragonThreshold: 0.18,
     hunt: 0.85,
     wantTeleport: 0,
     wantShield: 1,
@@ -178,11 +178,12 @@ class Planner {
 
   private dragonThreshold(): number {
     let thr = this.s.dragonThreshold;
+    if (this.me.job === 'mage') thr += 0.05;
     if (this.view.round > LATE_GAME_ROUND)
       thr -= LATE_GAME_DECAY * (this.view.round - LATE_GAME_ROUND);
     const opps = this.opponents();
     if (opps.length === 1 && this.dragonPlan(opps[0]).wp >= 0.5) thr -= 0.12;
-    return Math.max(thr, 0.35);
+    return Math.max(thr, 0.15);
   }
 
   private reserve(): number {
