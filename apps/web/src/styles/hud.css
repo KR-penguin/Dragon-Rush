@@ -227,8 +227,10 @@
   border-radius: inherit;
   pointer-events: none;
   background:
-    linear-gradient(118deg, transparent 47%, rgba(255, 240, 220, 0.35) 47.5%, transparent 48.5%) 30% 0 / 60% 100% no-repeat,
-    linear-gradient(64deg, transparent 52%, rgba(255, 240, 220, 0.25) 52.5%, transparent 53.5%) 70% 0 / 50% 100% no-repeat;
+    linear-gradient(118deg, transparent 47%, rgba(255, 240, 220, 0.35) 47.5%, transparent 48.5%) 30%
+      0 / 60% 100% no-repeat,
+    linear-gradient(64deg, transparent 52%, rgba(255, 240, 220, 0.25) 52.5%, transparent 53.5%) 70%
+      0 / 50% 100% no-repeat;
 }
 
 .cc-body {
@@ -246,7 +248,12 @@
   padding: 1px calc(10 * var(--u)) 1px calc(8 * var(--u));
   margin-left: calc(-4 * var(--u));
   border-radius: 4px calc(14 * var(--u)) calc(14 * var(--u)) 4px;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--seat-color) 85%, #fff), var(--seat-color) 45%, color-mix(in srgb, var(--seat-color) 70%, #000));
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--seat-color) 85%, #fff),
+    var(--seat-color) 45%,
+    color-mix(in srgb, var(--seat-color) 70%, #000)
+  );
   color: var(--seat-ink, #fff7ea);
   box-shadow:
     inset 0 0 0 1px rgba(0, 0, 0, 0.35),
@@ -545,8 +552,7 @@
   border-radius: 50%;
   line-height: 1;
   color: var(--bone);
-  background:
-    radial-gradient(circle at 40% 30%, #7c7268, #4a433d 55%, #2d2724);
+  background: radial-gradient(circle at 40% 30%, #7c7268, #4a433d 55%, #2d2724);
   box-shadow:
     inset 0 -4px 0 rgba(0, 0, 0, 0.4),
     inset 0 0 0 calc(4 * var(--u)) rgba(26, 18, 16, 0.4),
@@ -571,8 +577,28 @@
 }
 
 .strip-runes {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 0 5px;
+  color: var(--bone);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.strip-rune-stones {
   display: flex;
   gap: calc(6 * var(--u));
+}
+
+.strip-dragon-status {
+  color: var(--ember-glow);
+  font-size: max(12px, calc(13 * var(--u)));
+  font-weight: 700;
+}
+
+.strip-dragon-breath {
+  font-size: max(11px, calc(12 * var(--u)));
 }
 
 .strip-runes .rune-stone {
@@ -890,11 +916,17 @@
   border-color: var(--gold-hi);
 }
 
+.anvil-anchor {
+  position: relative;
+  flex: none;
+}
+
 .dock-above {
   position: absolute;
   bottom: calc(100% + 10 * var(--u));
-  left: 50%;
-  transform: translateX(-50%);
+  right: 0;
+  width: max-content;
+  max-width: calc(100vw - 24px);
   z-index: 3;
 }
 
@@ -902,6 +934,9 @@
 .anvil-tray {
   display: grid;
   gap: 10px;
+  width: 100%;
+  max-height: min(60vh, 360px);
+  overflow-y: auto;
   padding: 12px 16px 16px;
   border-radius: 16px;
   background: radial-gradient(ellipse at 50% 0%, #4a433d, #24201d 70%);
@@ -952,6 +987,7 @@
 
 .anvil-cards {
   display: flex;
+  min-width: 0;
   gap: 12px;
 }
 
@@ -961,6 +997,8 @@
   justify-items: center;
   gap: 4px;
   width: 122px;
+  min-width: 0;
+  flex: 1 1 0;
   padding: 14px 8px 12px;
   border: 0;
   border-radius: 12px;
@@ -1069,7 +1107,11 @@
   place-items: center;
   border-radius: calc(11 * var(--u));
   background:
-    repeating-radial-gradient(circle at 30% 40%, rgba(255, 255, 255, 0.02) 0 1px, transparent 1px 3px),
+    repeating-radial-gradient(
+      circle at 30% 40%,
+      rgba(255, 255, 255, 0.02) 0 1px,
+      transparent 1px 3px
+    ),
     radial-gradient(ellipse at 50% 40%, #2d5444, var(--felt) 70%, #142a20);
   box-shadow:
     inset 0 4px 12px rgba(0, 0, 0, 0.65),
@@ -1185,7 +1227,9 @@
   box-shadow:
     inset 4px 0 0 var(--seat-color),
     0 6px 14px rgba(0, 0, 0, 0.5);
-  animation: toast-in 0.25s var(--ease-out-back) both, toast-out 0.4s ease-in 3.6s forwards;
+  animation:
+    toast-in 0.25s var(--ease-out-back) both,
+    toast-out 0.4s ease-in 3.6s forwards;
 }
 
 .toast button {
@@ -1369,7 +1413,12 @@
   padding: 8px 46px 8px 12px;
   pointer-events: none;
   color: var(--seat-ink, #fff7ea);
-  background: linear-gradient(180deg, color-mix(in srgb, var(--seat-color) 85%, #fff), var(--seat-color) 40%, color-mix(in srgb, var(--seat-color) 65%, #000));
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--seat-color) 85%, #fff),
+    var(--seat-color) 40%,
+    color-mix(in srgb, var(--seat-color) 65%, #000)
+  );
   clip-path: polygon(0 0, 100% 0, calc(100% - 24px) 50%, 100% 100%, 0 100%, 24px 50%);
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5);
   animation: ribbon-sweep var(--ribbon-ms) linear both;

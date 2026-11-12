@@ -1,3 +1,4 @@
+import { useLayoutEffect } from 'react';
 import { useBgm } from './hooks/useAudio';
 import { useNavActions, useRoute } from './hooks/useNav';
 import { useMotionAttributes } from './hooks/useReducedMotion';
@@ -10,6 +11,10 @@ import { OnlinePage } from './pages/OnlinePage';
 export function App() {
   const route = useRoute();
   const nav = useNavActions();
+  const routeKey = route.page === 'game' ? `game-${route.session.id}` : route.page;
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0);
+  }, [routeKey]);
   useBgm(route.page === 'game' ? undefined : 'lobby');
   useMotionAttributes();
 

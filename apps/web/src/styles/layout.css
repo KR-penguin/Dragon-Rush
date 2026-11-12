@@ -80,7 +80,13 @@
   font-weight: 900;
   font-size: clamp(3rem, 8vw, 88px);
   letter-spacing: 0.02em;
-  background: linear-gradient(180deg, #fff3c4 0%, var(--gold-hi) 35%, var(--gold) 60%, var(--gold-deep) 100%);
+  background: linear-gradient(
+    180deg,
+    #fff3c4 0%,
+    var(--gold-hi) 35%,
+    var(--gold) 60%,
+    var(--gold-deep) 100%
+  );
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -346,37 +352,42 @@
     overflow: visible;
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    padding: 8px 8px 0;
+    gap: 10px;
+    padding: 10px 10px 16px;
   }
 
   .hud {
     display: contents;
   }
 
-  .top-strip {
+  .game .top-strip {
     position: relative !important;
     order: 0;
     left: auto !important;
     top: auto !important;
     transform: none !important;
     align-self: center;
+    width: min(100%, 900px);
     flex-wrap: wrap;
     justify-content: center;
+    border-radius: 20px;
   }
 
-  .corner-cards {
+  .game .corner-cards {
     order: 1;
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-self: center;
+    width: min(100%, 750px);
     gap: 10px;
-    overflow-x: auto;
-    padding: 4px 4px 8px 22px;
+    padding: 4px;
   }
 
-  .corner-card {
+  .game .corner-card {
     position: relative !important;
     inset: auto !important;
-    flex: none;
+    width: 100%;
+    min-width: 0;
     flex-direction: row !important;
     padding: 8px 12px 8px 4px !important;
     transform: none !important;
@@ -395,23 +406,154 @@
     position: relative;
     order: 2;
     inset: auto;
-    width: 100%;
-    aspect-ratio: 1 / 1.05;
-    max-height: 92vh;
+    align-self: center;
+    flex: none;
+    width: min(100%, 72vh, 720px);
+    aspect-ratio: 1;
   }
 
   .toasts {
     display: none !important;
   }
 
-  .dock {
-    position: sticky !important;
+  .game .dock {
+    position: relative !important;
     order: 3;
-    bottom: 0 !important;
+    bottom: auto !important;
     left: auto !important;
     transform: none !important;
-    align-self: center;
-    margin-top: auto;
+    align-self: stretch;
+    width: 100%;
+    margin-top: 0;
     z-index: 12;
+  }
+
+  .game .dock-status {
+    max-width: 100%;
+    flex-wrap: wrap;
+    justify-content: center;
+    white-space: normal;
+    text-align: center;
+  }
+
+  .game .dock-row {
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    width: min(100%, 900px);
+  }
+
+  .game .dock-actions {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .game .dock-primary,
+  .game .dock-dragon,
+  .game .dock-shop,
+  .game .dock-waiting {
+    min-width: 0;
+    height: 48px;
+  }
+}
+
+@media (max-width: 699px) {
+  .game {
+    padding-right: 0;
+    padding-left: 0;
+  }
+
+  .game .top-strip {
+    width: calc(100% - 16px);
+    gap: 8px;
+  }
+
+  .game .strip-controls {
+    flex: 1 1 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+    padding: 4px 0 0;
+    border-left: 0;
+    border-top: 1px solid rgba(217, 164, 65, 0.25);
+  }
+
+  .game .corner-cards {
+    display: flex;
+    align-self: stretch;
+    width: 100%;
+    overflow-x: auto;
+    padding: 4px 10px 8px 22px;
+    scroll-snap-type: x proximity;
+  }
+
+  .game .corner-card {
+    flex: 0 0 min(80vw, 280px);
+    scroll-snap-align: start;
+  }
+
+  .board-area {
+    width: min(calc(100% - 20px), 72vh);
+  }
+
+  .game .dock {
+    padding: 0 8px;
+  }
+
+  .game .dock-row {
+    padding: 8px;
+  }
+
+  .game .dock-actions {
+    flex: 1 1 190px;
+  }
+
+  .game .dock-primary,
+  .game .dock-dragon,
+  .game .dock-shop {
+    padding: 0 10px;
+    font-size: 15px;
+  }
+
+  .game .dock-items {
+    gap: 6px;
+  }
+
+  .game .dock-above {
+    width: min(230px, 70vw);
+  }
+
+  .game .anvil-tray {
+    padding: 10px;
+  }
+
+  .game .anvil-tray-head {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .game .anvil-cards {
+    gap: 6px;
+  }
+
+  .game .stat-card {
+    padding: 10px 4px;
+  }
+
+  .game .stat-card-icon {
+    width: 28px;
+    height: 28px;
+  }
+
+  .game .stat-card-name {
+    font-size: 13px;
+  }
+
+  .game .stat-card-value {
+    font-size: 16px;
+  }
+
+  .game .price-tag {
+    padding-right: 5px;
+    padding-left: 4px;
   }
 }

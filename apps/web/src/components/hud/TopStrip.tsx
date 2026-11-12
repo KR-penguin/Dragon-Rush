@@ -23,6 +23,7 @@ interface TopStripProps {
   maxRounds: number | null;
   breathEvery: number;
   breathLit: number;
+  dragonIntent: { status: string; breath: string };
   speed: AnimationSpeed;
   canSkip: boolean;
   muted: boolean;
@@ -61,12 +62,19 @@ export function TopStrip(props: TopStripProps) {
         {props.maxRounds !== null && <small className="num">/ {props.maxRounds}</small>}
       </div>
 
-      <div className="strip-runes" title={`용의 브레스: ${props.breathEvery}번째 공격마다 방어 무시`}>
-        {Array.from({ length: props.breathEvery }, (_, i) => (
-          <span key={i} className={`rune-stone${i < props.breathLit ? ' is-lit' : ''}`}>
-            <GameIcon name="rune" />
-          </span>
-        ))}
+      <div
+        className="strip-runes"
+        title={`용의 브레스: ${props.breathEvery}번째 공격마다 방어 무시`}
+      >
+        <div className="strip-rune-stones" aria-hidden="true">
+          {Array.from({ length: props.breathEvery }, (_, i) => (
+            <span key={i} className={`rune-stone${i < props.breathLit ? ' is-lit' : ''}`}>
+              <GameIcon name="rune" />
+            </span>
+          ))}
+        </div>
+        <span className="strip-dragon-status">{props.dragonIntent.status}</span>
+        <span className="strip-dragon-breath">{props.dragonIntent.breath}</span>
       </div>
 
       <div className="strip-controls">
@@ -112,13 +120,31 @@ export function TopStrip(props: TopStripProps) {
         >
           <GameIcon name="motion" />
         </button>
-        <button type="button" className="icon-btn" onClick={props.onChronicle} aria-label="연대기" title="연대기 (게임 기록)">
+        <button
+          type="button"
+          className="icon-btn"
+          onClick={props.onChronicle}
+          aria-label="연대기"
+          title="연대기 (게임 기록)"
+        >
           <GameIcon name="chronicle" />
         </button>
-        <button type="button" className="icon-btn" onClick={props.onSettings} aria-label="연출 · 사운드 설정" title="연출 · 사운드 설정">
+        <button
+          type="button"
+          className="icon-btn"
+          onClick={props.onSettings}
+          aria-label="연출 · 사운드 설정"
+          title="연출 · 사운드 설정"
+        >
           <GameIcon name="settings" />
         </button>
-        <button type="button" className="icon-btn" onClick={props.onExit} aria-label="나가기" title="나가기">
+        <button
+          type="button"
+          className="icon-btn"
+          onClick={props.onExit}
+          aria-label="나가기"
+          title="나가기"
+        >
           <GameIcon name="exit" />
         </button>
       </div>
