@@ -75,7 +75,7 @@ const MYSTERY_DECK: readonly MysteryCardDef[] = [
 ];
 
 export const DEFAULT_RULES: RulesConfig = deepFreeze({
-  version: 'rush-6',
+  version: 'rush-7',
   startingCoins: 10,
   startingItems: {},
   startBonus: { coins: 35, hp: 6 },
@@ -113,6 +113,7 @@ export const DEFAULT_RULES: RulesConfig = deepFreeze({
   thiefStealAmount: 10,
   board: BOARD,
   mysteryDeck: MYSTERY_DECK,
+  movement: { rollSides: 10 },
   combat: { maxExchanges: 100, dieSides: 6, mode: 'external' },
   dragon: { hp: 88, atk: 10, def: 10, breathEvery: 3 },
 });

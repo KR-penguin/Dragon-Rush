@@ -6,7 +6,7 @@ import {
   BOT_NAMES,
   bundledOutcomeModel,
   OBS_DIM,
-  OBS_V1_LAYOUT,
+  OBS_V2_LAYOUT,
   OBS_VERSION,
 } from '@dragon-rush/ai';
 import { RequestSchema, ResetParamsSchema, StepParamsSchema, type ResetParams } from './config';
@@ -64,7 +64,7 @@ export class EnvServer {
           action_dim: ACTION_DIM,
           rules_version: DEFAULT_RULES.version,
           action_names: ACTION_NAMES,
-          obs_layout: OBS_V1_LAYOUT,
+          obs_layout: OBS_V2_LAYOUT,
           bots: BOT_NAMES,
         };
       case 'reset':

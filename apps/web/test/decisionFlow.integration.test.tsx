@@ -14,7 +14,7 @@ vi.mock('node:crypto', async (importOriginal) => {
     ...actual,
     randomInt: (min: number, max?: number): number =>
       min === 0 && max === 2 ** 47
-        ? 0
+        ? 2
         : max === undefined
           ? actual.randomInt(min)
           : actual.randomInt(min, max),

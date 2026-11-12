@@ -26,7 +26,7 @@ export function HomePage({ onLocal, onOnline }: HomePageProps) {
           <span className="home-title-ko">드래곤 러쉬</span>
           <span className="home-title-en">DRAGON RUSH</span>
         </h1>
-        <p className="home-tagline">주사위를 굴려 강해지고, 결투에서 살아남아, 용을 쓰러뜨려라.</p>
+        <p className="home-tagline">룰렛을 돌려 강해지고, 결투에서 살아남아, 용을 쓰러뜨려라.</p>
         <ul className="home-jobs" aria-label="직업">
           {JOB_IDS.map((j, i) => (
             <li

@@ -1083,9 +1083,8 @@
   font-size: 17px;
 }
 
-/* ---------- Dice tray ---------- */
-.dice-tray {
-  --die: calc(56 * var(--u));
+/* ---------- Movement roulette ---------- */
+.roulette-tray {
   position: relative;
   flex: none;
   width: calc(220 * var(--u));
@@ -1099,7 +1098,7 @@
     0 4px 8px rgba(0, 0, 0, 0.5);
 }
 
-.dice-felt {
+.roulette-felt {
   position: relative;
   width: 100%;
   height: 100%;
@@ -1116,67 +1115,74 @@
   box-shadow:
     inset 0 4px 12px rgba(0, 0, 0, 0.65),
     inset 0 0 0 1px rgba(0, 0, 0, 0.5);
-  perspective: 600px;
+  overflow: hidden;
 }
 
-.die-path {
-  position: relative;
-  width: var(--die);
-  height: var(--die);
-  transform-style: preserve-3d;
-}
-
-.die-cube {
-  position: absolute;
-  inset: 0;
-  transform-style: preserve-3d;
-}
-
-.die-face {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  grid-template: repeat(3, 1fr) / repeat(3, 1fr);
-  padding: 15%;
-  gap: 5%;
-  border-radius: 18%;
-  background: linear-gradient(145deg, #fbf4e6, #d9ccb3);
-  box-shadow:
-    inset 0 0 0 1px rgba(43, 29, 20, 0.25),
-    inset 0 -3px 6px rgba(0, 0, 0, 0.14);
-  backface-visibility: hidden;
-}
-
-.pip {
+.roulette-wheel {
+  width: calc(98 * var(--u));
+  height: calc(98 * var(--u));
+  max-height: 96%;
   border-radius: 50%;
-  background: radial-gradient(circle at 40% 35%, #4a3528, #1a1210);
+  filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.65));
 }
 
-.pip-off {
-  background: transparent;
+.roulette-sector {
+  stroke: #382216;
+  stroke-width: 0.8;
 }
 
-.die-face-1 .pip:not(.pip-off) {
-  background: radial-gradient(circle at 40% 35%, #ff6a4a, #a3261a);
-  transform: scale(1.55);
+.roulette-sector.sector-0 {
+  fill: #a4412c;
 }
 
-.die-shadow {
+.roulette-sector.sector-1 {
+  fill: #d1a34d;
+}
+
+.roulette-wheel text {
+  fill: #fff4d7;
+  paint-order: stroke fill;
+  stroke: #3b2618;
+  stroke-width: 0.6;
+  font-family: var(--font-impact);
+  font-size: 11px;
+  pointer-events: none;
+}
+
+.roulette-hub {
+  fill: #4a2a1d;
+  stroke: #f3cd73;
+  stroke-width: 2;
+}
+
+.roulette-pointer {
   position: absolute;
-  left: 12%;
-  right: 12%;
-  bottom: -18%;
-  height: 22%;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.45);
-  filter: blur(3px);
+  z-index: 2;
+  top: 0;
+  left: 50%;
+  width: calc(17 * var(--u));
+  height: calc(17 * var(--u));
+  background: #fff4d7;
+  border: 2px solid #4a2a1d;
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  transform: translateX(-50%);
+  filter: drop-shadow(0 2px 2px #120c0a);
 }
 
-.dice-tray.is-idle .die-path {
+.roulette-caption {
+  position: absolute;
+  right: calc(7 * var(--u));
+  bottom: calc(5 * var(--u));
+  font-family: var(--font-impact);
+  font-size: max(12px, calc(15 * var(--u)));
+  color: var(--gold-hi);
+}
+
+.roulette-tray.is-idle .roulette-wheel {
   opacity: 0.55;
 }
 
-.dice-number {
+.roulette-result {
   position: absolute;
   top: calc(-12 * var(--u));
   right: calc(-12 * var(--u));
@@ -1196,8 +1202,14 @@
     0 4px 8px rgba(0, 0, 0, 0.5);
 }
 
-.dice-number.is-new {
+.roulette-result.is-new {
   animation: count-pop 0.18s var(--ease-out-back) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .roulette-result.is-new {
+    animation: none;
+  }
 }
 
 /* ---------- Toasts ---------- */

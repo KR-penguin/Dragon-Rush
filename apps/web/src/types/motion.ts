@@ -1,4 +1,4 @@
-/** Pawn hops and the CSS-3D die (decision sheet §1.6-1.7). Times are at 1x speed. */
+/** Pawn hops and the ten-sector roulette. Times are at 1x speed. */
 
 export const HOP_FIRST_MS = 160;
 export const HOP_DECAY = 0.9;
@@ -22,6 +22,14 @@ export function hopSchedule(steps: number): number[] {
  * timing derive from it); the shortening hops finish early and leave a landing beat.
  */
 export const diceMoveMs = (steps: number): number => MOVE_STEP_BUDGET_MS * Math.max(1, steps);
+
+/** A forward teleport remains legible even across most of the 24-tile ring. */
+export function teleportHopSchedule(steps: number): number[] {
+  return Array.from({ length: steps }, (_, i) => Math.max(45, Math.round(75 * 0.96 ** i)));
+}
+
+export const teleportMoveMs = (steps: number): number =>
+  teleportHopSchedule(steps).reduce((total, ms) => total + ms, 80);
 
 /** Height the inner node rises to (plane px) and the squash on each landing. */
 export const HOP_HEIGHT = 30;
@@ -54,93 +62,42 @@ export const SHADOW_KEYFRAMES: Keyframe[] = [
   { transform: 'scale(1)', opacity: 0.55, offset: 1 },
 ];
 
-/* ---- Die ---- */
+/* ---- Roulette ---- */
 
-export type DieFace = 1 | 2 | 3 | 4 | 5 | 6;
-export const DIE_FACES: readonly DieFace[] = [1, 2, 3, 4, 5, 6];
-export const DIE_SIZE = 56;
+export const ROULETTE_VALUES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
+export const ROULETTE_ROLL_MS = 700;
+export const ROULETTE_LAND_MS = 600;
+const SECTOR_DEGREES = 360 / ROULETTE_VALUES.length;
 
-/** Rotation that places each face on the cube (then translateZ(half size)). */
-export const FACE_PLACEMENT: Record<DieFace, { readonly x: number; readonly y: number }> = {
-  1: { x: 0, y: 0 },
-  6: { x: 0, y: 180 },
-  3: { x: 0, y: 90 },
-  4: { x: 0, y: -90 },
-  5: { x: 90, y: 0 },
-  2: { x: -90, y: 0 },
-};
+export const isRouletteValue = (value: number | null): value is number =>
+  value !== null && Number.isInteger(value) && value >= 1 && value <= 10;
 
-/** `half` is the cube's half size as a CSS length (px, or a calc() on a CSS variable). */
-export const faceTransform = (face: DieFace, half = `${DIE_SIZE / 2}px`): string => {
-  const r = FACE_PLACEMENT[face];
-  return `rotateX(${r.x}deg) rotateY(${r.y}deg) translateZ(${half})`;
-};
+/** Sector 1 is centred at twelve o'clock beneath the fixed pointer. */
+export const rouletteRestAngle = (value: number): number => -(value - 1) * SECTOR_DEGREES;
 
-/** Cube rotation (applied as `rotateX(x) rotateY(y)`) that turns `face` toward the viewer. */
-export const REST_ROTATION: Record<DieFace, { readonly x: number; readonly y: number }> = {
-  1: { x: 0, y: 0 },
-  6: { x: 0, y: 180 },
-  3: { x: 0, y: -90 },
-  4: { x: 0, y: 90 },
-  5: { x: -90, y: 0 },
-  2: { x: 90, y: 0 },
-};
-
-export const isDieFace = (n: number | null): n is DieFace =>
-  n !== null && Number.isInteger(n) && n >= 1 && n <= 6;
-
-/** Landing rotation for the engine's value, plus two full turns on X and one on Y for the tumble. */
-export function diceLandingRotation(value: DieFace): { x: number; y: number } {
-  const r = REST_ROTATION[value];
-  return { x: r.x + 720, y: r.y + 360 };
-}
-
-export const cubeTransform = (r: { x: number; y: number }): string =>
-  `rotateX(${r.x}deg) rotateY(${r.y}deg)`;
-
-export const DICE_ROLL_MS = 700;
-const LIFT_END = 80 / DICE_ROLL_MS;
-const LAND = 600 / DICE_ROLL_MS;
-
-/** Spin of the cube: still while lifting, tumble with a 4 degree overshoot, then settle. */
-export function diceSpinKeyframes(value: DieFace): Keyframe[] {
-  const end = diceLandingRotation(value);
+/** Full clockwise turns plus the shortest forward distance to the authoritative result. */
+export function rouletteSpinKeyframes(from: number, value: number): Keyframe[] {
+  const rest = rouletteRestAngle(value);
+  const forward = (((rest - from) % 360) + 360) % 360;
+  const end = from + 1080 + forward;
   return [
-    { transform: cubeTransform({ x: 0, y: 0 }), offset: 0 },
-    {
-      transform: cubeTransform({ x: 0, y: 0 }),
-      offset: LIFT_END,
-      easing: 'cubic-bezier(.15,.6,.25,1)',
-    },
-    { transform: cubeTransform({ x: end.x + 4, y: end.y - 4 }), offset: LAND, easing: 'ease-out' },
-    { transform: cubeTransform(end), offset: 1 },
+    { transform: `rotate(${from}deg)`, offset: 0, easing: 'cubic-bezier(.18,.65,.25,1)' },
+    { transform: `rotate(${end + 5}deg)`, offset: ROULETTE_LAND_MS / ROULETTE_ROLL_MS },
+    { transform: `rotate(${end}deg)`, offset: 1 },
   ];
 }
 
-/**
- * Path of the die toward the tray centre from an offset (sx, sy): lift, an arc and two bounces.
- * Local humans throw from the tray's left; bots and remote players from their corner card.
- */
-export function diceThrowKeyframes(sx: number, sy: number): Keyframe[] {
-  const at = (f: number, lift: number, scale = 1) =>
-    `translate3d(${Math.round(sx * f)}px, ${Math.round(sy * f - lift)}px, 0px) scale(${scale})`;
-  return [
-    { transform: at(1, 0, 0.9), offset: 0 },
-    { transform: at(0.95, 22), offset: LIFT_END, easing: 'ease-out' },
-    { transform: at(0.5, 40), offset: 0.42, easing: 'ease-in' },
-    { transform: at(0.16, 0), offset: 0.62, easing: 'ease-out' },
-    { transform: at(0.06, 14), offset: 0.74, easing: 'ease-in' },
-    { transform: at(0, 0), offset: LAND },
-    { transform: at(0, 0), offset: 1 },
-  ];
-}
+const point = (angle: number, radius: number): string => {
+  const rad = (angle * Math.PI) / 180;
+  return `${(50 + Math.cos(rad) * radius).toFixed(3)} ${(50 + Math.sin(rad) * radius).toFixed(3)}`;
+};
 
-/** Default throw for the local player: a 160 px path from the left of the tray. */
-export const LOCAL_THROW = { x: -150, y: 8 } as const;
+export const rouletteSectorPath = (index: number): string => {
+  const start = -90 + index * SECTOR_DEGREES - SECTOR_DEGREES / 2;
+  return `M 50 50 L ${point(start, 48)} A 48 48 0 0 1 ${point(start + SECTOR_DEGREES, 48)} Z`;
+};
 
-/** Clamps a throw vector so a die thrown from a far card still lands inside the budget. */
-export function clampThrow(v: { x: number; y: number }, max = 520): { x: number; y: number } {
-  const len = Math.hypot(v.x, v.y);
-  if (len <= max || len === 0) return v;
-  return { x: (v.x / len) * max, y: (v.y / len) * max };
-}
+export const rouletteLabelPosition = (index: number): { x: number; y: number } => {
+  const rad = ((-90 + index * SECTOR_DEGREES) * Math.PI) / 180;
+  return { x: 50 + Math.cos(rad) * 34, y: 50 + Math.sin(rad) * 34 };
+};

@@ -6,7 +6,7 @@ export interface DiceView {
   readonly rolling: boolean;
 }
 
-/** Last dice value shown on the board; it stays visible after the turn that rolled it. */
+/** Last roulette result shown on the board; it stays visible after the turn that spun it. */
 export function useLastDice(current: GameEvent | null, display: PublicGameState | null): DiceView {
   const [last, setLast] = useState<number | null>(null);
   useEffect(() => {

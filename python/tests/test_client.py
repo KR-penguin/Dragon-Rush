@@ -11,14 +11,15 @@ sys.path.insert(0, str(ROOT / "python"))
 from rpgboard_env import IllegalActionError, RPGBoardEnv, RPGBoardEnvError, RPGBoardVecEnv  # noqa: E402
 
 SERVER = ["node", "--import", "tsx", "packages/sim/src/env-server.ts"]
-KW = dict(server_cmd=SERVER, cwd=str(ROOT))
+KW = dict(server_cmd=SERVER, cwd=str(ROOT), expect_obs_version="obs_v2")
 
 
 def test_single_env_shapes_and_episode():
     with RPGBoardEnv(num_players=3, max_rounds=60, **KW) as env:
-        assert env.obs_dim == 253 and env.action_dim == 47
+        assert env.obs_version == "obs_v2"
+        assert env.obs_dim == 257 and env.action_dim == 47
         obs, info = env.reset(seed=1)
-        assert obs.shape == (253,) and obs.dtype == np.float32
+        assert obs.shape == (257,) and obs.dtype == np.float32
         assert info["action_mask"].shape == (47,) and info["action_mask"].dtype == bool
         rng = np.random.default_rng(0)
         done, steps = False, 0
@@ -44,7 +45,7 @@ def test_illegal_action_raises_without_changing_state():
 def test_vec_env_selfplay_rewards():
     with RPGBoardVecEnv(num_envs=4, mode="selfplay", num_players=[2, 4], **KW) as env:
         obs, info = env.reset(seed=3)
-        assert obs.shape == (4, 253)
+        assert obs.shape == (4, 257)
         assert info["action_mask"].shape == (4, 47)
         rng = np.random.default_rng(1)
         for _ in range(300):
@@ -71,7 +72,7 @@ def test_same_seed_same_trajectory():
 
 def test_version_mismatch():
     with pytest.raises(RPGBoardEnvError) as exc:
-        RPGBoardEnv(expect_obs_version="obs_v9", **KW)
+        RPGBoardEnv(**{**KW, "expect_obs_version": "obs_v9"})
     assert exc.value.code == "VERSION_MISMATCH"
 
 
@@ -89,4 +90,5 @@ def test_describe_names_every_field():
         assert len(d["self.job"]) == 5 and sum(d["self.job"]) == 1.0
         assert d["self.coins"] == pytest.approx(10 / 50)
         assert d["opp1.present"] == 1.0 and d["opp2.present"] == 0.0
-        assert sum(len(v) if isinstance(v, list) else 1 for v in d.values()) == 253
+        assert len(d["g.dice"]) == 10
+        assert sum(len(v) if isinstance(v, list) else 1 for v in d.values()) == 257

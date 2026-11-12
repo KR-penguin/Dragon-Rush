@@ -1,7 +1,7 @@
 # AI 인터페이스 명세 — 드래곤 러쉬 (Dragon Rush)
 
 > 상태: **구현 완료**. 코드(`packages/ai`, `packages/sim`, `python/rpgboard_env`)가 정본이며 이 문서는 계약을 설명한다.
-> 이 문서가 **관측(`obs_v1`)·행동(`act_v1`)·마스크·보상·env 서버 프로토콜·Python 클라이언트 API·모델 통합 계약의 정본**이다.
+> 이 문서가 **관측(`obs_v2`)·행동(`act_v1`)·마스크·보상·env 서버 프로토콜·Python 클라이언트 API·모델 통합 계약의 정본**이다.
 > 규칙·수치 정본은 [game-design.md](game-design.md)(이하 "기획서", 근거는 절 번호로 인용), 모듈 경계는 [architecture.md](architecture.md).
 
 ## 1. 범위와 역할 분담
@@ -23,15 +23,15 @@
 
 | 상수 (`packages/ai`) | 값 | 의미 |
 |---|---|---|
-| `OBS_VERSION` / `OBS_DIM` | `"obs_v1"` / **253** | 관측 레이아웃·정규화 상수·특징 의미 |
+| `OBS_VERSION` / `OBS_DIM` | `"obs_v2"` / **257** | 관측 레이아웃·정규화 상수·특징 의미 |
 | `ACT_VERSION` / `ACTION_DIM` | `"act_v1"` / **47** | 행동 인덱스 ↔ 엔진 `Action` 매핑 |
 | `ENV_PROTOCOL` | `"rpgboard-env/1"` | env 서버 메시지 형식 |
 
-- 인덱스 위치·길이, 정규화 상수, 인코딩 방식, 특징 의미 중 하나라도 바뀌면 버전을 올린다(`obs_v2`). **기존 인덱스의 의미를 다른 의미로 재사용하지 않는다.** 새 특징은 새 버전에서 뒤에 추가한다.
+- 인덱스 위치·길이, 정규화 상수, 인코딩 방식, 특징 의미 중 하나라도 바뀌면 버전을 올린다. **기존 인덱스의 의미를 다른 의미로 재사용하지 않는다.** `obs_v2`는 `g.dice`를 6칸에서 10칸으로 늘려 이후 필드 시작 인덱스를 4칸 이동하고, 두 도달 가능 플래그를 1~10 이동 기준으로 바꾼다. `obs_v1` 모델과 호환되지 않는다.
 - `RulesConfig` 수치 변경(밸런스 조정)은 obs/act 버전을 바꾸지 않는다(값만 바뀜). 다만 정책 성능이 달라질 수 있으므로 env `info`가 `rules_version`을 함께 알려 주고, 모델 메타데이터에도 기록을 권장한다.
 - 확인 지점: env `info` 응답(`obs_version`, `act_version`, `obs_dim`, `action_dim`, `obs_layout`), 모델 메타데이터(§9, 있으면 로드 시 일치 검사). 버전 상수 변경 없이 레이아웃이 바뀌면 골든 테스트가 실패한다(§11).
 
-## 3. 관측 벡터 `obs_v1` (float32[253], 자기중심)
+## 3. 관측 벡터 `obs_v2` (float32[257], 자기중심)
 
 **공통 규칙**
 - 관측은 항상 **결정 주체(`acting_seat`) 시점**이다(`encodeObservation(view: PublicGameState, seat)`). "자기" = 결정 주체. 방어자의 `SHIELD_DECISION`에서는 남의 턴이어도 방어자 시점이다(기획서 §6 표 `SHIELD_DECISION` 행).
@@ -40,22 +40,22 @@
 - 스케일 특징: `n(x, S) = clip(x / S, 0, 2)`. 원-핫·플래그는 {0,1}. 따라서 모든 값 ∈ [0, 2]. 스탯 상한이 없으므로(기획서 §7) 클리핑으로 범위를 보장한다.
 - 숨은 정보는 없다. 동굴 덱은 복원 추출이라 덱 상태가 없다(기획서 §5 동굴 덱). RNG 상태는 관측에 넣지 않는다.
 
-아래 표는 `packages/ai`의 `OBS_V1_LAYOUT`(env `info.obs_layout`으로도 제공)과 1:1로 대응한다.
+아래 표는 `packages/ai`의 `OBS_V2_LAYOUT`(env `info.obs_layout`으로도 제공)과 1:1로 대응한다.
 
-**정규화 상수** (`OBS_V1_SCALES`, 초기 `final` 밸런스에서 동결. 바꾸면 버전 증가)
+**정규화 상수** (`OBS_V2_SCALES`, `obs_v1`의 스케일을 유지. 바꾸면 버전 증가)
 
-| 상수 | 값 | 동결 당시 근거 (config `final`; 현재 `rush-6`은 아래 별도 설명) |
+| 상수 | 값 | 동결 당시 근거 (config `final`; 현재 `rush-7`은 아래 별도 설명) |
 |---|---|---|
 | `HP_S` | 120 | 용 HP 115, 기본 HP 30~56, HP 강화 +6/레벨 |
 | `ATK_S`, `DEF_S` | 20 | 기본 ATK 4~6 / DEF 5~6, 용 10/6, 점증 비용(3+lvl, 2+lvl) |
 | `COIN_S` | 50 | 시작 5, 출발 보너스 +10, 턴당 순 수입 ≈2.45, 도둑 7, 가격 5~6, 강화비 |
 | `LVL_S` | 10 | 스탯별 강화 레벨 |
-| `ITEM_S` | 3 | 초기 `final`의 시작 방어막 1과 아이템 수량을 기준으로 동결. 현재 `rush-6` 시작 아이템은 0 |
-| `ROUND_S` | 100 | 학습 env `maxRounds` 기본 100 (`rush-4` 모델 사용 4인 실측 p95 = 10; 스케일은 `obs_v1` 호환을 위해 유지) |
-| `GRACE_S` / `CD_S` / `TP_S` | 3 / 2 / 2 | `obs_v1` 고정 스케일. 현재 초반 보호는 0라운드, 닌자 쿨다운은 4이며 2 초과 관측값은 클리핑된다 / 이번 턴 텔레포트 사용 수 |
+| `ITEM_S` | 3 | 초기 `final`의 시작 방어막 1과 아이템 수량을 기준으로 동결. 현재 `rush-7` 시작 아이템은 0 |
+| `ROUND_S` | 100 | 학습 env `maxRounds` 기본 100 (`rush-4` 모델 사용 4인 실측 p95 = 10; 이전 스케일 유지) |
+| `GRACE_S` / `CD_S` / `TP_S` | 3 / 2 / 2 | 이전 관측 스케일 유지. 현재 초반 보호는 0라운드, 닌자 쿨다운은 4이며 2 초과 관측값은 클리핑된다 / 이번 턴 텔레포트 사용 수 |
 | `DIST_S` | 23 | 링(24칸)에서 최대 전진 거리 |
 
-> 현재 규칙 `rush-6`에서도 `obs_v1`의 레이아웃과 스케일은 그대로다. 용 HP는 88(관측값 0.73), 기본 HP는 34~53, 초반 보호가 없어 `g.graceLeft`는 시작부터 0이고 `g.pvpEnabled`는 1이다. 출발 칸도 PvP가 가능하다. 코인 흐름(시작 10, 출발 보너스 +35, 도둑 10) 때문에 100코인 이상은 클리핑된다. 코인 손실 이벤트의 미지불분은 1코인당 HP 1로 지불하며, 이 규칙은 보드 관측 벡터의 배치를 바꾸지 않는다. 이전 `rush-4` 4인 휴리스틱 실제 전투 8,000판의 턴당 순 코인은 약 5.19, 게임 길이 p95는 10라운드였다(§10). `rush-3` 분포 수집 시점의 모델 미적용 수치는 각각 6.90과 14라운드다.
+> 현재 규칙 `rush-7`은 이동 룰렛 1~10, 빠른 전투 주사위 1~6이다. `obs_v2`의 스케일은 이전과 같으며 용 HP는 88(관측값 0.73), 기본 HP는 34~53이다. 초반 보호가 없어 `g.graceLeft`는 시작부터 0이고 `g.pvpEnabled`는 1이다. 출발 칸도 PvP가 가능하다. 코인 흐름(시작 10, 출발 보너스 +35, 도둑 10) 때문에 100코인 이상은 클리핑된다. 코인 손실 이벤트의 미지불분은 1코인당 HP 1로 지불한다. 이전 `rush-4` 4인 휴리스틱 실제 전투 8,000판의 턴당 순 코인은 약 5.19, 게임 길이 p95는 10라운드였다(§10). `rush-3` 분포 수집 시점의 모델 미적용 수치는 각각 6.90과 14라운드다.
 
 ### 3.1 자기 블록 — offset 0, 길이 51
 
@@ -90,8 +90,8 @@
 | 7 | 24 | `pos` | 현재 칸 원-핫 |
 | 31 | 1 | `fwdDist` | fwd / DIST_S (내 기준 전진 거리) |
 | 32 | 1 | `sameTile` | fwd = 0 (공존 중, 출발 칸 포함) |
-| 33 | 1 | `iCanReach` | 1 ≤ fwd ≤ 6 (내 주사위 착지 가능) |
-| 34 | 1 | `canReachMe` | 1 ≤ back ≤ 6 (상대 주사위로 내 칸 착지 가능) |
+| 33 | 1 | `iCanReach` | 1 ≤ fwd ≤ `rules.movement.rollSides` (기본 10, 내 룰렛 착지 가능) |
+| 34 | 1 | `canReachMe` | 1 ≤ back ≤ `rules.movement.rollSides` (기본 10, 상대 룰렛으로 내 칸 착지 가능) |
 | 35 | 1 | `hp` | n(hp, HP_S) |
 | 36 | 1 | `maxHp` | n(maxHp, HP_S) |
 | 37 | 1 | `hpRatio` | hp / maxHp |
@@ -106,7 +106,7 @@
 | 52 | 1 | `rageActive` | 광전사 ∧ 2·hp ≤ maxHp |
 | 53 | 1 | `ninjaCooldown` | n(남은 쿨다운, CD_S) |
 
-### 3.3 전역 블록 — offset 213, 길이 40
+### 3.3 전역 블록 — offset 213, 길이 44
 
 | offset | len | 이름 | 인코딩 |
 |---|---|---|---|
@@ -119,20 +119,20 @@
 | 221 | 1 | `g.aliveCount` | 생존자 수 / 4 |
 | 222 | 6 | `g.phase` | 원-핫 [PRE_ROLL, MOVE_ADJUST, CHOOSE_PVP_TARGET, SHIELD_DECISION, TRAINING_CHOICE, POST_MOVE] (종료 관측은 전부 0) |
 | 228 | 4 | `g.turnPlayer` | 턴 플레이어 원-핫 [자기, 상대1, 상대2, 상대3]. 자기가 아니면 비턴 결정(방어자) |
-| 232 | 6 | `g.dice` | 턴 플레이어가 이번 턴 `ROLL_DICE`로 낸 원래 눈(닌자 보정 전) 1~6 원-핫. `ROLL_DICE` 전이거나 이번 턴에 굴리지 않았으면(PRE_ROLL 텔레포트·용 도전) 0. 굴린 뒤 POST_MOVE에서 텔레포트해도 값을 유지 |
-| 238 | 1 | `g.canBuy` | 턴 플레이어가 이번 턴 가장 최근에 상점에 도착함(기획서 §8 구매 조건) |
-| 239 | 1 | `g.thiefUsed` | 턴 플레이어가 이번 턴 도둑 사용함(기획서 §8 도둑·§12 도둑 반복) |
-| 240 | 1 | `g.teleportsUsed` | n(이번 턴 텔레포트 사용 수, TP_S) |
-| 241 | 1 | `g.teleportLimitReached` | 턴당 상한이 설정되어 있고 도달함(§5, 상한 없으면 항상 0) |
-| 242 | 1 | `g.pvpAmArriver` | 진행 중 PvP 결정에서 내가 도착자(CHOOSE_PVP_TARGET, SHIELD_DECISION) |
-| 243 | 1 | `g.pvpAmDefender` | 진행 중 PvP 결정에서 내가 방어자 |
-| 244 | 3 | `g.pvpOpponent` | 확정된 PvP 상대 원-핫 [상대1, 상대2, 상대3] (대상 선택 전이면 0) |
-| 247 | 1 | `g.dragonHp` | n(dragon.hp, HP_S) |
-| 248 | 1 | `g.dragonAtk` | n(dragon.atk, ATK_S) |
-| 249 | 1 | `g.dragonDef` | n(dragon.def, DEF_S) |
-| 250 | 3 | `g.itemPrice` | [teleport, shield, thief] n(price, COIN_S) |
+| 232 | 10 | `g.dice` | 턴 플레이어가 이번 턴 `ROLL_DICE`로 낸 원래 눈(닌자 보정 전) 1~10 원-핫. `ROLL_DICE` 전이거나 이번 턴에 굴리지 않았으면(PRE_ROLL 텔레포트·용 도전) 0. 굴린 뒤 POST_MOVE에서 텔레포트해도 값을 유지 |
+| 242 | 1 | `g.canBuy` | 턴 플레이어가 이번 턴 가장 최근에 상점에 도착함(기획서 §8 구매 조건) |
+| 243 | 1 | `g.thiefUsed` | 턴 플레이어가 이번 턴 도둑 사용함(기획서 §8 도둑·§12 도둑 반복) |
+| 244 | 1 | `g.teleportsUsed` | n(이번 턴 텔레포트 사용 수, TP_S) |
+| 245 | 1 | `g.teleportLimitReached` | 턴당 상한이 설정되어 있고 도달함(§5, 상한 없으면 항상 0) |
+| 246 | 1 | `g.pvpAmArriver` | 진행 중 PvP 결정에서 내가 도착자(CHOOSE_PVP_TARGET, SHIELD_DECISION) |
+| 247 | 1 | `g.pvpAmDefender` | 진행 중 PvP 결정에서 내가 방어자 |
+| 248 | 3 | `g.pvpOpponent` | 확정된 PvP 상대 원-핫 [상대1, 상대2, 상대3] (대상 선택 전이면 0) |
+| 251 | 1 | `g.dragonHp` | n(dragon.hp, HP_S) |
+| 252 | 1 | `g.dragonAtk` | n(dragon.atk, ATK_S) |
+| 253 | 1 | `g.dragonDef` | n(dragon.def, DEF_S) |
+| 254 | 3 | `g.itemPrice` | [teleport, shield, thief] n(price, COIN_S) |
 
-**검산**: 자기 51 + 상대 54×3 = 213 → 전역 시작 213, 마지막 offset 250 + 길이 3 = **253 = `OBS_DIM`**. 각 블록 내부 offset도 연속(자기 0→51, 상대 0→54, 전역 213→253).
+**검산**: 자기 51 + 상대 54×3 = 213 → 전역 시작 213, 마지막 offset 254 + 길이 3 = **257 = `OBS_DIM`**. 각 블록 내부 offset도 연속(자기 0→51, 상대 0→54, 전역 213→257). `obs_v2`는 이동 룰렛 10칸을 고정하므로 11면 이상으로 규칙을 재정의한 보드는 인코딩하지 않는다.
 - PvP·공존 정보: 같은 칸 공존자는 상대 블록 `sameTile`, CHOOSE_PVP_TARGET 후보 = `alive ∧ sameTile`인 상대(기획서 §12 공존 중인 칸에 도착).
 - 전투·패시브(기획서 §9 공격 1회 처리 순서, §4 패시브)는 자동 처리라 관측에는 상태(`indomitableReady`, `rageActive`, `ninjaCooldown`)만 있다.
 
@@ -169,7 +169,7 @@
 | PRE_ROLL·POST_MOVE | `USE_THIEF(k)` | thief ≥ 1 ∧ 이번 턴 미사용 ∧ 상대 k 존재·생존 ∧ 상대 coins ≥ 1 (기획서 §8 도둑, §12 도둑 반복) |
 | POST_MOVE (턴 플레이어) | `END_TURN` | 항상 |
 | POST_MOVE | `BUY_ITEM(i)` | canBuy ∧ coins ≥ price(i) (재고·보유 한도 없음, 기획서 §8 구매 조건) |
-| MOVE_ADJUST (닌자, 쿨다운 0) | `ADJUST_MOVE(-1)` / `(0)`, `(+1)` | 주사위 ≥ 2 / 항상 (최종 이동 ∈ [1, 7], 기획서 §4 그림자 걸음) |
+| MOVE_ADJUST (닌자, 쿨다운 0) | `ADJUST_MOVE(-1)` / `(0)`, `(+1)` | 룰렛 결과 ≥ 2 / 항상 (기본 규칙의 최종 이동 ∈ [1, 11], 기획서 §4 그림자 걸음) |
 | CHOOSE_PVP_TARGET (도착자) | `CHOOSE_PVP_TARGET(k)` | 상대 k 생존 ∧ 내 칸에 있음. 후보가 1명이어도 확인을 위해 생김 |
 | SHIELD_DECISION (방어막 보유한 도착자 또는 모든 방어자) | `SHIELD_NO`, `SHIELD_YES` | `SHIELD_NO`는 항상 합법. 방어막이 있을 때만 `SHIELD_YES`도 합법. 방어막 없는 방어자의 `SHIELD_NO`는 결투 시작 확인 |
 | TRAINING_CHOICE (턴 플레이어) | `TRAIN(s)` | 항상 3개 모두 합법. 거부 행동 없음 (기획서 §5 수련장) |
@@ -204,8 +204,8 @@
 **info** — 버전·차원·레이아웃 조회 (reset 전에도 가능)
 ```json
 {"id":1,"cmd":"info"}
-{"id":1,"ok":true,"result":{"protocol":"rpgboard-env/1","obs_version":"obs_v1","act_version":"act_v1",
- "obs_dim":253,"action_dim":47,"rules_version":"rush-6","action_names":["ROLL_DICE","END_TURN","CHALLENGE_DRAGON","..."],
+{"id":1,"ok":true,"result":{"protocol":"rpgboard-env/1","obs_version":"obs_v2","act_version":"act_v1",
+ "obs_dim":257,"action_dim":47,"rules_version":"rush-7","action_names":["ROLL_DICE","END_TURN","CHALLENGE_DRAGON","..."],
  "obs_layout":[{"name":"self.job","offset":0,"length":5},{"name":"self.pos","offset":5,"length":24},"..."],
  "bots":["random","random:uniform","heuristic","heuristic:aggro","heuristic:growth","heuristic:rush"]}}
 ```
@@ -271,17 +271,18 @@ env별 결과 객체(`result.envs[i]`, reset도 같은 형식):
 RPGBoardEnv(mode="single", num_players=4, agent_seat="random", controlled_seats="all",
             jobs="random", opponents="heuristic", max_rounds=100, rules="default",
             reward_shaping=None, return_events=False, combat_resolver="dice", server_cmd=None, cwd=None,
-            expect_obs_version="obs_v1", expect_act_version="act_v1", timeout=60.0)
+            expect_obs_version="obs_v2", expect_act_version="act_v1", timeout=60.0)
 RPGBoardVecEnv(num_envs=8, **위와 같은 인자)          # 항상 auto_reset
 ```
+- Python 클라이언트의 `expect_obs_version` 기본값은 `obs_v2`이며, 다른 버전을 명시하면 서버와 비교해 불일치를 거절한다.
 - 서버 실행 커맨드 우선순위: `server_cmd` 인자 > 환경변수 `RPGBOARD_ENV_CMD` > 기본 `node packages/sim/dist/env-server.js`. 문자열이면 `shlex.split`. 작업 폴더: `cwd` 인자 > `RPGBOARD_ROOT` > 패키지 위치에서 찾은 저장소 루트. 생성 시 `info`를 호출해 버전을 확인하고, 다르면 `RPGBoardEnvError("VERSION_MISMATCH")`. 기본 커맨드인데 `packages/sim/dist/env-server.js`가 없으면 `RPGBoardEnvError("SERVER_NOT_BUILT")`로 `pnpm install && pnpm build`를 안내한다(클라이언트 예외이며 §7 서버 오류 코드가 아님).
-- 속성: `obs_dim`(253), `action_dim`(47), `obs_version`, `act_version`, `rules_version`, `action_names`(list[str]), `obs_layout`(list[dict]).
+- 속성: `obs_dim`(257), `action_dim`(47), `obs_version`, `act_version`, `rules_version`, `action_names`(list[str]), `obs_layout`(list[dict]).
 - 메서드: `reset(seed=None) -> (obs, info)`, `step(action) -> (obs, reward, terminated, truncated, info)`, `close()`(컨텍스트 매니저 지원). `RPGBoardEnv`는 `auto_reset=False`라 종료 후 `reset()`이 필요하다.
 - 예외: `RPGBoardEnvError(code, message)`, 불법 행동은 하위 클래스 `IllegalActionError`(env 상태는 바뀌지 않음).
 
 | 반환값 | `RPGBoardEnv` | `RPGBoardVecEnv` |
 |---|---|---|
-| `obs` | `float32 (253,)` | `float32 (N, 253)` |
+| `obs` | `float32 (257,)` | `float32 (N, 257)` |
 | `reward` | single: `float`(에이전트 좌석) / selfplay: `float32 (4,)` | single: `float32 (N,)` / selfplay: `float32 (N, 4)` |
 | `terminated`, `truncated` | `bool` | `bool (N,)` |
 | `info["action_mask"]` | `bool (47,)` (종료 응답에서는 전부 False) | `bool (N, 47)` |
@@ -289,7 +290,7 @@ RPGBoardVecEnv(num_envs=8, **위와 같은 인자)          # 항상 auto_reset
 | `info["round"]` | `int` | `int64 (N,)` |
 | `info["phase"]` | `str` (종료 응답에서는 `None`) | `list[str]` (자동 리셋된 다음 결정 기준) |
 | `info["seat_rewards"]` | `float32 (4,)` | `float32 (N, 4)` |
-| `info["eliminated"]`, `["outcome"]`, `["final_obs"]`, `["episode_start"]` | 값 그대로(`final_obs`: `dict[int, float32 (253,)]`) | 길이 N 리스트 |
+| `info["eliminated"]`, `["outcome"]`, `["final_obs"]`, `["episode_start"]` | 값 그대로(`final_obs`: `dict[int, float32 (257,)]`) | 길이 N 리스트 |
 
 예시 — 사용자 numpy actor가 masked softmax로 행동을 고르는 루프(`python/examples/random_agent.py`의 확장형):
 ```python
@@ -337,14 +338,14 @@ createModelPolicy(model: PolicyModel, opts?: { mode?: 'argmax' | 'sample'; tempe
 ```
 
 **ModelPolicy 파이프라인**
-1. `obs = encodeObservation(ctx.view, ctx.seat)` (Float32Array 253). 사용자 입력 정규화(평균·표준편차 등)는 어댑터의 `forward` 안에서 적용한다.
+1. `obs = encodeObservation(ctx.view, ctx.seat)` (Float32Array 257). 사용자 입력 정규화(평균·표준편차 등)는 어댑터의 `forward` 안에서 적용한다.
 2. `scores = model.forward(obs)` (길이 47). `output = 'probs'`면 `log(max(p, 1e-12))`로 logits화.
 3. `mask = maskFromLegal(view, seat, ctx.legal)`. 불법 인덱스는 −∞.
 4. `mode = 'argmax'`(기본, 온라인·평가) 또는 `'sample'`: `softmax(logits / temperature)`에서 `ctx.random`으로 추출(기본 temperature 1.0).
 5. `decodeAction` → 절대 좌석 `Action`.
 6. 출력 길이 불일치·NaN·마스크 후 유효값 없음 → 그 결정 1회만 HeuristicBot으로 대체한다. 호출자가 `onFallback`을 전달하면 이유를 받는다.
 - critic 출력은 게임 플레이에 쓰지 않는다. `checkParity`는 샘플에 `value`가 있고 모델도 `value()`를 제공할 때만 critic 값을 비교하므로, 어댑터 통합 검증에서는 둘 다 제공해야 한다.
-- 현재 검증: 서버 모델 레지스트리는 메타 버전이 있으면 `obs_v1`/`act_v1`과 비교한다. `createModelPolicy`는 `obsDim = 253`, `actionDim = 47`을 확인하고, 실제 결정에서 `forward` 출력 길이 47을 확인한다. 사용자 포맷 어댑터는 아직 `null`이다.
+- 현재 검증: 서버 모델 레지스트리와 `createModelPolicy`는 메타 버전이 있으면 `obs_v2`/`act_v1`과 비교한다. `createModelPolicy`는 `obsDim = 257`, `actionDim = 47`을 확인하고, 실제 결정에서 `forward` 출력 길이 47을 확인한다. 사용자 포맷 어댑터는 아직 `null`이다.
 
 **사용자에게 요청할 정보** (어댑터 구현 전 필요)
 1. 네트워크 구조: 층 수·크기, actor/critic 공유 여부(공유 trunk + 두 head 등), bias 유무.
@@ -356,7 +357,7 @@ createModelPolicy(model: PolicyModel, opts?: { mode?: 'argmax' | 'sample'; tempe
 7. JSON 키 구조를 보여 주는 작은 예시 파일.
 8. **패리티 샘플**: env에서 뽑은 obs 5개 이상과 각 obs의 `info["action_mask"]`(47개 bool), 사용자 numpy 코드로 계산한 actor 원출력(마스크 적용 전 47개)과 critic 값. 파일 형식은 사용자 편의대로 정하되 이 네 항목은 들어 있어야 한다(일부 행동이 막힌 마스크 포함 권장).
 
-**권장 메타데이터** (강제 아님): `"obs_version": "obs_v1"`, `"act_version": "act_v1"`, `"obs_dim": 253`, `"action_dim": 47`, `"output": "logits"`, `"rules_version"`, 학습 설정 요약.
+**권장 메타데이터** (강제 아님): `"obs_version": "obs_v2"`, `"act_version": "act_v1"`, `"obs_dim": 257`, `"action_dim": 47`, `"output": "logits"`, `"rules_version": "rush-7"`, 학습 설정 요약.
 **파일 위치**: `models/<name>.json` (파일명 `^[a-z0-9_-]+\.json$`, 서버 `MODELS_DIR` 허용 목록만 로드), 패리티 샘플은 `models/parity/<name>.json`(하위 폴더는 레지스트리가 스캔하지 않음). 어댑터는 포맷 수령 후 `packages/ai/src/model/adapters/`에 구현하고, 그 전까지 model 좌석은 UI에서 "준비 중"으로 비활성화한다.
 
 ## 10. 내장 봇
@@ -368,11 +369,11 @@ createModelPolicy(model: PolicyModel, opts?: { mode?: 'argmax' | 'sample'; tempe
 
 **HeuristicBot 요약** (규칙 수치는 모두 `RulesConfig`에서 읽는다. `wp` = 추정 승률)
 - 승률 추정: 내장 `outcome_v1`이 있으면 실제 60Hz 전투 데이터로 보정한 모델을 사용한다. 모델이 없을 때는 빠른 전투의 주사위 몬테카를로(PvP 192회, 용 320회)로 폴백한다. 이 값은 봇 내부 판단용이며 인게임에 표시하지 않는다.
-- 전투력 지표 `race(A, B) = ln(hA / eB) − ln(hB / eA)`(> 0이면 A 우세). `eX` = X의 1회 기대 피해 = `mean_{d=1..6} max(1, atk − def' + d)`(def' = 마법사면 `floor(def/2)`). 광전사는 0.6·보통 + 0.4·광폭화 값, 용은 `((k−1)·보통 + def 0 값) / k`(k = `breathEvery`), 피격자가 닌자면 ×(1 − 회피 확률), 하한 0.05. `hX = maxHp + 상대 e × 불굴 잔여`, 상대가 궁수면 −3. "타격 수"는 올림 없는 연속값 `h / e`다.
+- 전투력 지표 `race(A, B) = ln(hA / eB) − ln(hB / eA)`(> 0이면 A 우세). `eX` = X의 1회 기대 피해 = `mean_{d=1..6} max(1, atk − def' + d)`(빠른 전투 주사위는 여전히 6면; def' = 마법사면 `floor(def/2)`). 광전사는 0.6·보통 + 0.4·광폭화 값, 용은 `((k−1)·보통 + def 0 값) / k`(k = `breathEvery`), 피격자가 닌자면 ×(1 − 회피 확률), 하한 0.05. `hX = maxHp + 상대 e × 불굴 잔여`, 상대가 궁수면 −3. "타격 수"는 올림 없는 연속값 `h / e`다.
 - 강화: `score = wd·race(나, 용) + wp·mean race(나, 생존 상대)`. 예산(코인 − 저축) 안에서 Δscore/비용이 최대(> 0)인 스탯을 반복 구매. 저축 = 방어막이 없으면 방어막 가격 + (aggro만) 텔레포트가 없으면 텔레포트 가격.
 - 칸 가치 `V(t)`: 코인 증감(손실은 보유 코인까지) + HP(회복 `min(Δ, 잃은 HP)`×0.45, 피해 `min(Δ, hp−1)`×0.35, hp ≥ maxHp/2이면 둘 다 ×0.2) + 무료 스탯 `3 + 해당 레벨` + 아이템 5 − 쉼 4 + 수련장 `2 + 최소 레벨` + 상점 3(coins ≥ 최저 가격 ∧ (저축 > 0 ∨ 도둑 0개)) + 동굴 = 카드 10장 평균 + 출발 보너스(통과 시) + PvP 기대값 `wp·(상대 코인/2 + 상대 아이템 가격 합 + 12) − (1−wp)·(60 + 내 코인)`(점유자 중 wp 최대 상대. 초반 보호·안전지대 제외. 상대 방어막 ∧ wp > 0.5면 0, 내 방어막 ∧ wp < 0.5면 −방어막 가격).
 - 용 도전: 가진 코인을 `race(·, 용)` 기준으로 강화한 뒤 예상 승률이 성향 임계 이상이면 강화·도전한다. 임계 = 성향 값 − 0.02·max(0, round − 18), 생존 2인이고 상대 추정 ≥ 0.5면 −0.12, 하한 0.12. 마법사는 임계에 +0.05를 더한다.
-- 텔레포트(턴당 최대 1회 사용, 프로토타입과 동일): ① 사냥 = 안전지대·내 칸이 아닌 칸에 혼자 있는 상대 중 wp ≥ 사냥 임계(상대 방어막 ∧ wp > 0.5 제외), `wp·(코인/2 + 아이템 가격 합 + 12)` 최대 ② 여관 = hp ≤ maxHp·inn_frac ∧ 잃은 HP ≥ 12 ③ (PRE_ROLL만) 상점 = coins ≥ 방어막 + 도둑 가격 + 2 ∧ (앞쪽 가장 가까운 상점까지 7칸 이상 ∨ 상점 위) ∧ (방어막 0개 ∨ (도둑 0개 ∧ 최다 코인 상대 ≥ 7))일 때 현재 칸이 아닌 상점 중 V 최대(V > 0) ④ (PRE_ROLL만) 경제 점프 = `max_t V(t) − mean_d V(주사위 착지)` ≥ tp_econ(보유 2장 이상이면 −2)인 칸.
+- 텔레포트 후보 가치는 시계 방향 이동 경로가 출발 칸을 통과하거나 출발 칸에 도착하면 출발 보너스를 한 번 더하고, 목적지 효과를 한 번 적용한다. 사냥은 안전지대·내 칸이 아닌 칸에 혼자 있는 상대 중 승률이 사냥 임계 이상인 대상, 여관은 HP가 성향별 비율 이하이고 잃은 HP가 12 이상일 때 선택한다. PRE_ROLL 상점 선택은 구매 예산이 있고 가장 가까운 상점이 이동 주사위로 닿지 않거나 현재 상점 위일 때 사용한다. 경제 점프는 `max_t V(텔레포트 경로와 착지) − mean_{d=1..rules.movement.rollSides} V(주사위 착지)` ≥ tp_econ(보유 2장 이상이면 −2)을 비교한다. 상점 근접 판정도 `rules.movement.rollSides`를 사용한다.
 - 구매(반복): 위협(어떤 상대의 나에 대한 wp ≥ 0.5)이면 방어막 → 도둑 0개 ∧ 최다 코인 상대 ≥ thief_min이면 도둑 → 텔레포트 < want_tp ∧ coins ≥ 가격 + tp_buy_spare면 텔레포트 → hp ≤ 40% ∧ 잃은 HP ≥ 15면 탈출용 텔레포트. 도둑 사용: 최다 코인 상대가 ≥ 7, 또는 ≥ thief_min이고 3턴 이상 보유, 또는 ≥ 2이고 8턴 이상 보유.
 - 결정 순서: PRE_ROLL(도둑 → 용 도전 → 강화 → 텔레포트 → 주사위), MOVE_ADJUST(d−1/d/d+1의 V 비교, 이득 ≥ 2이거나 보정 없을 때 V ≤ −20(재앙 회피)일 때만 보정), CHOOSE_PVP_TARGET(`wp − (상대 방어막 ∧ wp > 0.5 ? 1 : 0)` 최대, 동률은 코인), SHIELD_DECISION(wp < 0.5면 사용), TRAINING_CHOICE(Δscore 최대), POST_MOVE(구매 → 도둑 → 텔레포트 ①② → 강화 → END_TURN).
 
@@ -382,7 +383,7 @@ createModelPolicy(model: PolicyModel, opts?: { mode?: 'argmax' | 'sample'; tempe
 | growth | 0.6 / 0.4 | 0.25 | 0.80 | 1 | 7 | 0.45 | 6 | 4 |
 | rush | 1.0 / 0 | 0.17 | 0.85 | 0 | 7 | 0.5 | 6 | 99 |
 
-- `rush-6` 기준선(실제 전투, 이전 가중치의 내장 결과 모델을 사용하는 보드 봇): 4인 휴리스틱 4,000판(seed 2026, 4 workers) 중앙 4/p95 9라운드, 용 처치 종료 42.9%, 3라운드 안 탈락 44.5%, 판당 PvP 1.38회, 무승부 0%. 전투 가중치는 새 분포에 재보정하지 않았다. 과거 `rush-4` 8,000판 중앙 6/p95 10라운드, 용 처치 종료 46.5%, 직업 승률 18.9~34.7%, 3라운드 안 탈락 22.6%는 현행 수치가 아니다. 이전 버전의 실측은 game-design §15에 둔다. 온라인 대리 플레이는 `heuristic:growth`.
+- 현재 `rush-7` 4인 휴리스틱 4,000판(seed 2026, 4 workers, 실제 60Hz 전투)의 중앙은 4/p95는 7라운드, 용 처치 종료는 50.2%, 3라운드 안 탈락은 37.3%, 판당 PvP는 1.10회, 무승부는 0%다. 전투 가중치는 새 분포에 재보정하지 않았다. 이전 `rush-6` 기준선은 중앙 4/p95 9라운드, 용 처치 종료 42.9%, 3라운드 안 탈락 44.5%, 판당 PvP 1.38회였다. 과거 `rush-4` 8,000판 중앙 6/p95 10라운드, 용 처치 종료 46.5%, 직업 승률 18.9~34.7%, 3라운드 안 탈락 22.6%는 현행 수치가 아니다. 이전 버전의 실측은 game-design §15에 둔다. 온라인 대리 플레이는 `heuristic:growth`.
 
 ## 11. 계약 검증 (Vitest, Python은 pytest)
 

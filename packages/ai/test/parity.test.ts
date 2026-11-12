@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { ACTION_DIM, checkParity, OBS_DIM, type PolicyModel } from '../src/index';
+import { ACTION_DIM, checkParity, OBS_DIM, OBS_VERSION, type PolicyModel } from '../src/index';
 
 /** Synthetic linear model standing in for the user's adapter until their format arrives. */
 function linearModel(scale: number): PolicyModel {
   return {
     meta: {
       id: 'linear',
-      obsVersion: 'obs_v1',
+      obsVersion: OBS_VERSION,
       actVersion: 'act_v1',
       output: 'logits',
       obsDim: OBS_DIM,

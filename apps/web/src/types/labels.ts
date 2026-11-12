@@ -33,7 +33,8 @@ export const ITEM_LABEL: Record<ItemId, string> = {
 /** @deprecated Emoji placeholders; use `components/icons/GameIcon`. */
 export const ITEM_ICON: Record<ItemId, string> = { teleport: '🌀', shield: '🛡️', thief: '🦝' };
 export const ITEM_DESC: Record<ItemId, string> = {
-  teleport: '원하는 칸으로 즉시 이동 (일회용)',
+  teleport:
+    '선택한 칸까지 시계 방향으로 이동. 출발 칸을 지나거나 도착하면 출발 보너스 획득 (일회용)',
   shield: '결투가 성립할 때 전투를 취소 (일회용)',
   thief: '상대 1명의 코인 최대 10개를 훔침 (일회용, 턴당 1회)',
 };

@@ -28,7 +28,7 @@ export function RoomStatusBanner({ status, busy, onOpenGame, onNewRoom }: RoomSt
           disabled={busy}
           onClick={onOpenGame}
         >
-          <GameIcon name="dice" /> 게임으로 돌아가기
+          <GameIcon name="roulette" /> 게임으로 돌아가기
         </button>
       </section>
     );

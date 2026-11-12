@@ -268,7 +268,7 @@ describe('outcome pipeline', () => {
           }),
         ),
       );
-      expect(bad.result.outcome_model_id).toBe('outcome-v1-rush6-transfer');
+      expect(bad.result.outcome_model_id).toBe('outcome-v1-rush7-transfer');
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

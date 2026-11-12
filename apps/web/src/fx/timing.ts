@@ -1,12 +1,16 @@
 import type { GameEvent } from '@dragon-rush/engine';
 import { eventDuration } from '../animation/eventTimeline';
-import { hopSchedule } from '../types/motion';
+import {
+  ROULETTE_LAND_MS,
+  ROULETTE_ROLL_MS,
+  hopSchedule,
+  teleportHopSchedule,
+} from '../types/motion';
 
 /**
  * Board effect timings derived from the animation timeline, so sounds and particles land on the
- * frames the board shows (dice settle, each hop). All values are real ms at the given speed.
+ * frames the board shows (roulette settle, each hop). All values are real ms at the given speed.
  */
-const DICE_SETTLE_FRACTION = 0.85;
 /** The token's CSS move transition; dust waits for the pawn to arrive. */
 const TOKEN_SETTLE_MS = 120;
 /** The pawn is back on the plane at ~85% of each hop (art-direction hop curve). */
@@ -15,7 +19,7 @@ const HOP_LAND_FRACTION = 0.85;
 export const scaled = (ms: number, speed: number): number => Math.round(ms / Math.max(1, speed));
 
 export function diceLandMs(e: Extract<GameEvent, { type: 'DiceRolled' }>, speed: number): number {
-  return scaled(eventDuration(e) * DICE_SETTLE_FRACTION, speed);
+  return scaled((eventDuration(e) * ROULETTE_LAND_MS) / ROULETTE_ROLL_MS, speed);
 }
 
 export interface HopTiming {
@@ -27,17 +31,18 @@ export interface HopTiming {
   readonly landMs: number;
 }
 
-/** One entry per hop of a dice move, matching `useSteppedMove`. */
+/** One entry per forward hop, matching `useSteppedMove`. */
 export function hopTimings(
   e: Extract<GameEvent, { type: 'Moved' }>,
   speed: number,
   boardSize: number,
 ): HopTiming[] {
-  if (e.via !== 'dice' || e.steps < 1) return [];
+  if (e.steps < 1) return [];
   // Follow the pawn's shortening hop schedule so ticks and dust land with the visible hop.
   const k = 1 / Math.max(1, speed);
   let start = 0;
-  return hopSchedule(e.steps).map((ms, i) => {
+  const schedule = e.via === 'teleport' ? teleportHopSchedule(e.steps) : hopSchedule(e.steps);
+  return schedule.map((ms, i) => {
     const dur = ms * k;
     const hop = {
       tile: (e.from + i + 1) % boardSize,

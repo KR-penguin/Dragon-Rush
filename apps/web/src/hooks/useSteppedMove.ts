@@ -1,7 +1,7 @@
 import { BOARD_SIZE, type GameEvent, type SeatId } from '@dragon-rush/engine';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { stepPath } from '../types/boardLayout';
-import { hopSchedule } from '../types/motion';
+import { hopSchedule, teleportHopSchedule } from '../types/motion';
 
 export interface SteppedMove {
   readonly seat: SeatId;
@@ -14,10 +14,11 @@ export interface SteppedMove {
   readonly ms: number;
 }
 
-/** Walks a token tile by tile while a dice move is on screen (160 ms first hop, x0.9 after). */
+/** Walks either move through each forward tile; reduced motion shows the destination at once. */
 export function useSteppedMove(
   current: GameEvent | null,
   speed: number,
+  reduced: boolean,
   onStep?: () => void,
 ): SteppedMove | null {
   const [move, setMove] = useState<SteppedMove | null>(null);
@@ -27,13 +28,15 @@ export function useSteppedMove(
     latest.current = { speed, onStep };
   });
 
-  useEffect(() => {
-    if (!current || current.type !== 'Moved' || current.via !== 'dice' || current.steps < 1) {
+  useLayoutEffect(() => {
+    if (!current || current.type !== 'Moved' || current.steps < 1 || reduced) {
       setMove(null);
       return;
     }
     const path = stepPath(current.from, current.steps, BOARD_SIZE);
-    const schedule = hopSchedule(current.steps).map((ms) => ms / latest.current.speed);
+    const schedule = (
+      current.via === 'teleport' ? teleportHopSchedule(current.steps) : hopSchedule(current.steps)
+    ).map((ms) => ms / latest.current.speed);
     const seat = current.seat;
     let timer: ReturnType<typeof setTimeout> | null = null;
     const show = (i: number) => {
@@ -46,7 +49,7 @@ export function useSteppedMove(
     return () => {
       if (timer) clearTimeout(timer);
     };
-  }, [current]);
+  }, [current, reduced]);
 
   return move;
 }

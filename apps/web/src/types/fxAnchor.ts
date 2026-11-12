@@ -9,7 +9,7 @@ export type FxAnchorKind =
   | 'tile' // board tile plaque (3D, projected)
   | 'pawn' // pawn standee
   | 'lair' // dragon on the lair
-  | 'dice'; // dice tray
+  | 'dice'; // roulette tray; key retained for the existing FX anchor contract
 
 export interface FxAnchor {
   readonly kind: FxAnchorKind;

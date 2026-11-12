@@ -2,8 +2,8 @@ import type { GameEvent, Phase, PublicGameState, SeatId } from '@dragon-rush/eng
 import type { CombatView } from './combatView';
 import { seatColor, seatCrest, type CrestShape } from './labels';
 
-/** The die settles 600 ms into its 700 ms roll; the number pops then. */
-const DICE_LAND_MS = 600;
+/** The roulette settles near the end of the event. */
+const ROULETTE_LAND_MS = 600;
 
 /** Mirrors `components/board/Pawn` props; built here so the rules for each flag stay testable. */
 export interface PawnViewModel {
@@ -64,8 +64,6 @@ export function buildPawns(i: PawnInputs): PawnViewModel[] {
     .filter((p) => p.alive || i.combat === null || !combatIncludes(i.combat, p.seat))
     .map((p): PawnViewModel => {
       const hopping = stepped?.seat === p.seat;
-      const teleporting =
-        current?.type === 'Moved' && current.via === 'teleport' && current.seat === p.seat;
       return {
         seat: p.seat,
         tile: hopping ? stepped.tile : p.position,
@@ -77,11 +75,9 @@ export function buildPawns(i: PawnInputs): PawnViewModel[] {
         out: !p.alive,
         motion: hopping
           ? { kind: 'hop', ms: stepped.ms, final: stepped.hop === stepped.steps }
-          : teleporting
-            ? { kind: 'blink', ms: 300 / i.speed }
-            : null,
+          : null,
         count: p.alive ? pawnCount(p.seat, i) : null,
-        countDelayMs: current?.type === 'DiceRolled' ? DICE_LAND_MS / i.speed : 0,
+        countDelayMs: current?.type === 'DiceRolled' ? ROULETTE_LAND_MS / i.speed : 0,
       };
     })
     .concat(standingLosers(i));

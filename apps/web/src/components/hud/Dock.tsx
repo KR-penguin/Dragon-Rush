@@ -31,7 +31,7 @@ interface DockProps {
   onUpgrade: (stat: UpgradeStat) => void;
 }
 
-/** Bottom dock: dice tray, one primary verb, the crimson challenge, item cards and the anvil. */
+/** Bottom dock: movement roulette, one primary verb, the crimson challenge, item cards and the anvil. */
 export function Dock(props: DockProps) {
   const { groups, locked, showActions } = props;
   const [anvilOpen, setAnvilOpen] = useState(false);
@@ -61,7 +61,7 @@ export function Dock(props: DockProps) {
                 disabled={locked}
                 onClick={props.onRoll}
               >
-                <GameIcon name="dice" /> 주사위 굴리기
+                <GameIcon name="roulette" /> 룰렛 돌리기
               </button>
             )}
             {groups.endTurn && (

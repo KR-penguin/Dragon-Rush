@@ -1,8 +1,8 @@
 import type { Action } from '@dragon-rush/engine';
 import { createHeuristicBot } from '../bots/heuristic/heuristicBot';
-import { ACTION_DIM, decodeAction, maskFromLegal } from '../codec/actions';
+import { ACTION_DIM, ACT_VERSION, decodeAction, maskFromLegal } from '../codec/actions';
 import { encodeObservation } from '../obs/encode';
-import { OBS_DIM } from '../obs/layout';
+import { OBS_DIM, OBS_VERSION } from '../obs/layout';
 import type { DecisionContext, Policy, PolicyModel } from '../policy';
 
 export interface ModelPolicyOptions {
@@ -20,6 +20,12 @@ export function createModelPolicy(model: PolicyModel, opts: ModelPolicyOptions =
     throw new RangeError(
       `model dims ${model.meta.obsDim}/${model.meta.actionDim} != ${OBS_DIM}/${ACTION_DIM}`,
     );
+  }
+  if (model.meta.obsVersion !== null && model.meta.obsVersion !== OBS_VERSION) {
+    throw new RangeError(`model obs version ${model.meta.obsVersion} != ${OBS_VERSION}`);
+  }
+  if (model.meta.actVersion !== null && model.meta.actVersion !== ACT_VERSION) {
+    throw new RangeError(`model act version ${model.meta.actVersion} != ${ACT_VERSION}`);
   }
   return {
     id: `model:${model.meta.id}`,

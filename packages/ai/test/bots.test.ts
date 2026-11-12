@@ -14,6 +14,7 @@ import {
   createRandomBot,
   HEURISTIC_STYLES,
   OBS_DIM,
+  OBS_VERSION,
   type Policy,
 } from '../src/index';
 import { newGame } from './helpers';
@@ -33,7 +34,7 @@ function playOut(s0: GameState, policies: Policy[], seed: number): GameState {
 
 const meta = (id: string) => ({
   id,
-  obsVersion: 'obs_v1',
+  obsVersion: OBS_VERSION,
   actVersion: 'act_v1',
   output: 'logits' as const,
   obsDim: OBS_DIM,
@@ -73,6 +74,59 @@ describe('built-in bots', () => {
       random: () => 0.5,
     });
     expect(action).toEqual({ type: 'CHALLENGE_DRAGON' });
+  });
+
+  it('rejects a model with an older observation contract', () => {
+    const scores = new Float32Array(ACTION_DIM);
+    expect(() =>
+      createModelPolicy({
+        meta: { ...meta('legacy'), obsVersion: 'obs_v1' },
+        forward: () => scores,
+      }),
+    ).toThrow(/obs_v1.*obs_v2/);
+  });
+
+  it('evaluates all ten movement outcomes before using a teleport', () => {
+    const s = newGame(2, 1);
+    const original = toPublicState(s);
+    const board = original.rules.board.map((tile, index) => ({
+      ...tile,
+      effects: index === 10 ? [{ kind: 'coins' as const, amount: 6 }] : [],
+    }));
+    const players = original.players.map((player, index) =>
+      index === 0
+        ? { ...player, coins: 0, items: { ...player.items, teleport: 1 } }
+        : { ...player, position: 0 },
+    );
+    const action = createHeuristicBot('growth').decide({
+      view: { ...original, rules: { ...original.rules, board }, players },
+      seat: 0,
+      legal: [{ type: 'ROLL_DICE' }, { type: 'USE_TELEPORT', tile: 10 }],
+      random: () => 0.5,
+    });
+    expect(action).toEqual({ type: 'ROLL_DICE' });
+  });
+
+  it('values the START bonus on a clockwise teleport route', () => {
+    const s = newGame(2, 1);
+    const original = toPublicState(s);
+    const board = original.rules.board.map((tile, index) => ({
+      ...tile,
+      effects: index === 1 ? [{ kind: 'coins' as const, amount: 10 }] : [],
+    }));
+    const players = original.players.map((player) => ({
+      ...player,
+      position: 23,
+      coins: 0,
+      items: { ...player.items, teleport: player.seat === 0 ? 1 : 0 },
+    }));
+    const action = createHeuristicBot('growth').decide({
+      view: { ...original, rules: { ...original.rules, board }, players },
+      seat: 0,
+      legal: [{ type: 'ROLL_DICE' }, { type: 'USE_TELEPORT', tile: 1 }],
+      random: () => 0.5,
+    });
+    expect(action).toEqual({ type: 'USE_TELEPORT', tile: 1 });
   });
 
   it('model policy falls back to the heuristic bot on NaN output', () => {
