@@ -37,8 +37,9 @@ export function moveTotal(spec: MoveSpec): number {
     case 'parry':
       return spec.startup + spec.active + spec.recovery;
     case 'shot':
-    case 'rune':
       return spec.startup + 1 + spec.recovery;
+    case 'rune':
+      return spec.startup + spec.holdTicks + 1 + spec.recovery;
     case 'draw':
       return NEVER;
   }

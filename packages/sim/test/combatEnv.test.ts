@@ -6,6 +6,7 @@ import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import {
   createCombat,
+  DEFAULT_COMBAT_RULES,
   NO_INPUT,
   stepCombat,
   type CombatState,
@@ -393,7 +394,8 @@ describe('combat env server (in-process)', () => {
     const rand = lcg(9);
     let steps = 0;
     let ended = false;
-    for (let i = 0; i < 400 && !ended; i++) {
+    const maxSteps = Math.ceil(DEFAULT_COMBAT_RULES.timeLimit.duel / 4) + 1;
+    for (let i = 0; i < maxSteps && !ended; i++) {
       const actions = randomActions([e], rand, false)[0] as [number, number][];
       sides.forEach((side, k) => {
         if (!isActionable(sim, side, 4)) {
