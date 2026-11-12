@@ -15,7 +15,9 @@
 
 **작업 순서와 병렬화**: B를 완료·병합한다 → E 작업 에이전트(`01a1cdcd-fca9-7f41-b46d-3f6e0469b248`, `C:\KoreaPenguin\dragon-rush-outcome-v1`)를 재개해 최신 `main`에서 최종 모델 피팅·rush-2를 완료한다 → 전체 포맷·문서 동기화·최종 검증. B 에이전트 ID는 `01a1cdad-2bbb-7b13-bfd8-ec34c61f4ff5`. B 브랜치의 `785ec38`은 **임시** 보정이라 10개 상성 방향이 모두 맞기 전에는 최종 병합하지 않는다.
 
-**검증 기록:** 온라인 롤백 병합 후 `pnpm lint`, `pnpm typecheck`, `pnpm build`, Python pytest 16개가 통과했다. 전체 Vitest 444개 중 443개 통과, 로비 통합 테스트 하나가 병렬 부하에서 20초 대기에 걸렸으나 단독 재실행은 통과했다. 해당 테스트의 부하 허용 대기를 `2c396d8`로 고쳤으며 최종 전체 재실행이 필요하다. outcome 기반 코드 병합 후 타입 검사와 outcome 관련 10개 테스트 통과. 가상 TCP 지연 시험은 최종 해시가 일치하지만 150~250ms 손실 구간 p95 롤백 깊이가 목표보다 크다. 자세한 수치는 `docs/combat-design.md` §9.
+**검증 기록:** 온라인 롤백·outcome 기반 코드 병합 후 `pnpm lint`, `pnpm typecheck`, `pnpm build`, Python pytest 16개가 통과했다. 로비 통합 테스트가 병렬 부하에서 한 번 20초 대기에 걸려 허용 대기를 `2c396d8`로 수정했다. 이후 전체 Vitest **455/455 통과**했다. 가상 TCP 지연 시험은 최종 해시가 일치하지만 150~250ms 손실 구간 p95 롤백 깊이가 목표보다 크다. 자세한 수치는 `docs/combat-design.md` §9.
+
+**실제 브라우저에서 발견한 온라인 전투 문제(수정 중):** 2026-11-12 13:00, `pnpm dev`/`http://localhost:5173`에서 온라인 방을 사람 검사+성장형 봇으로 시작해 첫 사람 턴에 용 도전. `CombatStarted` 안내 뒤 경기장으로 넘어가지 않고 보드가 "검사님이 결정하는 중"으로 대기했다. 기본 방 옵션은 `quickCombat: false`. 넷코드 담당 에이전트 `01a1cdad-2afe-75f3-aaf3-49e180dfc09a`를 재개해 조사·재현 테스트·수정하도록 맡겼다. 코드상 의심 지점은 `apps/web/src/services/OnlineGameClient.ts`의 `onFightStart`가 이전 보드 상태에 `withFight(this.last)`를 호출할 때, 아직 `COMBAT` 갱신 전이면 `fightStart`를 지우는 순서 경합이다. 이 가설은 아직 검증되지 않았다. 수정 후 브라우저로 용전 진입·종료와 보드 복귀를 다시 확인할 것.
 
 **브랜치 규칙**: `main` 직접 커밋 금지. 새 브랜치는 `codex/` 접두어 사용, 영어 Conventional Commits. 체크포인트 커밋(`wip(...)`)은 병합 전에 squash 한다. 병합은 `git merge --no-ff`.
 
