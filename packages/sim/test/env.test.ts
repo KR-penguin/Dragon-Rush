@@ -91,6 +91,35 @@ describe('env server (in-process)', () => {
     expect(call(s, 99999, 'step', { actions: [0] }).error?.code).toBe('EPISODE_OVER');
   });
 
+  it('resolves fights with the real-time sim when combat_resolver is sim', () => {
+    const run = () => {
+      const s = new EnvServer();
+      const r = call(s, 1, 'reset', { num_envs: 2, seed: 31, config: { mode: 'selfplay', num_players: 4, combat_resolver: 'sim', return_events: true } });
+      expect(r.result.combat_resolver).toBe('sim');
+      let envs = r.result.envs;
+      const out: string[] = [];
+      let fights = 0;
+      let finished = 0;
+      for (let i = 0; i < 1500 && finished < 2; i++) {
+        const step = call(s, i + 2, 'step', { actions: firstLegal(envs) });
+        expect(step.ok).toBe(true);
+        out.push(JSON.stringify(step.result));
+        envs = step.result.envs;
+        for (const e of envs) {
+          if (e.terminated || e.truncated) finished++;
+          fights += (e.events as { type: string }[]).filter((x) => x.type === 'CombatEnded').length;
+          // the real-time resolver writes back summaries only: no dice exchanges
+          expect((e.events as { type: string }[]).some((x) => x.type === 'CombatHit')).toBe(false);
+        }
+      }
+      expect(fights).toBeGreaterThan(0);
+      return out;
+    };
+    expect(run()).toEqual(run());
+    expect(call(new EnvServer(), 1, 'reset', { expect: { combat_resolver: 'sim' } }).error?.code).toBe('VERSION_MISMATCH');
+    expect(call(new EnvServer(), 1, 'reset', { config: { combat_resolver: 'outcome' } }).error?.code).toBe('BAD_CONFIG');
+  });
+
   it('rejects bad configs', () => {
     const s = new EnvServer();
     expect(call(s, 1, 'reset', { config: { mode: 'weird' } }).error?.code).toBe('BAD_CONFIG');

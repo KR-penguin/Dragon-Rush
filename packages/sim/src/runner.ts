@@ -16,6 +16,7 @@ import {
   type SeatId,
 } from '@dragon-rush/engine';
 import { createPolicyByName, createPolicyRandom, type Policy } from '@dragon-rush/ai';
+import { createCombatResolver, type CombatResolverName, type FightLog } from './combatResolver';
 import { loadModelPolicy } from './modelLoader';
 
 export interface GameRecord {
@@ -33,6 +34,10 @@ export interface GameRecord {
   purchases: Record<ItemId, number>;
   turns: number[];
   netCoins: number[];
+  /** Real-time combat ticks simulated (sim resolver only). */
+  combatTicks: number;
+  /** Every fight's setup and result when `logFights` is on. */
+  fights?: FightLog[];
 }
 
 export interface PlayGameOptions {
@@ -41,12 +46,14 @@ export interface PlayGameOptions {
   policies: Policy[];
   rules?: RulesConfig;
   random?: () => number;
+  /** How engine COMBAT phases are settled (default 'dice'). */
+  combat?: CombatResolverName;
+  /** Scripted combat bot for the sim resolver (default `scripted:balanced`). */
+  combatBot?: string;
+  logFights?: boolean;
 }
 
-/**
- * TEMPORARY resolver until real-time combat (@dragon-rush/combat) lands: settles a pending COMBAT
- * with the dice rules right away, so sims and the env behave exactly like the old 'dice' mode.
- */
+/** Dice resolver: settles a pending COMBAT with the board's dice duel, exactly like the old 'dice' mode. */
 export function autoResolveCombat(r: { state: GameState; events: GameEvent[] }): { state: GameState; events: GameEvent[] } {
   let { state, events } = r;
   while (state.pending?.phase === 'COMBAT') {
@@ -63,12 +70,18 @@ export function playGame(opts: PlayGameOptions): GameRecord {
   const created = createGameWithEvents({ seats: opts.jobs.map((job) => ({ job })) }, rules, opts.seed);
   let state = created.state;
   const events: GameEvent[] = [...created.events];
+  const fights: FightLog[] = [];
+  const resolve = createCombatResolver(opts.combat ?? 'dice', {
+    seed: opts.seed,
+    ...(opts.combatBot ? { bot: opts.combatBot } : {}),
+    onFight: (f) => fights.push(f),
+  });
   const seatPolicies = state.seatOrigin.map((origin) => opts.policies[origin]!);
   for (let i = 0; i < 100_000 && state.pending; i++) {
     const seat = state.pending.actor;
     const legal = getLegalActions(state);
     const action = seatPolicies[seat]!.decide({ view: toPublicState(state), seat, legal, random });
-    const r = autoResolveCombat(applyAction(state, action));
+    const r = resolve(applyAction(state, action));
     state = r.state;
     for (const e of r.events) events.push(e);
   }
@@ -88,7 +101,9 @@ export function playGame(opts: PlayGameOptions): GameRecord {
     purchases: { teleport: 0, shield: 0, thief: 0 },
     turns: Array.from({ length: n }, () => 0),
     netCoins: Array.from({ length: n }, () => 0),
+    combatTicks: fights.reduce((a, f) => a + (f.ticks ?? 0), 0),
   };
+  if (opts.logFights) record.fights = fights;
   for (const e of events) {
     switch (e.type) {
       case 'TurnStarted':
@@ -144,6 +159,9 @@ export interface BatchOptions {
   baseSeed: number;
   startIndex?: number;
   rules?: RulesConfig;
+  combat?: CombatResolverName;
+  combatBot?: string;
+  logFights?: boolean;
 }
 
 export function runBatch(opts: BatchOptions): GameRecord[] {
@@ -158,7 +176,18 @@ export function runBatch(opts: BatchOptions): GameRecord[] {
       const name = names[i % names.length]!;
       return name.startsWith('model:') ? loadModelPolicy(name.slice('model:'.length)) : createPolicyByName(name, random);
     });
-    out.push(playGame({ jobs, seed, policies, random, ...(opts.rules ? { rules: opts.rules } : {}) }));
+    out.push(
+      playGame({
+        jobs,
+        seed,
+        policies,
+        random,
+        ...(opts.rules ? { rules: opts.rules } : {}),
+        ...(opts.combat ? { combat: opts.combat } : {}),
+        ...(opts.combatBot ? { combatBot: opts.combatBot } : {}),
+        ...(opts.logFights ? { logFights: true } : {}),
+      }),
+    );
   }
   return out;
 }
