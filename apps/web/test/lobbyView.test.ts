@@ -9,12 +9,15 @@ import {
   nicknameError,
   normalizeRoomCode,
   parseSeatChoice,
+  ROOM_STATUS_ICON,
+  ROOM_STATUS_LABEL,
   roomCodeError,
   seatChoiceGroups,
   seatChoiceOf,
   startEligibility,
   takenJobsFor,
 } from '../src/types/onlineLobby';
+import { ICON_NAMES } from '../src/types/icons';
 
 const seat = (index: number, patch: Partial<LobbySeat> = {}): LobbySeat => ({
   seat: index,
@@ -229,5 +232,61 @@ describe('room view', () => {
     const v = buildRoomView({ ...full, status: 'finished' }, 'p_alice');
     expect(v.seats.some((s) => s.configurable || s.jobEditable)).toBe(false);
     expect(v.me.needsReady).toBe(false);
+  });
+});
+
+describe('lobby icons', () => {
+  const emoji = /\p{Extended_Pictographic}/u;
+
+  it('draws seat kinds and states with game-icons instead of emoji', () => {
+    const a = buildRoomView(
+      room([
+        human(0, 'p_alice', 'Alice', { job: 'mage' }),
+        human(1, 'p_bob', 'Bob', { job: 'ninja', ready: true }),
+        seat(2, { kind: 'bot', botName: 'heuristic', ready: true, connected: true }),
+        seat(3, { kind: 'human' }),
+      ]),
+      'p_alice',
+    );
+    const b = buildRoomView(
+      room([
+        human(0, 'p_alice', 'Alice'),
+        human(1, 'p_bob', 'Bob', { connected: false }),
+        seat(2, { kind: 'model', modelId: 'my-model', ready: true, connected: true }),
+        seat(3),
+      ]),
+      'p_alice',
+    );
+    const c = buildRoomView(
+      room([human(0, 'p_alice', 'Alice'), human(1, 'p_bob', 'Bob'), seat(2), seat(3)]),
+      'p_alice',
+    );
+    expect(a.seats.map((s) => [s.kindIcon, s.statusIcon])).toEqual([
+      ['human', 'crown'],
+      ['human', 'ready'],
+      ['bot', 'bot'],
+      ['cooldown', 'key'],
+    ]);
+    expect(b.seats.map((s) => [s.kindIcon, s.statusIcon])).toEqual([
+      ['human', 'crown'],
+      ['human', 'disconnected'],
+      ['model', 'model'],
+      ['lock', 'lock'],
+    ]);
+    expect(c.seats[1]!.statusIcon).toBe('cooldown');
+    for (const s of [...a.seats, ...b.seats, ...c.seats]) {
+      expect(ICON_NAMES).toContain(s.kindIcon);
+      expect(ICON_NAMES).toContain(s.statusIcon);
+      for (const text of [s.title, s.kindLabel, s.statusLabel, s.jobHint]) {
+        expect(text).not.toMatch(emoji);
+      }
+    }
+  });
+
+  it('has an icon for every room status', () => {
+    for (const status of ['lobby', 'playing', 'finished'] as const) {
+      expect(ICON_NAMES).toContain(ROOM_STATUS_ICON[status]);
+      expect(ROOM_STATUS_LABEL[status]).not.toMatch(emoji);
+    }
   });
 });
