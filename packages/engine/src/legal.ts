@@ -73,9 +73,11 @@ const LEGAL_BY_PHASE: Record<Phase, LegalGenerator> = {
   },
   CHOOSE_PVP_TARGET: (s) =>
     (s.pvp?.candidates ?? []).map((target) => ({ type: 'CHOOSE_PVP_TARGET' as const, target })),
-  SHIELD_DECISION: () => [
+  SHIELD_DECISION: (s) => [
     { type: 'SHIELD_DECISION', use: false },
-    { type: 'SHIELD_DECISION', use: true },
+    ...(playerAt(s, s.pending!.actor).items.shield > 0
+      ? [{ type: 'SHIELD_DECISION' as const, use: true }]
+      : []),
   ],
   TRAINING_CHOICE: () =>
     UPGRADE_STATS.map((stat) => ({ type: 'CHOOSE_TRAINING_STAT' as const, stat })),

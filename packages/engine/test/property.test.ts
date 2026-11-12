@@ -65,6 +65,11 @@ const checkInvariants = (s: GameState) => {
       expect(getLegalActions(s)).toEqual([
         { type: 'CHOOSE_PVP_TARGET', target: s.pvp.candidates[0] },
       ]);
+    } else if (
+      s.pending?.phase === 'SHIELD_DECISION' &&
+      s.players[s.pending.actor]?.items.shield === 0
+    ) {
+      expect(getLegalActions(s)).toEqual([{ type: 'SHIELD_DECISION', use: false }]);
     } else if (s.pending?.phase === 'POST_MOVE' && s.turn.canBuy) {
       expect(getLegalActions(s)).toContainEqual({ type: 'END_TURN' });
     } else if (s.pending) {

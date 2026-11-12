@@ -114,7 +114,7 @@ describe('DEFAULT_RULES matches docs/game-design.md', () => {
   });
 
   it('carries the balance version', () => {
-    expect(DEFAULT_RULES.version).toBe('rush-4');
+    expect(DEFAULT_RULES.version).toBe('rush-5');
   });
 
   it('is frozen and valid', () => {

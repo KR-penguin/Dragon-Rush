@@ -22,6 +22,22 @@ const opponent: OpponentSummary = { ...me, seat: 1, job: 'archer' };
 const noop = () => undefined;
 
 describe('combat decision dialogs', () => {
+  it('asks a defender without a shield to acknowledge the incoming duel', () => {
+    const html = renderToStaticMarkup(
+      <ShieldDialog
+        deciderName="궁수"
+        role="defender"
+        me={{ ...opponent, shields: 0 }}
+        opponentName="검사"
+        opponent={me}
+        canShield={false}
+        locked={false}
+        onDecide={noop}
+      />,
+    );
+    expect(html).toContain('결투 시작');
+    expect(html).not.toContain('방어막 사용');
+  });
   it('shows the choices and stats without exposing a win prediction', () => {
     const dialogs = [
       <DragonConfirmDialog
@@ -43,6 +59,7 @@ describe('combat decision dialogs', () => {
         me={me}
         opponentName="궁수"
         opponent={opponent}
+        canShield={true}
         locked={false}
         onDecide={noop}
       />,

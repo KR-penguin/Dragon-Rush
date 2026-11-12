@@ -54,7 +54,8 @@ const MAX_AUTO_STEPS = 10_000;
 /** Applies single-action decisions except confirmations that must remain visible. */
 function autoAdvance(ctx: Ctx): { state: GameState; events: GameEvent[] } {
   for (let i = 0; i < MAX_AUTO_STEPS; i++) {
-    if (ctx.s.pending?.phase === 'CHOOSE_PVP_TARGET') break;
+    if (ctx.s.pending?.phase === 'CHOOSE_PVP_TARGET' || ctx.s.pending?.phase === 'SHIELD_DECISION')
+      break;
     if (ctx.s.pending?.phase === 'POST_MOVE' && ctx.s.turn.canBuy) break;
     const legal = getLegalActions(ctx.s);
     if (legal.length !== 1) break;

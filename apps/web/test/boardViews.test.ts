@@ -103,6 +103,72 @@ describe('event cards', () => {
     expect(eventCardFor({ type: 'DiceRolled', seat: 0, value: 3 }, rules)).toBeNull();
   });
 
+  it('explains the actual HP loss when coins cannot cover a tile event', () => {
+    const bandit = index('BANDIT');
+    const card = eventCardFor(
+      { type: 'TileResolved', seat: 0, tile: bandit, tileId: 'BANDIT' },
+      rules,
+      [
+        { type: 'EffectApplied', seat: 0, effect: 'coins', delta: -2, after: 0 },
+        {
+          type: 'EffectApplied',
+          seat: 0,
+          effect: 'hp',
+          delta: -4,
+          after: 12,
+          cause: 'coinShortfall',
+        },
+      ],
+    );
+    expect(card?.notice).toBe('코인이 부족해 HP 4를 대신 잃었습니다');
+  });
+
+  it('only attributes a shortfall to the matching event and seat', () => {
+    const bandit = index('BANDIT');
+    const tile = {
+      type: 'TileResolved' as const,
+      seat: 0,
+      tile: bandit,
+      tileId: 'BANDIT' as const,
+    };
+    const otherSeat = eventCardFor(tile, rules, [
+      {
+        type: 'EffectApplied',
+        seat: 1,
+        effect: 'hp',
+        delta: -3,
+        after: 12,
+        cause: 'coinShortfall',
+      },
+    ]);
+    expect(otherSeat?.notice).toBeUndefined();
+
+    const laterEvent = eventCardFor(tile, rules, [
+      { type: 'TurnEnded', seat: 0 },
+      {
+        type: 'EffectApplied',
+        seat: 0,
+        effect: 'hp',
+        delta: -3,
+        after: 12,
+        cause: 'coinShortfall',
+      },
+    ]);
+    expect(laterEvent?.notice).toBeUndefined();
+
+    const hpFloor = eventCardFor(tile, rules, [
+      { type: 'EffectApplied', seat: 0, effect: 'hp', delta: 0, after: 1, cause: 'coinShortfall' },
+    ]);
+    expect(hpFloor?.notice).toBeUndefined();
+  });
+
+  it('explains coin shortfalls on a mystery card after it is revealed', () => {
+    const card = eventCardFor({ type: 'MysteryCardDrawn', seat: 0, cardId: 'BAT_SWARM' }, rules, [
+      { type: 'EffectApplied', seat: 0, effect: 'hp', delta: -2, after: 8, cause: 'coinShortfall' },
+    ]);
+    expect(card?.notice).toBe('코인이 부족해 HP 2를 대신 잃었습니다');
+  });
+
   it('counts small changes in 300 ms and big ones in 500 ms', () => {
     expect(countUpMs(10)).toBe(300);
     expect(countUpMs(-11)).toBe(500);

@@ -44,18 +44,18 @@
 
 **정규화 상수** (`OBS_V1_SCALES`, 초기 `final` 밸런스에서 동결. 바꾸면 버전 증가)
 
-| 상수 | 값 | 동결 당시 근거 (config `final`; 현재 `rush-4`는 아래 별도 설명) |
+| 상수 | 값 | 동결 당시 근거 (config `final`; 현재 `rush-5`는 아래 별도 설명) |
 |---|---|---|
 | `HP_S` | 120 | 용 HP 115, 기본 HP 30~56, HP 강화 +6/레벨 |
 | `ATK_S`, `DEF_S` | 20 | 기본 ATK 4~6 / DEF 5~6, 용 10/6, 점증 비용(3+lvl, 2+lvl) |
 | `COIN_S` | 50 | 시작 5, 출발 보너스 +10, 턴당 순 수입 ≈2.45, 도둑 7, 가격 5~6, 강화비 |
 | `LVL_S` | 10 | 스탯별 강화 레벨 |
-| `ITEM_S` | 3 | 초기 `final`의 시작 방어막 1과 아이템 수량을 기준으로 동결. 현재 `rush-4` 시작 아이템은 0 |
-| `ROUND_S` | 100 | 학습 env `maxRounds` 기본 100 (`rush-4` 현재 모델 사용 4인 실측 p95 = 10; 스케일은 `obs_v1` 호환을 위해 유지) |
+| `ITEM_S` | 3 | 초기 `final`의 시작 방어막 1과 아이템 수량을 기준으로 동결. 현재 `rush-5` 시작 아이템은 0 |
+| `ROUND_S` | 100 | 학습 env `maxRounds` 기본 100 (`rush-4` 모델 사용 4인 실측 p95 = 10; 스케일은 `obs_v1` 호환을 위해 유지) |
 | `GRACE_S` / `CD_S` / `TP_S` | 3 / 2 / 2 | `obs_v1` 고정 스케일. 현재 보호는 2라운드, 닌자 쿨다운은 4이며 2 초과 관측값은 클리핑된다 / 이번 턴 텔레포트 사용 수 |
 | `DIST_S` | 23 | 링(24칸)에서 최대 전진 거리 |
 
-> 현재 규칙 `rush-4`에서도 `obs_v1`의 레이아웃과 스케일은 그대로다. 용 HP는 88(관측값 0.73), 기본 HP는 34~53, 초반 보호는 2라운드라 `g.graceLeft` 시작 값이 0.67이다. 코인 흐름(시작 10, 출발 보너스 +35, 도둑 10) 때문에 100코인 이상은 클리핑된다. 코인 손실 이벤트의 미지불분은 1코인당 HP 1로 지불하며, 이 규칙은 보드 관측 벡터의 배치를 바꾸지 않는다. 내장 결과 모델을 사용하는 4인 휴리스틱 실제 전투 8,000판의 턴당 순 코인은 약 5.19, 게임 길이 p95는 10라운드였다(§10). `rush-3` 분포 수집 시점의 모델 미적용 수치는 각각 6.90과 14라운드다.
+> 현재 규칙 `rush-5`에서도 `obs_v1`의 레이아웃과 스케일은 그대로다. 용 HP는 88(관측값 0.73), 기본 HP는 34~53, 초반 보호는 2라운드라 `g.graceLeft` 시작 값이 0.67이다. 코인 흐름(시작 10, 출발 보너스 +35, 도둑 10) 때문에 100코인 이상은 클리핑된다. 코인 손실 이벤트의 미지불분은 1코인당 HP 1로 지불하며, 이 규칙은 보드 관측 벡터의 배치를 바꾸지 않는다. 직전 `rush-4` 내장 결과 모델을 사용하는 4인 휴리스틱 실제 전투 8,000판의 턴당 순 코인은 약 5.19, 게임 길이 p95는 10라운드였다(§10). `rush-3` 분포 수집 시점의 모델 미적용 수치는 각각 6.90과 14라운드다.
 
 ### 3.1 자기 블록 — offset 0, 길이 51
 
@@ -170,15 +170,15 @@
 | POST_MOVE (턴 플레이어) | `END_TURN` | 항상 |
 | POST_MOVE | `BUY_ITEM(i)` | canBuy ∧ coins ≥ price(i) (재고·보유 한도 없음, 기획서 §8 구매 조건) |
 | MOVE_ADJUST (닌자, 쿨다운 0) | `ADJUST_MOVE(-1)` / `(0)`, `(+1)` | 주사위 ≥ 2 / 항상 (최종 이동 ∈ [1, 7], 기획서 §4 그림자 걸음) |
-| CHOOSE_PVP_TARGET (도착자) | `CHOOSE_PVP_TARGET(k)` | 상대 k 생존 ∧ 내 칸에 있음. 이 phase는 후보가 2명 이상일 때만 생김 |
-| SHIELD_DECISION (방어막 보유한 도착자 또는 방어자) | `SHIELD_NO`, `SHIELD_YES` | 항상 둘 다 (보유자에게만 질의, 기획서 §6 5.2·§12 방어막 질의) |
+| CHOOSE_PVP_TARGET (도착자) | `CHOOSE_PVP_TARGET(k)` | 상대 k 생존 ∧ 내 칸에 있음. 후보가 1명이어도 확인을 위해 생김 |
+| SHIELD_DECISION (방어막 보유한 도착자 또는 모든 방어자) | `SHIELD_NO`, `SHIELD_YES` | `SHIELD_NO`는 항상 합법. 방어막이 있을 때만 `SHIELD_YES`도 합법. 방어막 없는 방어자의 `SHIELD_NO`는 결투 시작 확인 |
 | TRAINING_CHOICE (턴 플레이어) | `TRAIN(s)` | 항상 3개 모두 합법. 거부 행동 없음 (기획서 §5 수련장) |
 
 - 텔레포트 턴당 상한: 기본값은 `perTurnLimit = null`(무제한, 사용자 원문 "얻은 턴에도 사용 가능" 우선)이다(기획서 §8). 밸런스 시뮬은 턴당 1회로 검증했으므로 사용자 결정(기획서 §16·개발 계획서 §2.1의 R2)에 따라 1로 바뀔 수 있다. 어느 쪽이든 obs/act 레이아웃은 같다(`g.teleportsUsed`, `g.teleportLimitReached`).
 - 도둑은 기본 `perTurnLimit = 1`이다(기획서 §16 R3 미결. 바뀌어도 obs/act 레이아웃은 같고 `g.thiefUsed`·마스크 조건만 달라짐). 쉬는 턴에는 이동(`ROLL_DICE`·`USE_TELEPORT`)만 마스크되고 `END_TURN`이 열린다. 남의 턴·착지 처리 중에는 UPGRADE·아이템 phase가 아예 없다.
 - **불변식** (§11에서 속성 테스트):
   1. `{decodeAction(i) | mask[i] = 1}` = `getLegalActions(state)` (집합 일치, 일대일). `encodeAction(decodeAction(i)) = i`.
-  2. `pending ≠ null`이면 합법 행동 ≥ 1. 또한 합법 행동이 정확히 1개인 결정(v0에서는 "POST_MOVE에 END_TURN만" 하나뿐)은 엔진이 자동 적용하고 GameEvent로 기록하므로(기획서 §6 마지막 불릿), **정책·env가 받는 모든 결정은 합법 행동 ≥ 2**다.
+  2. `pending ≠ null`이면 합법 행동 ≥ 1 (`COMBAT`는 외부 전투 처리 예외). 합법 행동이 1개여도 `CHOOSE_PVP_TARGET`, 방어막 없는 방어자의 `SHIELD_DECISION`, 상점 방문 `POST_MOVE`는 사용자 확인을 위해 자동 적용하지 않는다. 따라서 정책·env도 1개 행동만 합법인 결정을 받을 수 있다.
   3. 마스크된 행동이 들어오면 엔진은 `IllegalActionError`, env 서버는 `ILLEGAL_ACTION` 오류를 낸다(조용히 대체하지 않음).
 
 ## 6. 보상과 에피소드
@@ -205,7 +205,7 @@
 ```json
 {"id":1,"cmd":"info"}
 {"id":1,"ok":true,"result":{"protocol":"rpgboard-env/1","obs_version":"obs_v1","act_version":"act_v1",
- "obs_dim":253,"action_dim":47,"rules_version":"rush-4","action_names":["ROLL_DICE","END_TURN","CHALLENGE_DRAGON","..."],
+ "obs_dim":253,"action_dim":47,"rules_version":"rush-5","action_names":["ROLL_DICE","END_TURN","CHALLENGE_DRAGON","..."],
  "obs_layout":[{"name":"self.job","offset":0,"length":5},{"name":"self.pos","offset":5,"length":24},"..."],
  "bots":["random","random:uniform","heuristic","heuristic:aggro","heuristic:growth","heuristic:rush"]}}
 ```
@@ -382,7 +382,7 @@ createModelPolicy(model: PolicyModel, opts?: { mode?: 'argmax' | 'sample'; tempe
 | growth | 0.6 / 0.4 | 0.25 | 0.80 | 1 | 7 | 0.45 | 6 | 4 |
 | rush | 1.0 / 0 | 0.17 | 0.85 | 0 | 7 | 0.5 | 6 | 99 |
 
-- 현재 `rush-4` 기준선(실제 전투, 내장 결과 모델을 사용하는 보드 봇): 4인 휴리스틱 8,000판 중앙 6/p95 10라운드, 용 처치 종료 46.5%, 직업 승률 18.9~34.7%, 3라운드 안 탈락 22.6%. 이전 버전의 실측은 game-design §15에 둔다. 온라인 대리 플레이는 `heuristic:growth`.
+- 직전 `rush-4` 기준선(실제 전투, 내장 결과 모델을 사용하는 보드 봇): 4인 휴리스틱 8,000판 중앙 6/p95 10라운드, 용 처치 종료 46.5%, 직업 승률 18.9~34.7%, 3라운드 안 탈락 22.6%. 현재 `rush-5` 재실측 전의 참고 수치다. 이전 버전의 실측은 game-design §15에 둔다. 온라인 대리 플레이는 `heuristic:growth`.
 
 ## 11. 계약 검증 (Vitest, Python은 pytest)
 

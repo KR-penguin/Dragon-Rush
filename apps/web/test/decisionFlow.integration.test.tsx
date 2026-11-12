@@ -139,6 +139,14 @@ it('shows the one-opponent confirmation before COMBAT and the shop after a win',
   expect(await store.getState().submit({ type: 'CHOOSE_PVP_TARGET', target: defender })).toEqual({
     ok: true,
   });
+  const defenderDecision = store.getState().latest!;
+  expect(defenderDecision.pending).toMatchObject({ actor: defender, phase: 'SHIELD_DECISION' });
+  expect(defenderDecision.legalActions).toEqual([{ type: 'SHIELD_DECISION', use: false }]);
+  expect(dialogMarkup(store, true)).toContain('결투 확인');
+  expect(dialogMarkup(store, true)).toContain('결투 시작');
+  expect(await store.getState().submit({ type: 'SHIELD_DECISION', use: false })).toEqual({
+    ok: true,
+  });
   const combat = store.getState().latest!;
   expect(combat.pending?.phase).toBe('COMBAT');
   expect(combat.fight?.request).toEqual({ kind: 'duel', a: arriver, b: defender });

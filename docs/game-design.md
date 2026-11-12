@@ -2,7 +2,7 @@
 
 > 상태: **구현·실측 반영**. 이 문서는 **게임 규칙·수치의 정본**이다. 엔진의 `DEFAULT_RULES`(`RulesConfig`)는 이 문서와 같아야 하며, 일치 여부는 골든 테스트로 보장한다.
 > 관련 문서: 구조·멀티플레이 프로토콜 [architecture.md](architecture.md) · 관측/행동/보상/학습 env [ai-interface-spec.md](ai-interface-spec.md) · 일정·결정 [development-plan.md](development-plan.md)
-> 현재 기본 보드 수치는 **`rush-4`**(2026-11-12)다. 코인 손실 이벤트에서 부족한 금액 1코인당 HP 1을 잃는다. §15의 `rush-3` 이하 수치는 과거 기준이다. **(승인됨)** 표시는 사용자가 승인한 보호 규칙이다(§16).
+> 현재 기본 보드 규칙은 **`rush-5`**(2026-11-12)다. `rush-4`의 수치를 유지하면서 방어자의 결투 확인 단계를 추가했다. 코인 손실 이벤트에서 부족한 금액 1코인당 HP 1을 잃는다. §15의 실측은 이전 규칙의 기준선이다. **(승인됨)** 표시는 사용자가 승인한 보호 규칙이다(§16).
 
 ## 1. 개요
 | 항목 | 내용 |
@@ -143,7 +143,7 @@
 4. **이동**: 주사위 이동이 출발 칸을 지나거나 출발 칸에 도착하면(`위치 + 이동 칸 수 ≥ 24`) 출발 보너스를 1회 받는다. 텔레포트에는 보너스가 없다.
 5. **착지 처리** (주사위 착지와 텔레포트 착지가 같다). 순서는 고정이다.
    1. PvP 판정: 안전지대이거나 초반 보호 중이거나 생존 상대가 없으면 4번(칸 이벤트)으로 건너뛴다. 상대가 1명이어도 `CHOOSE_PVP_TARGET`에서 결투 시작을 확인하고, 2명 이상이면 대상을 고른다. 1명일 때도 이 결정을 자동 적용하지 않는다.
-   2. `SHIELD_DECISION`: 방어막을 가진 사람에게만 묻는다. 도착자가 먼저 정하고, 도착자가 쓰지 않으면 방어자가 정한다. 누가 쓰든 전투는 취소되고 두 사람은 그 칸에 공존한다.
+   2. `SHIELD_DECISION`: 방어막이 있으면 도착자가 먼저 사용 여부를 정한다. 도착자가 사용하지 않으면 방어자가 결투를 확인한다. 방어막이 있는 방어자는 사용 여부를 선택하고, 없으면 결투 시작만 확인한다. 누가 방어막을 쓰든 전투는 취소되고 두 사람은 그 칸에 공존한다.
    3. 전투(기본 60Hz 실시간, 선택형 빠른 전투는 주사위 즉시 판정) → 패자 탈락 → 전리품 이전 → 승자 코인 +30 및 HP 최대치 회복. **도착자가 지면 여기서 턴이 끝난다.**
    4. 칸 이벤트(도착자에게만 적용). 수련장이면 `TRAINING_CHOICE`를 거친다. 상점이면 구매 가능(`canBuy`)이 켜진다.
 6. **`POST_MOVE`**: 구매·강화·도둑·텔레포트를 쓴 뒤 `END_TURN`. 텔레포트를 쓰면 5단계(착지 처리)를 다시 거쳐 `POST_MOVE`로 돌아온다.
@@ -159,8 +159,9 @@ flowchart TD
   move["주사위 이동<br/>출발 칸 통과·도착 시 보너스"]
   land{"착지 처리<br/>PvP 성립?"}
   target["CHOOSE_PVP_TARGET"]
-  shieldQ{"방어막 보유자 있음?"}
-  shield["SHIELD_DECISION<br/>도착자 먼저, 그다음 방어자"]
+  shieldQ{"도착자 방어막 보유?"}
+  shield["SHIELD_DECISION<br/>도착자 방어막 사용 여부"]
+  defender["SHIELD_DECISION<br/>방어자 결투 확인 / 방어막 선택"]
   duel["PvP 전투 (기본 실시간)"]
   tile["칸 이벤트"]
   train["TRAINING_CHOICE"]
@@ -187,9 +188,11 @@ flowchart TD
   land -->|"상대 없음 / 안전지대 / 초반 보호"| tile
   target --> shieldQ
   shieldQ -->|"있음"| shield
-  shieldQ -->|"없음"| duel
+  shieldQ -->|"없음"| defender
   shield -->|"사용: 전투 취소, 공존"| tile
-  shield -->|"모두 미사용"| duel
+  shield -->|"미사용"| defender
+  defender -->|"방어막 사용: 공존"| tile
+  defender -->|"결투 확인"| duel
   duel -->|"도착자 승리"| tile
   duel -->|"도착자 패배"| turnEnd
   duel -->|"생존자 1명"| gameEnd
@@ -205,12 +208,12 @@ flowchart TD
 | `PRE_ROLL` | 턴 플레이어 | `UPGRADE{stat}` (반복 가능), `USE_THIEF{target}` (턴당 1회) + 주 행동 `ROLL_DICE` / `USE_TELEPORT{tile}` / `CHALLENGE_DRAGON` | `END_TURN`은 쉬는 턴에만 있다(그때는 `ROLL_DICE`·`USE_TELEPORT`가 없다). 텔레포트를 쓰면 그 턴에는 주사위도 용 도전도 없다 |
 | `MOVE_ADJUST` | 닌자 | `ADJUST_MOVE{delta: -1, 0, +1}` | 쿨다운 중이면 단계를 생략한다. 주사위가 1이면 −1 불가 |
 | `CHOOSE_PVP_TARGET` | 도착자 | `CHOOSE_PVP_TARGET{target}` | 비안전 칸에 생존 상대가 1명 이상일 때. 1명일 때도 결투 시작 확인을 위해 대기 |
-| `SHIELD_DECISION` | 도착자 → 방어자 | `SHIELD_DECISION{use}` | 보유자에게만 묻는다. 방어자 차례가 유일한 비턴 결정이다 |
+| `SHIELD_DECISION` | 도착자(방어막 보유 시) → 방어자(항상) | `SHIELD_DECISION{use}` | 방어막이 있으면 사용/미사용 중 선택한다. 방어막이 없는 방어자는 `use:false`로 결투를 확인한다. 방어자 차례는 비턴 결정이다 |
 | `TRAINING_CHOICE` | 도착자 | `CHOOSE_TRAINING_STAT{stat: atk, def, maxHp}` | 거부할 수 없다 |
 | `POST_MOVE` | 턴 플레이어 | `BUY_ITEM{item}` (`canBuy`일 때), `UPGRADE{stat}`, `USE_THIEF{target}`, `USE_TELEPORT{tile}`, `END_TURN` | 텔레포트를 쓰면 착지 처리 후 다시 `POST_MOVE` |
 
 - 비용이 드는 행동은 코인이 충분할 때만 할 수 있다. 이동·칸 이벤트·턴 시작·종료는 엔진이 자동으로 진행한다. 실시간 전투는 외부 셸이 진행하고 엔진이 결과를 검증해 `GameEvent`로 기록한다.
-- **합법 행동이 정확히 1개인 결정은 자동으로 적용된다**(예: 상점 밖에서 코인과 아이템이 없어 `POST_MOVE`에 `END_TURN`만 남은 경우). 단, 상대가 1명인 `CHOOSE_PVP_TARGET`은 결투 확인을 위해, 상점 방문 중인 `POST_MOVE`는 코인이 없어도 상점 표시를 위해 자동 적용하지 않는다.
+- **합법 행동이 정확히 1개인 결정은 자동으로 적용된다**(예: 상점 밖에서 코인과 아이템이 없어 `POST_MOVE`에 `END_TURN`만 남은 경우). 단, `CHOOSE_PVP_TARGET`과 `SHIELD_DECISION`은 결투 확인을 위해, 상점 방문 중인 `POST_MOVE`는 코인이 없어도 상점 표시를 위해 자동 적용하지 않는다.
 
 ## 7. 경제
 | 구분 | 출처 | 양 |
@@ -287,7 +290,7 @@ PvP(`duel`)와 용전(`dragonFight`)은 기본적으로 60Hz 실시간 탑다운
 | 지나간 칸에 있는 상대 | 충돌하지 않는다. PvP는 턴 플레이어의 이동(주사위·텔레포트)이 끝난 칸에서만 성립한다 |
 | 공존 중인 칸(2명 이상)에 도착 | `CHOOSE_PVP_TARGET`으로 1명만 고른다. 착지 1회에 PvP는 최대 1회이고, 나머지와는 공존한다(전투는 항상 1:1) |
 | 방어막으로 공존한 두 사람 | 자동으로 다시 싸우지 않는다. 한쪽이 떠났다가 다시 도착하면 새 충돌로 처리하고 방어막을 다시 묻는다 |
-| 상대가 1명인 착지 | `CHOOSE_PVP_TARGET`에서 결투 시작을 명시적으로 확인한다. 안전지대·라운드 1~2 보호 중에는 이 결정을 만들지 않는다 |
+| 상대가 1명인 착지 | 도착자는 `CHOOSE_PVP_TARGET`에서 대상을 확인하고, 방어자는 방어막이 없어도 `SHIELD_DECISION`에서 결투 시작을 확인한다. 안전지대·라운드 1~2 보호 중에는 이 결정을 만들지 않는다 |
 | 초반 보호(라운드 1~2) | 같은 칸에 멈춰도 PvP 없이 공존하고 칸 이벤트만 적용된다. 라운드 3부터 정상 규칙이다 (승인됨, §16 R1) |
 | 방어막 질의 | 대상이 정해진 뒤 진행한다. 도착자가 쓰면 방어자에게는 묻지 않는다. 취소 1회에 1개만 소모된다. 텔레포트로 일부러 공격한 경우도 같다. 취소된 뒤 대상을 바꿀 수 없다 |
 | 착지 직후 전투 전에 강화나 구매 | 불가. 착지 처리 중 결정은 `CHOOSE_PVP_TARGET`·`SHIELD_DECISION`·`TRAINING_CHOICE`뿐이다. 대비는 미리 해야 한다 |

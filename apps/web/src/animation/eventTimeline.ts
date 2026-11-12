@@ -3,6 +3,7 @@ import type { IconName } from '../types/icons';
 import { ITEM_ICON_NAME, STAT_ICON_NAME, TILE_ICON_NAME } from '../types/icons';
 import { ITEM_LABEL, JOB_LABEL, STAT_LABEL, TILE_LABEL, cardLabel } from '../types/labels';
 import { DICE_ROLL_MS, diceMoveMs } from '../types/motion';
+import { coinShortfallMessage } from '../types/eventNotices';
 
 export type NameOf = (seat: SeatId) => string;
 
@@ -123,7 +124,7 @@ function describeEffect(
       return e.delta === 0
         ? null
         : e.cause === 'coinShortfall'
-          ? `${n} 코인 부족으로 HP ${e.delta}`
+          ? `${n}: ${coinShortfallMessage(Math.abs(e.delta))}`
           : `${n} HP ${e.delta > 0 ? '+' : ''}${e.delta}`;
     case 'stat':
       return `${n} ${STAT_LABEL[e.stat ?? 'atk']} +${e.delta}`;

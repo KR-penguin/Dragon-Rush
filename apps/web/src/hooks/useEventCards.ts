@@ -130,7 +130,7 @@ export function useEventCards(
     const unsubscribe = store.subscribe((s, prev) => {
       const e = s.current;
       if (!e || e === prev.current || !s.display) return;
-      const face = eventCardFor(e, s.display.rules);
+      const face = eventCardFor(e, s.display.rules, s.queue);
       if (face) showCard(face, s.speed);
       if (e.type === 'EffectApplied' && !reduced) fly(e.seat, e, s.speed);
     });

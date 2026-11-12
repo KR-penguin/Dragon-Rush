@@ -47,10 +47,16 @@ function duelScenario(
 ) {
   const landing = duelLanding(jobs, opts);
   const confirmed = act(landing.state, { type: 'CHOOSE_PVP_TARGET', target: 1 });
+  const accepted =
+    confirmed.state.pending?.phase === 'SHIELD_DECISION' &&
+    confirmed.state.pending.actor === 1 &&
+    confirmed.state.players[1]!.items.shield === 0
+      ? act(confirmed.state, { type: 'SHIELD_DECISION', use: false })
+      : null;
   return {
     before: landing.before,
-    state: confirmed.state,
-    events: [...landing.events, ...confirmed.events],
+    state: accepted?.state ?? confirmed.state,
+    events: [...landing.events, ...confirmed.events, ...(accepted?.events ?? [])],
   };
 }
 
@@ -232,8 +238,10 @@ describe('external combat: applyCombatResult for duels', () => {
     expect(landing.state.pending?.phase).toBe('CHOOSE_PVP_TARGET');
     expect(eventsOf(landing.events, 'TileResolved')).toHaveLength(0);
     const confirmed = act(landing.state, { type: 'CHOOSE_PVP_TARGET', target: 1 });
-    expect(confirmed.state.pending?.phase).toBe('COMBAT');
-    const settled = applyCombatResult(confirmed.state, { winner: 'a', hpA: 1, hpB: 0 });
+    expect(confirmed.state.pending).toEqual({ actor: 1, phase: 'SHIELD_DECISION' });
+    const accepted = act(confirmed.state, { type: 'SHIELD_DECISION', use: false });
+    expect(accepted.state.pending?.phase).toBe('COMBAT');
+    const settled = applyCombatResult(accepted.state, { winner: 'a', hpA: 1, hpB: 0 });
     expect(eventsOf(settled.events, 'TileResolved')).toEqual([
       { type: 'TileResolved', seat: 0, tile: 6, tileId: 'SHOP' },
     ]);
