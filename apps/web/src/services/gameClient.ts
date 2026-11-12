@@ -1,4 +1,7 @@
 import type { CombatResult, CombatSetup } from '@dragon-rush/combat';
+import type { FightGoMsg, FightStartMsg } from '@dragon-rush/protocol';
+import type { FightSession } from './fight/types';
+import type { KeyTracker } from './fight/keyboardInput';
 import type {
   Action,
   CombatRequest,
@@ -81,6 +84,7 @@ export interface PendingFight {
   readonly botLevel: FightBotLevel;
   /** Set for bot-only fights: show it as a skippable highlight, then report `replay.result`. */
   readonly replay: FightReplay | null;
+  readonly online?: { readonly start: FightStartMsg; readonly go: FightGoMsg | null };
 }
 
 export type SubmitResult = { ok: true } | { ok: false; code: string; message?: string };
@@ -97,4 +101,5 @@ export interface GameClient {
    * or a fallback when the fight screen fails). Only backends that send `fight` implement it.
    */
   reportFight?(fightId: number, outcome: CombatResult | 'dice'): Promise<SubmitResult>;
+  createFightSession?(fight: PendingFight, tracker: KeyTracker): FightSession;
 }

@@ -47,6 +47,8 @@ export class OnlineSession {
     const token = readToken();
     const socket = io(url ?? '/', {
       transports: ['websocket'],
+      reconnectionDelay: 250,
+      reconnectionDelayMax: 2000,
       auth: { protocolVersion: PROTOCOL_VERSION, ...(token ? { sessionToken: token } : {}) },
     });
     return new Promise((resolve, reject) => {
@@ -96,8 +98,8 @@ export class OnlineSession {
     this.setRoom(null);
     return r;
   }
-  configure(maxRounds: number | null) {
-    return this.call(C2S.roomConfigure, { maxRounds });
+  configure(maxRounds: number | null, quickCombat = false) {
+    return this.call(C2S.roomConfigure, { maxRounds, quickCombat });
   }
   configureSeat(p: RoomConfigureSeat) {
     return this.call(C2S.roomConfigureSeat, p);

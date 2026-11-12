@@ -13,6 +13,8 @@ import { useFightPause } from '../../hooks/useFightPause';
 import { useFightSession } from '../../hooks/useFightSession';
 import { useKeyboardTest } from '../../hooks/useKeyboardTest';
 import type { PendingFight, SeatInfo } from '../../services/gameClient';
+import type { FightSession } from '../../services/fight';
+import type { FightNetStats } from '@dragon-rush/netcode';
 import type { GameStore } from '../../store/gameStore';
 import { fightCards } from '../../types/fightView';
 import '../../styles/combat.css';
@@ -43,7 +45,12 @@ export function CombatLayer({ store }: { store: GameStore }) {
   if (!fight || !client?.reportFight || fastSkip) return null;
   return (
     <FightErrorBoundary key={fight.id} onError={() => report(fight.id, 'dice')}>
-      <FightContainer fight={fight} seats={seats} onDone={(r) => report(fight.id, r)} />
+      <FightContainer
+        fight={fight}
+        seats={seats}
+        client={client}
+        onDone={(r) => report(fight.id, r)}
+      />
     </FightErrorBoundary>
   );
 }
@@ -52,11 +59,12 @@ interface FightContainerProps {
   fight: PendingFight;
   seats: readonly SeatInfo[];
   onDone: (result: CombatResult) => void;
+  client: NonNullable<ReturnType<GameStore['getState']>['client']>;
 }
 
-function FightContainer({ fight, seats, onDone }: FightContainerProps) {
+function FightContainer({ fight, seats, client, onDone }: FightContainerProps) {
   const cards = useMemo(() => fightCards(fight, seats), [fight, seats]);
-  const bundle = useFightSession(fight);
+  const bundle = useFightSession(fight, client);
   const session = bundle?.session ?? null;
   const flow = useFightFlow(session, fight, onDone);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -85,6 +93,7 @@ function FightContainer({ fight, seats, onDone }: FightContainerProps) {
       onResume={pause.resume}
       onOpenControls={() => setHelpOpen(true)}
     >
+      {fight.online && <NetStatus session={session} fight={fight} />}
       {helpOpen && (
         <ControlsPanel
           pressed={pressed}
@@ -97,5 +106,29 @@ function FightContainer({ fight, seats, onDone }: FightContainerProps) {
         />
       )}
     </CombatScreen>
+  );
+}
+
+function NetStatus({ session, fight }: { session: FightSession | null; fight: PendingFight }) {
+  const [stats, setStats] = useState<FightNetStats | null>(null);
+  useEffect(() => {
+    if (!session?.stats) return;
+    const read = () => setStats(session.stats?.() ?? null);
+    read();
+    const id = setInterval(read, 250);
+    return () => clearInterval(id);
+  }, [session]);
+  if (!stats) return null;
+  const ownSeat = fight.online?.start.you.role === 'fighter' ? fight.online.start.you.seat : null;
+  const ownWarning = stats.frozen || (ownSeat !== null && stats.quality[ownSeat] === 2);
+  const opponentWarning = ownSeat !== null && stats.quality[ownSeat === 0 ? 1 : 0] === 2;
+  return (
+    <div className="combat-badge" role="status" aria-live="polite">
+      {Math.round(stats.rttMs)}ms · 입력 지연 {stats.inputDelay}f · 롤백 {stats.rollbackFrames}f
+      (p95)
+      {ownWarning ? ' · 내 연결 불안정' : ''}
+      {opponentWarning ? ' · 상대 연결 불안정' : ''}
+      {stats.ownBot ? ' · AI 대행' : ''}
+    </div>
   );
 }
