@@ -338,7 +338,12 @@ export function GamePage({ session, onExit, onRestart }: GamePageProps) {
           color={seatColor(ribbon.seat)}
         />
       )}
-      <TileTooltip hover={hover} tiles={display.rules.board} occupants={occupants} />
+      <TileTooltip
+        hover={hover}
+        tiles={display.rules.board}
+        occupants={occupants}
+        onClose={() => setHover(null)}
+      />
       {ui.teleportPicking && (
         <TargetBanner icon="teleport" onCancel={ui.cancel}>
           목적지를 고르세요 · 시계 방향으로 이동하며 출발 칸을 지나면 보너스를 받습니다

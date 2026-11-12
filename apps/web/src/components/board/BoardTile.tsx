@@ -81,9 +81,13 @@ export function BoardTile({
   const style: CSSProperties = { gridRow: row + 1, gridColumn: col + 1 };
   const hover = {
     onPointerEnter: (e: { currentTarget: HTMLElement }) => onHover?.(index, e.currentTarget),
-    onPointerLeave: (e: { currentTarget: HTMLElement }) => {
+    onPointerLeave: (e: { currentTarget: HTMLElement; pointerType: string }) => {
+      if (e.pointerType === 'touch') return;
       const el = e.currentTarget;
       onHover?.(el.matches(':focus') ? index : null, el.matches(':focus') ? el : null);
+    },
+    onPointerDown: (e: { currentTarget: HTMLElement; pointerType: string }) => {
+      if (e.pointerType === 'touch') onHover?.(index, e.currentTarget);
     },
     onFocus: (e: { currentTarget: HTMLElement }) => onHover?.(index, e.currentTarget),
     onBlur: (e: { currentTarget: HTMLElement }) => {

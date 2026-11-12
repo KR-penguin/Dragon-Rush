@@ -1109,3 +1109,82 @@
 [data-motion='reduced'] .tile {
   transition: none;
 }
+
+@media (max-width: 699px) {
+  /* The plane is scaled to phone width; use fewer marks and larger source text. */
+  .board3d .tile-face {
+    inset: 3px;
+    gap: 2px;
+    padding: 4px;
+    border-radius: 8px;
+  }
+
+  .board3d .tile-gem,
+  .board3d .tile-chips {
+    display: none;
+  }
+
+  .board3d .tile-icon {
+    width: 42px;
+    height: 42px;
+  }
+
+  .board3d .tile-name {
+    font-size: 34px;
+    line-height: 1.06;
+  }
+
+  .board3d .tile-left .tile-face,
+  .board3d .tile-right .tile-face {
+    grid-template-columns: 46px minmax(0, 1fr);
+    grid-template-rows: auto;
+    align-items: center;
+    column-gap: 3px;
+    padding: 4px;
+  }
+
+  .board3d .tile-left .tile-icon,
+  .board3d .tile-right .tile-icon {
+    grid-row: auto;
+    width: 42px;
+    height: 42px;
+  }
+
+  .board3d .tile-corner .tile-face {
+    padding-bottom: 10px;
+  }
+
+  .board3d .tile-corner .tile-name {
+    font-size: 38px;
+  }
+
+  .board3d.is-picking .tile.is-target {
+    margin: -8px;
+    z-index: 4;
+    touch-action: manipulation;
+  }
+
+  .lair-plate-name {
+    font-size: 34px;
+  }
+
+  .lair-plate-stats,
+  .lair-intent strong,
+  .lair-intent span {
+    font-size: 29px;
+  }
+
+  .lair-legend {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 80%;
+    gap: 8px;
+  }
+
+  .legend-chip {
+    justify-content: center;
+    min-height: 100px;
+    padding: 8px;
+    font-size: 30px;
+  }
+}

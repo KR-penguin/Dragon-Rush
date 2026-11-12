@@ -567,3 +567,235 @@
     padding-left: 4px;
   }
 }
+
+/* Phone layouts keep the table flat and let the page scroll through its controls. */
+@media (max-width: 699px) {
+  .home {
+    min-height: 100dvh;
+    gap: clamp(12px, 3dvh, 26px);
+    padding: calc(20px + env(safe-area-inset-top)) 12px calc(24px + env(safe-area-inset-bottom));
+    overflow-x: clip;
+    overflow-y: visible;
+  }
+
+  .home-hero {
+    width: 100%;
+    min-width: 0;
+    gap: 8px;
+  }
+
+  .home-dragon-wrap {
+    width: clamp(76px, 20vw, 120px);
+    height: clamp(76px, 20vw, 120px);
+  }
+
+  .home-title,
+  .home-title-art {
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .home-title-ko {
+    font-size: clamp(2.1rem, 10vw, 3rem);
+  }
+
+  .home-title-en {
+    font-size: 0.8rem;
+    letter-spacing: 0.3em;
+    margin-right: -0.3em;
+  }
+
+  .home-tagline {
+    font-size: 0.95rem;
+  }
+
+  .home-jobs {
+    gap: 6px;
+    width: 100%;
+    margin-top: 0;
+  }
+
+  .home-jobs li {
+    min-width: 56px;
+    font-size: 0.72rem;
+  }
+
+  .home-job-art {
+    width: 42px;
+    height: 42px;
+    padding: 6px;
+  }
+
+  .home-menu {
+    width: 100%;
+    gap: 10px;
+  }
+
+  .menu-card {
+    width: min(100%, 340px);
+    min-height: 76px;
+    padding: 12px 14px;
+    gap: 3px;
+  }
+
+  .menu-icon {
+    width: 42px;
+    height: 42px;
+    font-size: 1.6rem;
+  }
+
+  .menu-card strong {
+    font-size: 1.1rem;
+  }
+
+  .home-credits {
+    position: relative;
+    bottom: auto;
+    padding: 0 8px;
+    overflow-wrap: anywhere;
+  }
+
+  .game {
+    min-height: 100dvh;
+    gap: 8px;
+    padding: calc(8px + env(safe-area-inset-top)) 0 calc(16px + env(safe-area-inset-bottom));
+    overflow-x: clip;
+  }
+
+  .game .top-strip {
+    width: calc(100% - 16px);
+    min-width: 0;
+    padding: 8px;
+  }
+
+  .game .corner-cards {
+    max-width: 100%;
+    padding-left: 12px;
+    overscroll-behavior-x: contain;
+  }
+
+  .game .corner-card {
+    flex-basis: min(72vw, 260px);
+  }
+
+  .board-area {
+    width: min(calc(100% - 24px), 430px);
+    max-width: 100%;
+  }
+
+  .game .dock {
+    min-width: 0;
+    padding: 0 8px;
+  }
+
+  .game .dock-row {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 699px) and (orientation: landscape) and (max-height: 500px) {
+  .home {
+    align-content: start;
+    gap: 10px;
+    padding-top: calc(10px + env(safe-area-inset-top));
+  }
+
+  .home-dragon-wrap {
+    display: none;
+  }
+
+  .home-hero {
+    gap: 4px;
+  }
+
+  .home-title-art {
+    width: min(50vw, 360px);
+  }
+
+  .home-title-en {
+    font-size: 0.7rem;
+  }
+
+  .home-tagline {
+    font-size: 0.83rem;
+  }
+
+  .home-jobs {
+    margin: 0;
+  }
+
+  .home-jobs li {
+    min-width: 48px;
+  }
+
+  .home-job-art {
+    width: 36px;
+    height: 36px;
+  }
+
+  .home-menu {
+    flex-wrap: nowrap;
+  }
+
+  .menu-card {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 70px;
+    padding: 6px;
+    gap: 2px;
+  }
+
+  .menu-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 1.2rem;
+  }
+
+  .menu-card strong {
+    font-size: 1rem;
+  }
+
+  .menu-card small {
+    font-size: 0.72rem;
+  }
+
+  .home-credits {
+    font-size: 0.68rem;
+  }
+
+  .game {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      'strip strip'
+      'board cards'
+      'board dock';
+    align-items: start;
+    gap: 8px;
+    padding: calc(6px + env(safe-area-inset-top)) 8px calc(12px + env(safe-area-inset-bottom));
+  }
+
+  .game .top-strip {
+    grid-area: strip;
+    width: 100%;
+  }
+
+  .game .corner-cards {
+    grid-area: cards;
+    min-width: 0;
+    padding: 2px 4px 6px;
+  }
+
+  .board-area {
+    grid-area: board;
+    width: min(100%, calc(100dvh - 92px));
+    justify-self: center;
+  }
+
+  .game .dock {
+    grid-area: dock;
+    width: 100%;
+    padding: 0;
+  }
+}

@@ -1825,3 +1825,211 @@ kbd {
   font-size: 0.75em;
   opacity: 0.8;
 }
+
+.tile-tooltip-close {
+  display: none;
+}
+
+@media (max-width: 699px) {
+  .game .top-strip {
+    gap: 8px;
+  }
+
+  .game .turn-coins {
+    gap: 5px;
+  }
+
+  .game .turn-coin,
+  .game .turn-coin.is-active {
+    width: 34px;
+    height: 34px;
+  }
+
+  .game .round-dial {
+    width: 48px;
+    height: 48px;
+  }
+
+  .game .strip-runes .rune-stone {
+    width: 24px;
+    height: 24px;
+  }
+
+  .game .strip-controls {
+    width: 100%;
+    gap: 4px;
+    padding: 4px 0 0;
+  }
+
+  .game .strip-controls .icon-btn,
+  .game .strip-controls .segmented button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .game .dock-row {
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .game .roulette-tray {
+    width: 96px;
+    height: 82px;
+  }
+
+  .game .roulette-wheel {
+    width: 66px;
+    height: 66px;
+  }
+
+  .game .dock-actions {
+    flex: 1 1 210px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .game .dock-primary,
+  .game .dock-dragon,
+  .game .dock-shop,
+  .game .dock-waiting {
+    width: 100%;
+    min-height: 48px;
+    height: auto;
+    padding: 8px;
+    font-size: 14px;
+    line-height: 1.2;
+  }
+
+  .game .dock-actions > :only-child {
+    grid-column: 1 / -1;
+  }
+
+  .game .dock-items {
+    gap: 10px;
+  }
+
+  .game .item-card,
+  .game .anvil-btn {
+    width: 58px;
+    min-height: 60px;
+    height: 64px;
+  }
+
+  .game .item-card-art,
+  .game .anvil-btn .game-icon {
+    width: 30px;
+    height: 30px;
+  }
+
+  .game .dock-above {
+    position: fixed;
+    left: 50%;
+    right: auto;
+    bottom: calc(10px + env(safe-area-inset-bottom));
+    width: min(360px, calc(100vw - 24px));
+    max-width: none;
+    transform: translateX(-50%);
+    z-index: 27;
+  }
+
+  .game .anvil-tray {
+    max-height: min(65dvh, 400px);
+    overflow-y: auto;
+  }
+
+  .tile-tooltip {
+    left: 50% !important;
+    top: calc(8px + env(safe-area-inset-top)) !important;
+    width: min(320px, calc(100vw - 24px));
+    max-height: min(50dvh, 280px);
+    overflow-y: auto;
+    padding: 12px 52px 12px 14px;
+    pointer-events: auto;
+    transform: translateX(-50%) !important;
+    font-size: 15px;
+    line-height: 1.4;
+  }
+
+  .tile-tooltip-close {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border: 0;
+    border-radius: 8px;
+    color: var(--ink);
+    background: rgba(43, 29, 20, 0.12);
+    font-size: 26px;
+    cursor: pointer;
+  }
+
+  .target-banner {
+    top: calc(8px + env(safe-area-inset-top));
+    width: calc(100vw - 24px);
+    max-width: 420px;
+    border-radius: 14px;
+    flex-wrap: wrap;
+    font-size: 14px;
+  }
+
+  .target-banner .btn,
+  .target-banner button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .settings-popover {
+    top: calc(8px + env(safe-area-inset-top));
+    max-height: calc(100dvh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  }
+
+  .chronicle {
+    width: min(420px, 100vw);
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .turn-ribbon {
+    top: calc(80px + env(safe-area-inset-top));
+    max-width: calc(100vw - 20px);
+  }
+
+  .turn-ribbon strong {
+    font-size: 22px;
+  }
+}
+
+@media (max-width: 699px) and (orientation: landscape) and (max-height: 500px) {
+  .game .strip-controls {
+    flex: 1 1 auto;
+    width: auto;
+    border-top: 0;
+    padding: 0;
+  }
+
+  .game .dock-row {
+    padding: 6px;
+  }
+
+  .game .roulette-tray {
+    width: 72px;
+    height: 68px;
+  }
+
+  .game .roulette-wheel {
+    width: 52px;
+    height: 52px;
+  }
+
+  .game .dock-actions {
+    flex-basis: 160px;
+  }
+
+  .game .dock-above {
+    max-height: calc(100dvh - 20px);
+  }
+}

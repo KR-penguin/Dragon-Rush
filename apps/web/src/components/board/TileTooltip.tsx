@@ -21,10 +21,11 @@ interface TileTooltipProps {
   tiles: readonly TileDef[];
   /** Names of the players standing on the hovered tile. */
   occupants: readonly string[];
+  onClose?: () => void;
 }
 
 /** Screen-space card with the full name, effect and index of the hovered tile (never tilted). */
-export function TileTooltip({ hover, tiles, occupants }: TileTooltipProps) {
+export function TileTooltip({ hover, tiles, occupants, onClose }: TileTooltipProps) {
   if (!hover) return null;
   const tile = tiles[hover.index];
   if (!tile) return null;
@@ -41,6 +42,16 @@ export function TileTooltip({ hover, tiles, occupants }: TileTooltipProps) {
       style={style}
       role="tooltip"
     >
+      {onClose && (
+        <button
+          type="button"
+          className="tile-tooltip-close"
+          onClick={onClose}
+          aria-label="칸 정보 닫기"
+        >
+          ×
+        </button>
+      )}
       <div className="tile-tooltip-head">
         <TileArt tileId={tile.id} className="tile-tooltip-icon" />
         <div>
