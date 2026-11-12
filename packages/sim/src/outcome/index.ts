@@ -55,6 +55,7 @@ export function generateOutcomeRows(dist: StatDist, opts: GenerateOutcomeOptions
   const pool = (kind: CombatSetup['kind']) => dist.fighters.filter((f) => f.kind === kind);
   const duel = pool('duel');
   const dragon = pool('dragonFight');
+  const paired = dist.setups;
   if (!duel.length && !dragon.length) throw new RangeError('stat distribution has no fighters');
   const duelShare = duel.length / 2 / (duel.length / 2 + dragon.length);
   let rng = createRng(opts.seed);
@@ -74,19 +75,22 @@ export function generateOutcomeRows(dist: StatDist, opts: GenerateOutcomeOptions
   });
   const out: OutcomeRow[] = [];
   for (let i = 0; i < opts.count; i++) {
-    const kind =
-      duel.length && dragon.length
-        ? random() < duelShare
-          ? 'duel'
-          : 'dragonFight'
-        : duel.length
-          ? 'duel'
-          : 'dragonFight';
-    const a = fighter(pick(kind === 'duel' ? duel : dragon));
-    const setup: CombatSetup =
-      kind === 'duel'
-        ? { kind, a, b: fighter(pick(duel)) }
-        : { kind, a, b: null, dragon: { ...boardRules.dragon } };
+    const setup: CombatSetup = paired?.length
+      ? paired[Math.floor(random() * paired.length)]!
+      : (() => {
+          const kind =
+            duel.length && dragon.length
+              ? random() < duelShare
+                ? 'duel'
+                : 'dragonFight'
+              : duel.length
+                ? 'duel'
+                : 'dragonFight';
+          const a = fighter(pick(kind === 'duel' ? duel : dragon));
+          return kind === 'duel'
+            ? { kind, a, b: fighter(pick(duel)) }
+            : { kind, a, b: null, dragon: { ...boardRules.dragon } };
+        })();
     const seed = Math.floor(random() * 0x1_0000_0000);
     const bot = opts.bot ?? 'scripted:balanced';
     const r = runCombat(
@@ -97,7 +101,7 @@ export function generateOutcomeRows(dist: StatDist, opts: GenerateOutcomeOptions
       ],
       seed,
       DEFAULT_COMBAT_RULES,
-      { decisionInterval: 4 },
+      { decisionInterval: 1 },
     );
     out.push({ setup, result: r.result, ticks: r.ticks });
   }
