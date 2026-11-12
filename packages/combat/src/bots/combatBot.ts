@@ -373,7 +373,10 @@ function respond(
   }
   const urgent = slack(s, me, t) < 3 || (t.homing && t.ticksLeft <= 12);
   if (!urgent || random() >= p.dashDodge) return;
-  o.move = dashDir(s, me, t.angle);
+  if (role === 'zoner' && t.fullShot) {
+    const tg = targetOf(s, me);
+    o.move = dashDir(s, me, tg ? atan2i(tg.y - me.y, tg.x - me.x) : t.angle);
+  } else o.move = dashDir(s, me, t.angle);
   o.dash = press(me, BTN_DASH);
 }
 
@@ -464,6 +467,12 @@ function meleePlan(
   // duelist bait: an opponent stepping into reach eats a parry
   const opp = tg.fighter;
   const oppAttack = opp ? s.rules.moves[s.rules.jobs[opp.job].attack] : null;
+  if (role === 'brawler' && oppAttack?.type === 'shot' && opp?.dashCharges === 0 &&
+    me.dashCharges > 0 && surface > 70 && surface < 200) {
+    o.move = aimMove;
+    o.dash = press(me, BTN_DASH);
+    return;
+  }
   if (
     role === 'duelist' &&
     opp &&
@@ -471,14 +480,20 @@ function meleePlan(
     oppAttack?.type === 'melee' &&
     oppAttack.parry === 'counter' &&
     surface <= Math.max(reach, theirReach) + 24 &&
-    !open
+    !open &&
+    (opp.mode === 'dash' || (opp.mode === 'attack' && opp.phase === 'startup'))
   ) {
-    const rushing = opp.mode === 'dash' || (opp.mode === 'attack' && opp.phase === 'startup');
-    if (random() < (rushing ? p.parryRead : p.parryRead * 0.5)) {
+    if (random() < (oppAttack.startup <= 4 ? 1 : p.parryRead)) {
       o.move = aimMove;
       o.skill = press(me, BTN_SKILL);
       return;
     }
+  }
+
+  if (role === 'brawler' && opp?.move === 'parry' && opp.phase !== 'recovery' && surface < reach + 10) {
+    o.move = aimMove;
+    o.attack = press(me, BTN_ATTACK);
+    return;
   }
 
   if (surface <= reach - 6) {
@@ -488,7 +503,9 @@ function meleePlan(
       skill.half >= 128 &&
       surface <= skill.reach - 8 &&
       me.skillCharges > 0 &&
-      random() < p.skill
+      random() < (role === 'brawler' && oppAttack?.type === 'melee' &&
+        oppAttack.startup <= 4 && opp && s.rules.dashes[s.rules.jobs[opp.job].dash].charges > 1
+        ? 0.2 : p.skill)
     ) {
       o.skill = press(me, BTN_SKILL);
       return;
@@ -572,6 +589,12 @@ function rangedPlan(
   const surface = dist - tg.r;
   const aim = atan2i(tg.y - me.y, tg.x - me.x);
   const aimMove = moveToward(aim);
+  const oneDashPursuer =
+    role === 'zoner' && tg.fighter !== null &&
+    s.rules.moves[s.rules.jobs[tg.fighter.job].attack].type === 'melee' &&
+    s.rules.jobs[tg.fighter.job].speed > kit.speed &&
+    s.rules.jobs[tg.fighter.job].speed <= kit.speed + 30 &&
+    s.rules.dashes[s.rules.jobs[tg.fighter.job].dash].charges === 1;
   // a kiter facing another ranged kit backs off to where only its long shots reach
   const oppRanged =
     tg.fighter !== null && s.rules.moves[s.rules.jobs[tg.fighter.job].attack].type !== 'melee';
@@ -584,16 +607,28 @@ function rangedPlan(
   else walk = strafe(s, me, aim);
   o.move = walk;
 
+  if (me.move === 'meteor') {
+    o.move = aimMove;
+    return;
+  }
+
   if (atk.type === 'draw' && me.move === 'draw') {
     // keep the draw as a level; release for a quick shot when close, hold to full draw when far
     const wantFull = surface > p.quickShotRange || outrange;
     o.attack = wantFull ? me.drawTicks < atk.fullAt : me.drawTicks < atk.quickAt;
     return;
   }
+  const incoming = tg.fighter?.move ? s.rules.moves[tg.fighter.move as keyof typeof s.rules.moves] : null;
+  if (role === 'zoner' && tg.fighter?.phase === 'startup' && incoming?.type === 'melee' &&
+    incoming.startup >= 5 && incoming.startup <= 10 && surface < 140 && me.dashCharges > 0) {
+    o.move = strafe(s, me, aim);
+    o.dash = press(me, BTN_DASH);
+    return;
+  }
   const close =
     tg.fighter !== null &&
-    surface < (role === 'zoner' && s.rules.jobs[tg.fighter.job].speed > kit.speed ? 160 : 110);
-  if (close && me.dashCharges > 0 && random() < p.panicDash) {
+    surface < (oneDashPursuer ? 140 : role === 'zoner' && s.rules.jobs[tg.fighter.job].speed > kit.speed ? 160 : 110);
+  if (close && me.dashCharges > 0 && random() < (oneDashPursuer ? 0.75 : p.panicDash)) {
     const dash = s.rules.dashes[kit.dash];
     o.move = dash.backward ? aimMove : bestAway(s, me, tg.x, tg.y);
     o.dash = press(me, BTN_DASH);
@@ -616,6 +651,7 @@ function rangedPlan(
     }
   }
   const range = atk.type === 'shot' ? atk.projectile.range : 520;
+  if (oneDashPursuer && tg.fighter?.dashCharges && surface < 200 && !isOpen(tg, role)) return;
   if (surface < range * 0.9 && random() < (isOpen(tg, role) ? p.punish * 0.5 : p.fire)) {
     o.move = aimMove;
     o.attack = press(me, BTN_ATTACK);

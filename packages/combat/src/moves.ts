@@ -449,6 +449,10 @@ function runMoveTick(c: Ctx, f: MFighter, id: MoveId, spec: MoveSpec): void {
       if (f.phase === 'recovery' && f.moveInput !== 0) f.facing = MOVE_BAM[f.moveInput]!;
       return;
     case 'rune':
+      if (t <= spec.startup + spec.holdTicks && f.moveInput !== 0) {
+        f.facing = MOVE_BAM[f.moveInput]!;
+        f.aim = f.facing;
+      }
       if (t >= spec.startup && t < spec.startup + spec.holdTicks && (f.held & BTN_SKILL) !== 0) {
         f.phase = 'startup';
         locomote(c, f, f.moveInput, 50);

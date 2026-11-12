@@ -34,7 +34,10 @@ const sections = new Set((positional[0] ?? 'all').split(','));
 const want = (s: string): boolean => sections.has('all') || sections.has(s);
 const N = Number(flag('n', '200'));
 const style = flag('style', 'balanced') as BotStyle;
-const reaction = flag('reaction', 'pooled') as Task['reaction'];
+const reactionArg = flag('reaction', 'pooled');
+if (!['5', '10', '16', 'pooled'].includes(reactionArg))
+  throw new Error('--reaction must be 5, 10, 16, or pooled');
+const reaction: Task['reaction'] = reactionArg === 'pooled' ? 'pooled' : Number(reactionArg) as 5 | 10 | 16;
 const pct = (x: number): string => `${(100 * x).toFixed(0)}%`;
 const wilson = (wins: number, n: number): string => {
   const z2 = 3.841459;
