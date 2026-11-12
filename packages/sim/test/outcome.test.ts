@@ -76,7 +76,9 @@ describe('outcome pipeline', () => {
     expect(report.count).toBeGreaterThan(0);
     expect(report.brier).toBeGreaterThanOrEqual(0);
     expect(report.deciles).toHaveLength(10);
-    expect(a.model.training.samples).toBe(rows.length - a.holdout.length);
+    expect(a.model.training.samples).toBe(
+      rows.length - a.holdout.length - (a.model.training.calibration_samples ?? 0),
+    );
   });
 
   it('gates holdout calibration by predicted-probability deciles', () => {

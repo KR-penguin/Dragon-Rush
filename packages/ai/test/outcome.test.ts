@@ -29,6 +29,15 @@ describe('outcome_v1 contract', () => {
     expect(() => parseOutcomeModel({ ...model, win: [...model.win, 0] })).toThrow();
     expect(() => parseOutcomeModel({ ...model, win: [NaN, ...model.win.slice(1)] })).toThrow();
     expect(() => parseOutcomeModel({ ...model, id: '' })).toThrow();
+    expect(() =>
+      parseOutcomeModel({
+        ...model,
+        calibration: [
+          { raw: 0.5, observed: 0.2 },
+          { raw: 0.4, observed: 0.8 },
+        ],
+      }),
+    ).toThrow();
   });
 
   it('encodes board profiles and returns normalized probabilities', () => {

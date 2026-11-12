@@ -2,7 +2,7 @@ import { JOB_IDS, type JobId } from '@dragon-rush/engine';
 import { z } from 'zod';
 
 export const OUTCOME_VERSION = 'outcome_v1';
-export const OUTCOME_FEATURE_DIM = 26;
+export const OUTCOME_FEATURE_DIM = 56;
 export const OUTCOME_CONDITIONAL_DIM = OUTCOME_FEATURE_DIM + 1;
 const finite = z.number().finite();
 const weights = (n: number) => z.array(finite.min(-1000).max(1000)).length(n);
@@ -18,6 +18,15 @@ export const OutcomeDamageSchema = z
   })
   .strict();
 export type OutcomeDamage = z.infer<typeof OutcomeDamageSchema>;
+
+const CalibrationSchema = z
+  .array(z.object({ raw: finite.min(0).max(1), observed: finite.min(0).max(1) }).strict())
+  .min(2)
+  .max(64)
+  .refine(
+    (points) => points.every((p, i) => i === 0 || p.raw > points[i - 1]!.raw),
+    'calibration knots must increase',
+  );
 
 export interface OutcomeFighter {
   readonly job: JobId;
@@ -42,8 +51,13 @@ export const OutcomeModelSchema = z
     combat_rules_version: z.string().min(1),
     damage: OutcomeDamageSchema,
     training: z
-      .object({ seed: z.number().int().nonnegative(), samples: z.number().int().nonnegative() })
+      .object({
+        seed: z.number().int().nonnegative(),
+        samples: z.number().int().nonnegative(),
+        calibration_samples: z.number().int().nonnegative().optional(),
+      })
       .strict(),
+    calibration: CalibrationSchema.optional(),
     win: weights(OUTCOME_FEATURE_DIM),
     hp: z.array(weights(OUTCOME_CONDITIONAL_DIM)).length(10),
     indomitable_a: weights(OUTCOME_CONDITIONAL_DIM),
@@ -93,6 +107,12 @@ function jobBits(job: JobId | 'dragon'): number[] {
   return [...JOB_IDS, 'dragon'].map((j) => (j === job ? 1 : 0));
 }
 
+function matchupBits(a: JobId, b: JobId | 'dragon'): number[] {
+  return JOB_IDS.flatMap((left) =>
+    [...JOB_IDS, 'dragon'].map((right) => Number(a === left && b === right)),
+  );
+}
+
 function hitsToKill(
   attacker: { job: JobId | 'dragon'; atk: number },
   target: { job: JobId | 'dragon'; hp: number; def: number },
@@ -107,7 +127,7 @@ function hitsToKill(
   return Math.log1p(target.hp / Math.max(0.01, hit * scale)) / 5;
 }
 
-/** Frozen feature order: bias, mode, A/B jobs, A/B HP/maxHP/ATK/DEF, A/B Last Stand, A/B log hits to kill. */
+/** Frozen feature order: bias, mode, A/B jobs, A/B HP/maxHP/ATK/DEF, A/B Last Stand, A/B log hits to kill, 5×6 matchup. */
 export function outcomeFeatures(setup: OutcomeSetup, damage: OutcomeDamage): number[] {
   const a = setup.a;
   const b =
@@ -138,6 +158,7 @@ export function outcomeFeatures(setup: OutcomeSetup, damage: OutcomeDamage): num
     Number(b.indomitableAvailable),
     hitsToKill(a, b, damage),
     hitsToKill(b, a, damage),
+    ...matchupBits(a.job, b.job),
   ];
   if (x.length !== OUTCOME_FEATURE_DIM) throw new Error('outcome feature layout drift');
   return x;
@@ -146,6 +167,20 @@ export function outcomeFeatures(setup: OutcomeSetup, damage: OutcomeDamage): num
 const dot = (w: readonly number[], x: readonly number[]) =>
   w.reduce((sum, v, i) => sum + v * x[i]!, 0);
 const sigmoid = (v: number) => (v >= 0 ? 1 / (1 + Math.exp(-v)) : Math.exp(v) / (1 + Math.exp(v)));
+
+function calibratedWin(raw: number, model: OutcomeModel): number {
+  const points = model.calibration;
+  if (!points) return raw;
+  if (raw <= points[0]!.raw) return points[0]!.observed;
+  for (let i = 1; i < points.length; i++) {
+    const right = points[i]!;
+    if (raw > right.raw) continue;
+    const left = points[i - 1]!;
+    const t = (raw - left.raw) / (right.raw - left.raw);
+    return left.observed + t * (right.observed - left.observed);
+  }
+  return points[points.length - 1]!.observed;
+}
 
 export interface OutcomePrediction {
   readonly winA: number;
@@ -167,7 +202,7 @@ export function predictOutcome(
   const exp = logits.map((v) => Math.exp(v - max));
   const sum = exp.reduce((a, b) => a + b, 0);
   return {
-    winA: sigmoid(dot(model.win, x)),
+    winA: calibratedWin(sigmoid(dot(model.win, x)), model),
     hpBins: exp.map((v) => v / sum),
     indomitableUsedA: setup.a.indomitableAvailable
       ? sigmoid(dot(model.indomitable_a, conditional))
