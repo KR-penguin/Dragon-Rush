@@ -44,7 +44,7 @@ export function createGameWithEvents(
       maxHp: def.hp,
       atk: def.atk,
       def: def.def,
-      coins: rules.startingCoins,
+      coins: rules.startingCoins + (job === 'archer' ? rules.passives.archerStartingCoinsBonus : 0),
       items,
       upgradeLevels: { atk: 0, def: 0, maxHp: 0 },
       passive: { indomitableUsed: false, ninjaCooldown: 0 },

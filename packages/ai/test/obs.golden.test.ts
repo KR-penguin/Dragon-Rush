@@ -20,6 +20,6 @@ describe(`${OBS_VERSION} golden vectors`, () => {
       const legal = getLegalActions(s);
       s = applyAction(s, legal.find((a) => a.type !== 'CHALLENGE_DRAGON') ?? legal[0]!).state;
     }
-    expect({ version: OBS_VERSION, hashes }).toMatchSnapshot();
+    expect({ version: OBS_VERSION, rules: s.rules.version, hashes }).toMatchSnapshot();
   });
 });

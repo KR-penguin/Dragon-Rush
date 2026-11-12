@@ -17,8 +17,11 @@ export function validateRules(rules: RulesConfig): void {
     if (
       fixed.size !== variation.fixedTiles.length ||
       !fixed.has(0) ||
-      variation.fixedTiles.some((index) => !Number.isSafeInteger(index) || index < 0 || index >= BOARD_SIZE)
-    ) fail('invalid boardVariation.fixedTiles');
+      variation.fixedTiles.some(
+        (index) => !Number.isSafeInteger(index) || index < 0 || index >= BOARD_SIZE,
+      )
+    )
+      fail('invalid boardVariation.fixedTiles');
     const count = variation.newPerKind;
     if (
       !Number.isSafeInteger(count) ||
@@ -26,7 +29,8 @@ export function validateRules(rules: RulesConfig): void {
       count > variation.good.length ||
       count > variation.bad.length ||
       2 * count > BOARD_SIZE - fixed.size
-    ) fail('invalid boardVariation.newPerKind');
+    )
+      fail('invalid boardVariation.newPerKind');
     const baseIds = new Set(rules.board.map((tile) => tile.id));
     const newIds = [...variation.good, ...variation.bad].map((tile) => tile.id);
     if (new Set(newIds).size !== newIds.length || newIds.some((id) => baseIds.has(id)))
@@ -75,6 +79,11 @@ export function validateRules(rules: RulesConfig): void {
   if (rules.eventHpFloor < 1) fail('eventHpFloor must be >= 1');
   if (!Number.isSafeInteger(rules.coinShortfallHpPerCoin) || rules.coinShortfallHpPerCoin < 0)
     fail('coinShortfallHpPerCoin must be a non-negative safe integer');
+  if (
+    !Number.isSafeInteger(rules.passives.archerStartingCoinsBonus) ||
+    rules.passives.archerStartingCoinsBonus < 0
+  )
+    fail('archerStartingCoinsBonus must be a non-negative safe integer');
   if (!Number.isSafeInteger(rules.maxPaidUpgradesPerTurn) || rules.maxPaidUpgradesPerTurn < 0)
     fail('maxPaidUpgradesPerTurn must be a non-negative safe integer');
 }

@@ -108,6 +108,7 @@ export interface RulesConfig {
   readonly passives: {
     readonly indomitableUses: number;
     readonly archerFirstStrikeBonus: number;
+    readonly archerStartingCoinsBonus: number;
     readonly mageDefDivisor: number;
     readonly ninjaEvadeDie: number;
     readonly ninjaAdjustCooldown: number;

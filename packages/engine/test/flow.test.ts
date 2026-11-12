@@ -28,7 +28,7 @@ describe('game setup', () => {
     expect(new Set(s.players.map((p) => p.job)).size).toBe(4);
     for (const p of s.players) {
       expect(p.position).toBe(0);
-      expect(p.coins).toBe(10);
+      expect(p.coins).toBe(p.job === 'archer' ? 16 : 10);
       expect(p.items).toEqual({ teleport: 0, shield: 0, thief: 0 });
       expect(p.hp).toBe(p.maxHp);
     }
@@ -84,7 +84,7 @@ describe('movement and tiles', () => {
       { type: 'TileResolved', seat: 0, tile: 3, tileId: 'TREASURE' },
     ]);
     expect(state.players[0]!.position).toBe(3);
-    expect(state.players[0]!.coins).toBe(10 + 35 + 12);
+    expect(state.players[0]!.coins).toBe(s.players[0]!.coins + 35 + 12);
     expect(state.players[0]!.hp).toBe(26);
     expect(state.players[0]!.items.teleport).toBe(0);
   });
@@ -103,7 +103,7 @@ describe('movement and tiles', () => {
     const b = act(crossing, { type: 'USE_TELEPORT', tile: 0 });
     expect(eventsOf(b.events, 'StartBonus')).toHaveLength(1);
     expect(eventsOf(b.events, 'Moved')[0]).toMatchObject({ steps: 1, via: 'teleport' });
-    expect(b.state.players[0]!.coins).toBe(45);
+    expect(b.state.players[0]!.coins).toBe(crossing.players[0]!.coins + 35);
   });
 
   it('moves the herb heal to tile 9', () => {
@@ -113,7 +113,7 @@ describe('movement and tiles', () => {
       { type: 'TileResolved', seat: 0, tile: 9, tileId: 'HERB' },
     ]);
     expect(state.players[0]!.hp).toBe(10);
-    expect(state.players[0]!.coins).toBe(10);
+    expect(state.players[0]!.coins).toBe(s.players[0]!.coins);
   });
 
   it('event damage never drops hp below 1 and coins below 0', () => {
@@ -462,7 +462,7 @@ describe('items', () => {
       d.players[1]!.coins = 13;
     });
     const r = act(s, { type: 'USE_THIEF', target: 1 });
-    expect(r.state.players[0]!.coins).toBe(20);
+    expect(r.state.players[0]!.coins).toBe(s.players[0]!.coins + 10);
     expect(r.state.players[1]!.coins).toBe(3);
     expect(getLegalActions(r.state).some((a) => a.type === 'USE_THIEF')).toBe(false);
   });

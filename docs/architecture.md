@@ -158,7 +158,7 @@ interface RulesConfig {
   dragon: { hp: number; atk: number; def: number; breathEvery: number; damageDealtScale: number };
 }
 ```
-- 기본값은 `engine/src/rules/defaultRules.ts`의 `DEFAULT_RULES` 한 곳(수치 정의의 정본은 [game-design.md](game-design.md), 일치는 골든 테스트로 보장). 현행 `rush-10`은 `movement.rollSides = 10`과 빠른 전투의 `combat.dieSides = 6`을 분리하고 유료 강화를 턴당 3회로 제한한다. 매 게임 시드로 24칸 보드를 생성해 0·6·12·18을 고정하고, 기존 이동 칸 20개 중 16개와 새 좋은 칸 2개·나쁜 칸 2개를 나머지 20자리에 섞는다. 첫 룰렛으로 도달 가능한 1~10번에는 약초 군락·달빛 우물 같은 순수 HP 회복 칸을 두지 않는다. 생성된 보드는 `state.rules.board`에 담기며 `obs_v4`가 모든 칸의 효과를 전달한다. 직업은 좌석 간 중복 선택이 가능하다. 닌자 −1/0/+1 중 어느 선택이든 쿨다운 2를 시작해 다음 자기 턴에는 보정할 수 없고 그다음 턴부터 가능하다. 텔레포트는 시계 방향으로 1~23칸 이동하며 0번 통과·도착 보너스를 받고 목적지에서만 이벤트·PvP를 처리한다. `ROLL_DICE`·`DiceRolled` 식별자는 호환성을 위해 유지한다. `createGame`이 `validateRules`로 형태(칸 수, 직업 5종 등)를 검증하며, 다른 코드에 수치 리터럴을 하드코딩하지 않는다.
+- 기본값은 `engine/src/rules/defaultRules.ts`의 `DEFAULT_RULES` 한 곳(수치 정의의 정본은 [game-design.md](game-design.md), 일치는 골든 테스트로 보장). 현행 `rush-11`은 `movement.rollSides = 10`과 빠른 전투의 `combat.dieSides = 6`을 분리하고 유료 강화를 턴당 3회로 제한한다. 매 게임 시드로 24칸 보드를 생성해 0·6·12·18을 고정하고, 기존 이동 칸 20개 중 16개와 새 좋은 칸 2개·나쁜 칸 2개를 나머지 20자리에 섞는다. 첫 룰렛으로 도달 가능한 1~10번에는 약초 군락·달빛 우물 같은 순수 HP 회복 칸을 두지 않는다. 생성된 보드는 `state.rules.board`에 담기며 `obs_v4`가 모든 칸의 효과를 전달한다. 직업은 좌석 간 중복 선택이 가능하다. 닌자 −1/0/+1 중 어느 선택이든 쿨다운 2를 시작해 다음 자기 턴에는 보정할 수 없고 그다음 턴부터 가능하다. 텔레포트는 시계 방향으로 1~23칸 이동하며 0번 통과·도착 보너스를 받고 목적지에서만 이벤트·PvP를 처리한다. `ROLL_DICE`·`DiceRolled` 식별자는 호환성을 위해 유지한다. `createGame`이 `validateRules`로 형태(칸 수, 직업 5종 등)를 검증하며, 다른 코드에 수치 리터럴을 하드코딩하지 않는다.
 
 ### 3.6 Seeded PRNG
 - 알고리즘: **sfc32** (상태 128비트 = uint32 × 4). `seed`(최대 2^53 정수)를 상태로 확장 후 워밍업.
@@ -407,8 +407,8 @@ Python (사용자 트레이너) ─┬─ RPGBoardEnv/RPGBoardVecEnv ── stdi
 - `RulesConfig.combat.mode: 'dice' | 'external'`. `external`이면 전투 시작 시 `CombatStarted`를 내고 `pending = { actor: a, phase: 'COMBAT' }`, `state.combat = { kind: 'duel' | 'dragonFight', a, b }`에서 멈춘다. 이 phase의 `getLegalActions`는 `[]`.
 - 결과 입력: `applyCombatResult(state, { winner, hpA, hpB, indomitableUsedA?, indomitableUsedB?, timedOut? })`. 엔진이 검증(`InvalidCombatResultError`)하고 `CombatEnded`·탈락·전리품·승리 판정을 이어 간다. `resolveCombatWithDice(state)`는 대기 중인 전투를 주사위 규칙으로 정리한다(`dice` 리졸버·대체 경로).
 - 서버: `GameSession`이 `COMBAT`에 들어가면 턴 타이머를 멈추고 전투 방(`FightRoom`)을 연다. 서버가 확정한 결과는 `GameSession.submitCombatResult(fightId, result)` 한 경로로 들어오며 활성 `fightId`와 `COMBAT` phase를 검사한 뒤 적용한다. 방의 `quickCombat` 선택만 주사위 해결 경로를 쓴다. 로컬은 `LocalGameClient`가 브라우저 sim 결과를 같은 엔진 함수에 넣는다.
-- `PROTOCOL_VERSION`은 2다. 보드 정책은 `COMBAT`에서 결정하지 않는다. 과거 `rush-9`에서 남은 강화 횟수를 붙여 `obs_v3`(258차원), 강화 마스크 계약을 `act_v2`(47개)로 올렸다. 현행 `rush-10`은 생성된 맵의 24칸 효과를 추가한 `obs_v4`(498차원)와 닌자 보정 0도 쿨다운을 소비하는 `act_v3`(47개)를 쓴다. 소켓 메시지 형태는 바뀌지 않아 `PROTOCOL_VERSION`은 유지한다.
-- 현행 실시간 전투 규칙은 `combat-7`이다. 용전은 최대 60초(3,600틱)이며, 소프트 격노 시작 시점은 20초(1,200틱) 그대로다.
+- `PROTOCOL_VERSION`은 2다. 보드 정책은 `COMBAT`에서 결정하지 않는다. 과거 `rush-9`에서 남은 강화 횟수를 붙여 `obs_v3`(258차원), 강화 마스크 계약을 `act_v2`(47개)로 올렸다. 현행 `rush-11`은 생성된 맵의 24칸 효과를 추가한 `obs_v4`(498차원)와 닌자 보정 0도 쿨다운을 소비하는 `act_v3`(47개)를 쓴다. 소켓 메시지 형태는 바뀌지 않아 `PROTOCOL_VERSION`은 유지한다.
+- 현행 실시간 전투 규칙은 `combat-8`이다. 용전은 최대 60초(3,600틱)이며, 소프트 격노 시작 시점은 20초(1,200틱) 그대로다.
 
 ### 12.3 온라인 롤백·전송 (`packages/netcode`, `packages/protocol`)
 | 방향 | 이름 | 페이로드·역할 |

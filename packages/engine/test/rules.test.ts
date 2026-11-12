@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_RULES, validateRules, withRules } from '../src/index';
+import { createGame, DEFAULT_RULES, validateRules, withRules } from '../src/index';
 
 describe('DEFAULT_RULES matches docs/game-design.md', () => {
   it('jobs (§4)', () => {
@@ -29,6 +29,12 @@ describe('DEFAULT_RULES matches docs/game-design.md', () => {
     expect(DEFAULT_RULES.items.shield.price).toBe(6);
     expect(DEFAULT_RULES.items.thief).toEqual({ price: 5, perTurnLimit: 1 });
     expect(DEFAULT_RULES.thiefStealAmount).toBe(10);
+  });
+
+  it('gives only the archer scouting supplies at game start', () => {
+    const state = createGame({ seats: [{ job: 'archer' }, { job: 'mage' }] }, DEFAULT_RULES, 7);
+    expect(state.players.find((player) => player.job === 'archer')?.coins).toBe(16);
+    expect(state.players.find((player) => player.job === 'mage')?.coins).toBe(10);
   });
 
   it('dragon and combat (§9, §10)', () => {
@@ -122,7 +128,7 @@ describe('DEFAULT_RULES matches docs/game-design.md', () => {
   });
 
   it('carries the balance version', () => {
-    expect(DEFAULT_RULES.version).toBe('rush-10');
+    expect(DEFAULT_RULES.version).toBe('rush-11');
   });
 
   it('is frozen and valid', () => {

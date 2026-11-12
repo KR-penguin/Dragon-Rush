@@ -98,7 +98,7 @@ const MYSTERY_DECK: readonly MysteryCardDef[] = [
 ];
 
 export const DEFAULT_RULES: RulesConfig = deepFreeze({
-  version: 'rush-10',
+  version: 'rush-11',
   startingCoins: 10,
   startingItems: {},
   startBonus: { coins: 35, hp: 6 },
@@ -118,6 +118,7 @@ export const DEFAULT_RULES: RulesConfig = deepFreeze({
   passives: {
     indomitableUses: 1,
     archerFirstStrikeBonus: 3,
+    archerStartingCoinsBonus: 6,
     mageDefDivisor: 2,
     ninjaEvadeDie: 8,
     ninjaAdjustCooldown: 2,

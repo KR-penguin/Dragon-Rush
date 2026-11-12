@@ -19,7 +19,7 @@ export const JOB_ICON: Record<JobId, string> = {
 
 export const JOB_PASSIVE: Record<JobId, string> = {
   swordsman: '불굴: 게임당 1회, 치명상을 HP 1로 버팀',
-  archer: '선제 사격: 항상 선공, 첫 공격 +3',
+  archer: '선제 사격: 항상 선공, 첫 공격 +3 · 정찰 보급: 시작 코인 +6',
   mage: '마력 관통: 상대 방어력 절반만 적용',
   ninja: '그림자 걸음(±1 이동) + 회피 1/8',
   berserker: '광폭화: HP 절반 이하일 때 공격력 ×1.3',

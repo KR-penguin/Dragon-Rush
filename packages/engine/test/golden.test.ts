@@ -14,7 +14,7 @@ import {
 /** Scripted choices on a fixed seed; external-mode fights are settled by the dice resolver without consuming a choice. */
 function replay(mode: CombatMode): { state: GameState; events: GameEvent[] } {
   const created = createGameWithEvents(
-    { seats: [{ job: 'berserker' }, { job: 'ninja' }, { job: 'archer' }] },
+    { seats: [{ job: 'berserker' }, { job: 'ninja' }, { job: 'mage' }] },
     withRules(
       { maxRounds: 12, combat: { ...DEFAULT_RULES.combat, mode }, boardVariation: null },
       DEFAULT_RULES,

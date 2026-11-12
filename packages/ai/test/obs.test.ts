@@ -194,7 +194,7 @@ describe('obs_v4', () => {
     const s = newGame(2, 1);
     const obs = encodeObservation(view(s), 0);
     expect(obs[field('self.pos').offset]).toBe(1);
-    expect(obs[field('self.coins').offset]).toBeCloseTo(10 / 50);
+    expect(obs[field('self.coins').offset]).toBeCloseTo(s.players[0]!.coins / 50);
     expect(obs[field('opp1.present').offset]).toBe(1);
     expect(obs[field('opp2.present').offset]).toBe(0);
     expect(obs[field('g.phase').offset]).toBe(1);

@@ -44,18 +44,18 @@
 
 **기존 258개 정규화 상수** (`OBS_V3_SCALES`; `OBS_V4_SCALES`에도 포함)
 
-| 상수 | 값 | 동결 당시 근거 (config `final`; 현재 `rush-10`은 아래 별도 설명) |
+| 상수 | 값 | 동결 당시 근거 (config `final`; 현재 `rush-11`은 아래 별도 설명) |
 |---|---|---|
 | `HP_S` | 120 | 용 HP 115, 기본 HP 30~56, HP 강화 +6/레벨 |
 | `ATK_S`, `DEF_S` | 20 | 기본 ATK 4~6 / DEF 5~6, 용 10/6, 점증 비용(3+lvl, 2+lvl) |
 | `COIN_S` | 50 | 시작 5, 출발 보너스 +10, 턴당 순 수입 ≈2.45, 도둑 7, 가격 5~6, 강화비 |
 | `LVL_S` | 10 | 스탯별 강화 레벨 |
-| `ITEM_S` | 3 | 초기 `final`의 시작 방어막 1과 아이템 수량을 기준으로 동결. 현재 `rush-10` 시작 아이템은 0 |
+| `ITEM_S` | 3 | 초기 `final`의 시작 방어막 1과 아이템 수량을 기준으로 동결. 현재 `rush-11` 시작 아이템은 0 |
 | `ROUND_S` | 100 | 학습 env `maxRounds` 기본 100 (`rush-4` 모델 사용 4인 실측 p95 = 10; 이전 스케일 유지) |
 | `GRACE_S` / `CD_S` / `TP_S` | 3 / 2 / 2 | 이전 관측 스케일 유지. 현재 초반 보호는 0라운드, 닌자 쿨다운은 2(격턴 사용)다 / 이번 턴 텔레포트 사용 수 |
 | `DIST_S` | 23 | 링(24칸)에서 최대 전진 거리 |
 
-> 현재 규칙 `rush-10`은 이동 룰렛 1~10, 빠른 전투 주사위 1~6, 유료 강화 턴당 최대 3회다. 24칸 보드는 게임 시작 때 시드로 생성되고 0·6·12·18은 고정된다. `obs_v4`의 기존 스케일은 이전과 같으며 용 HP는 88(관측값 0.73), 보드 ATK는 50이고 `g.dragonAtk = clip(50 / ATK_S, 0, 2) = 2`다. 용이 주는 피해는 방어력 계산 후 0.6배이고 받는 피해 배율 0.3은 그대로다. 기본 HP는 34~53이다. 초반 보호가 없어 `g.graceLeft`는 시작부터 0이고 `g.pvpEnabled`는 1이다. 출발 칸도 PvP가 가능하다. 코인 흐름(시작 10, 출발 보너스 +35, 도둑 10) 때문에 100코인 이상은 클리핑된다. 코인 손실 이벤트의 미지불분은 1코인당 HP 1로 지불한다. 이전 `rush-9` 밸런스 표는 현재 규칙의 측정치가 아니다(기획서 §15).
+> 현재 규칙 `rush-11`은 이동 룰렛 1~10, 빠른 전투 주사위 1~6, 유료 강화 턴당 최대 3회다. 24칸 보드는 게임 시작 때 시드로 생성되고 0·6·12·18은 고정된다. `obs_v4`의 기존 스케일은 이전과 같으며 용 HP는 88(관측값 0.73), 보드 ATK는 50이고 `g.dragonAtk = clip(50 / ATK_S, 0, 2) = 2`다. 용이 주는 피해는 방어력 계산 후 0.6배이고 받는 피해 배율 0.3은 그대로다. 기본 HP는 34~53이다. 초반 보호가 없어 `g.graceLeft`는 시작부터 0이고 `g.pvpEnabled`는 1이다. 출발 칸도 PvP가 가능하다. 코인 흐름(기본 시작 10·궁수 정찰 보급 시 16, 출발 보너스 +35, 도둑 10) 때문에 100코인 이상은 클리핑된다. 코인 손실 이벤트의 미지불분은 1코인당 HP 1로 지불한다. 이전 `rush-9` 밸런스 표는 현재 규칙의 측정치가 아니다(기획서 §15).
 
 ### 3.1 자기 블록 — offset 0, 길이 51
 
@@ -128,7 +128,7 @@
 | 247 | 1 | `g.pvpAmDefender` | 진행 중 PvP 결정에서 내가 방어자 |
 | 248 | 3 | `g.pvpOpponent` | 확정된 PvP 상대 원-핫 [상대1, 상대2, 상대3] (대상 선택 전이면 0) |
 | 251 | 1 | `g.dragonHp` | n(dragon.hp, HP_S) |
-| 252 | 1 | `g.dragonAtk` | n(dragon.atk, ATK_S). `rush-10` 보드 ATK 50은 `clip(50/20, 0, 2) = 2` |
+| 252 | 1 | `g.dragonAtk` | n(dragon.atk, ATK_S). `rush-11` 보드 ATK 50은 `clip(50/20, 0, 2) = 2` |
 | 253 | 1 | `g.dragonDef` | n(dragon.def, DEF_S) |
 | 254 | 3 | `g.itemPrice` | [teleport, shield, thief] n(price, COIN_S) |
 | 257 | 1 | `g.paidUpgradesRemaining` | `max(0, maxPaidUpgradesPerTurn − turn.paidUpgradesUsed) / maxPaidUpgradesPerTurn` (상한 0이면 0). 기본 3회에서 1→2/3→1/3→0 |
@@ -220,7 +220,7 @@
 ```json
 {"id":1,"cmd":"info"}
 {"id":1,"ok":true,"result":{"protocol":"rpgboard-env/2","obs_version":"obs_v4","act_version":"act_v3",
- "obs_dim":498,"action_dim":47,"rules_version":"rush-10","action_names":["ROLL_DICE","END_TURN","CHALLENGE_DRAGON","..."],
+ "obs_dim":498,"action_dim":47,"rules_version":"rush-11","action_names":["ROLL_DICE","END_TURN","CHALLENGE_DRAGON","..."],
  "obs_layout":[{"name":"self.job","offset":0,"length":5},{"name":"self.pos","offset":5,"length":24},"...",{"name":"tile23.mystery","offset":497,"length":1}],
  "bots":["random","random:uniform","heuristic","heuristic:aggro","heuristic:growth","heuristic:rush"]}}
 ```
@@ -372,7 +372,7 @@ createModelPolicy(model: PolicyModel, opts?: { mode?: 'argmax' | 'sample'; tempe
 7. JSON 키 구조를 보여 주는 작은 예시 파일.
 8. **패리티 샘플**: env에서 뽑은 obs 5개 이상과 각 obs의 `info["action_mask"]`(47개 bool), 사용자 numpy 코드로 계산한 actor 원출력(마스크 적용 전 47개)과 critic 값. 파일 형식은 사용자 편의대로 정하되 이 네 항목은 들어 있어야 한다(일부 행동이 막힌 마스크 포함 권장).
 
-**권장 메타데이터** (강제 아님): `"obs_version": "obs_v4"`, `"act_version": "act_v3"`, `"obs_dim": 498`, `"action_dim": 47`, `"output": "logits"`, `"rules_version": "rush-10"`, 학습 설정 요약.
+**권장 메타데이터** (강제 아님): `"obs_version": "obs_v4"`, `"act_version": "act_v3"`, `"obs_dim": 498`, `"action_dim": 47`, `"output": "logits"`, `"rules_version": "rush-11"`, 학습 설정 요약.
 **파일 위치**: `models/<name>.json` (파일명 `^[a-z0-9_-]+\.json$`, 서버 `MODELS_DIR` 허용 목록만 로드), 패리티 샘플은 `models/parity/<name>.json`(하위 폴더는 레지스트리가 스캔하지 않음). 어댑터는 포맷 수령 후 `packages/ai/src/model/adapters/`에 구현하고, 그 전까지 model 좌석은 UI에서 "준비 중"으로 비활성화한다.
 
 ## 10. 내장 봇
@@ -398,7 +398,7 @@ createModelPolicy(model: PolicyModel, opts?: { mode?: 'argmax' | 'sample'; tempe
 | growth | 0.6 / 0.4 | 0.25 | 0.80 | 1 | 7 | 0.45 | 6 | 4 |
 | rush | 1.0 / 0 | 0.17 | 0.85 | 0 | 7 | 0.5 | 6 | 99 |
 
-- 과거 `rush-9`/`combat-5` 4인 휴리스틱·스크립트 봇 1,000판(seed 2026, 8 workers, 실제 60Hz 전투)은 평균 15.909(중앙 16)/p95 29라운드, 용 처치 종료 21.1%, 도전 성공률 58.13%, 3라운드 안 좌석 탈락 30.85%, 판당 PvP 2.621회, 무승부 0%다. `rush-10` 동적 보드에 대한 측정치는 아니다([game-design.md §15](game-design.md)).
+- 과거 `rush-9`/`combat-5` 4인 휴리스틱·스크립트 봇 1,000판(seed 2026, 8 workers, 실제 60Hz 전투)은 평균 15.909(중앙 16)/p95 29라운드, 용 처치 종료 21.1%, 도전 성공률 58.13%, 3라운드 안 좌석 탈락 30.85%, 판당 PvP 2.621회, 무승부 0%다. `rush-11` 동적 보드에 대한 측정치는 아니다([game-design.md §15](game-design.md)).
 - 과거 `rush-7` 4인 휴리스틱 4,000판(제거된 결과 예측기를 보드 봇 판단에 사용, seed 2026, 4 workers, 실제 60Hz 전투)의 중앙은 4/p95는 7라운드, 용 처치 종료는 50.2%, 3라운드 안 탈락은 37.3%, 판당 PvP는 1.10회, 무승부는 0%다. 현행 기준선이 아니다. 이전 `rush-6` 및 `rush-4`의 실측도 [game-design.md §15](game-design.md)에 둔다. 온라인 대리 플레이는 `heuristic:growth`.
 
 ## 11. 계약 검증 (Vitest, Python은 pytest)
