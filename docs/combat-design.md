@@ -216,8 +216,8 @@ flat    = +3   (궁수가 처음 맞힌 공격, 감쇠 후 더함)
 
 - 전투 모델(사용자 가중치)이 없으면 봇 좌석은 스크립트 전투 봇을 쓴다([combat-ai-spec.md](combat-ai-spec.md) §1).
 
-### 8.4 승률 표시와 봇 추정
-- UI "용의 눈"(`apps/web/src/types/estimates.ts`)과 HeuristicBot 추정(`packages/ai/src/bots/heuristic/estimate.ts`)은 지금 주사위 전투를 몬테카를로로 돌린다. 실시간 모드에서는 실제 전투와 어긋나므로 전투 outcome 모델([combat-ai-spec.md](combat-ai-spec.md) §12)로 바꾸고 "AI 예측"으로 표시한다.
+### 8.4 내부 전투 결과 추정
+- HeuristicBot의 도전 판단과 대량 시뮬레이션은 실제 전투 데이터로 적합한 outcome 모델([combat-ai-spec.md](combat-ai-spec.md) §12)을 사용할 수 있다. 이 추정치는 봇·학습 환경·밸런스 분석 전용이며 게임 화면에는 표시하지 않는다.
 
 ## 9. 온라인 넷코드 (구현됨; 핫시트·오프라인은 로컬 sim)
 
