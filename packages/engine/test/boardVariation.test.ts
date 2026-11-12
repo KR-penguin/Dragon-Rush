@@ -21,6 +21,16 @@ describe('seeded board variation', () => {
     expect(new Set(Array.from({ length: 12 }, (_, seed) => ids(seed).join(','))).size).toBe(12);
   });
 
+  it('keeps pure healing events beyond the opening roulette range', () => {
+    for (let seed = 0; seed < 50; seed++) {
+      const board = createGame(setup, DEFAULT_RULES, seed).rules.board;
+      expect(board.slice(1, DEFAULT_RULES.movement.rollSides + 1).map((tile) => tile.id))
+        .not.toContain('HERB');
+      expect(board.slice(1, DEFAULT_RULES.movement.rollSides + 1).map((tile) => tile.id))
+        .not.toContain('MOONWELL');
+    }
+  });
+
   it('treats an explicitly supplied board as fixed unless variation is also supplied', () => {
     const board = DEFAULT_RULES.board.map((tile) => ({ ...tile }));
     const rules = withRules({ board });

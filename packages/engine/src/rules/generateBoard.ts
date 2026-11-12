@@ -25,5 +25,17 @@ export function generateBoard(
   const board = rules.board.map((tile, index) =>
     fixed.has(index) ? tile : shuffledBoard[cursor++]!,
   );
+  const pureHealing = (tile: TileDef) =>
+    tile.effects.length > 0 &&
+    tile.effects.every((effect) => effect.kind === 'hp' && effect.amount > 0);
+  const openingEnd = Math.min(rules.movement.rollSides, board.length - 1);
+  for (let index = 1; index <= openingEnd; index++) {
+    if (fixed.has(index) || !pureHealing(board[index]!)) continue;
+    const later = board.findIndex(
+      (tile, target) => target > openingEnd && !fixed.has(target) && !pureHealing(tile),
+    );
+    if (later < 0) break;
+    [board[index], board[later]] = [board[later]!, board[index]!];
+  }
   return [board, nextRng];
 }
