@@ -121,6 +121,8 @@ flat    = +3   (궁수가 처음 맞힌 공격, 감쇠 후 더함)
 
 이 행렬은 `DEFAULT_RULES.jobs`의 5직업 **시작 스탯**과 `runCombat`의 매 틱 스크립트 봇 입력(`decisionInterval=1`)으로 측정했다. 로컬·온라인 스크립트 봇과 보드 `sim`, `outcome_v1` 학습도 같은 입력 주기를 쓴다. 전투 **학습 env**의 에이전트 행동 반복 4틱은 별도 계약이다. `pnpm exec tsx packages/sim/scripts/auditCadence.ts 300 4`로 각 방향·좌석당 300판을 탐색 측정하면 스크립트 봇 입력을 4틱 유지할 때 의도한 10개 방향 중 4개가 역전되어 이 행렬을 적용할 수 없다.
 
+표의 Easy/Hard는 **balanced 봇의 반응 지연 16f/5f 시험 조건**이다. 로컬 UI의 Easy는 `cautious` 18f, Hard는 `aggressive` 6f이므로 해당 UI 난이도의 상성 통과를 이 표만으로 주장하지 않는다. 로컬 Normal과 온라인 봇은 `balanced` 10f로 표의 Normal 조건과 맞는다.
+
 | 실측 승률 % (행이 열을 이김) | 검사 | 닌자 | 궁수 | 마법사 | 광전사 |
 |---|---:|---:|---:|---:|---:|
 | **검사** | 51.4 | 51.8 | 58.9 | 48.3 | 33.5 |
