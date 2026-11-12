@@ -1,6 +1,6 @@
 # 아키텍처 설계서 — 드래곤 러쉬 (Dragon Rush)
 
-> 상태: **보드 게임(P0~P7), 실시간 전투, 온라인 롤백, 보드·전투 학습 환경 구현됨**. 이 문서는 `main`의 `11c3150` 구현을 기준으로 한다. 세부 구현은 각 패키지 소스가 정본이다. 온라인 지연 목표와 브라우저 검증은 남아 있다.
+> 상태: **보드 게임(P0~P7), 실시간 전투, 온라인 롤백, 보드·전투 학습 환경 구현됨**. 이 문서는 현재 구현을 설명하며, 세부 구현은 각 패키지 소스가 정본이다. 온라인 용전은 브라우저에서, 두 인간의 온라인 PvP는 Socket.IO 통합 테스트에서 확인했다. 외부 회선의 지연 체감 검증은 남아 있다.
 > 정본 분담: 규칙·수치 → [game-design.md](game-design.md) · 관측/행동/마스크/보상/env 프로토콜 → [ai-interface-spec.md](ai-interface-spec.md) · 실시간 전투 → [combat-design.md](combat-design.md) · 전투 AI → [combat-ai-spec.md](combat-ai-spec.md) · 화면·FX·오디오 → [art-direction.md](art-direction.md) · 일정·결정 사항 → [development-plan.md](development-plan.md) · 코딩 규칙 → [coding_convention.md](../coding_convention.md)
 
 ## 1. 설계 원칙
