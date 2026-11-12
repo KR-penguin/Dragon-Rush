@@ -81,7 +81,7 @@ export function Dock(props: DockProps) {
                 disabled={locked}
                 onClick={props.onDragon}
               >
-                <GameIcon name="dragon" /> 용에게 도전
+                <GameIcon name="dragon" /> 드래곤 러쉬
               </button>
             )}
             {props.shopAvailable && (
