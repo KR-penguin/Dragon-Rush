@@ -105,7 +105,7 @@ export function GamePage({ session, onExit, onRestart }: GamePageProps) {
   const [legend, setLegend] = useState<TileCategory | null>(null);
   const [hover, setHover] = useState<TileHover | null>(null);
   const [preview, setPreview] = useState<number | null>(null);
-  useBgm(combat?.kind === 'dragonFight' ? 'dragon_battle' : 'board');
+  useBgm(combat ? 'dragon_battle' : 'board');
 
   const escapable =
     ui.teleportPicking || ui.dialog === 'thief' || ui.dialog === 'dragon' || ui.dialog === 'shop';

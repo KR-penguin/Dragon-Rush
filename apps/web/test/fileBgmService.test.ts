@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const BGM_PATH = 'audio/bgm/dragon_foothills.mp3';
+
 vi.mock('../src/services/assets', () => ({
-  hasAsset: () => false,
-  assetUrl: (path: string) => path,
+  hasAsset: (path: string) => path === BGM_PATH,
+  assetUrl: (path: string) => `/assets/${path}`,
 }));
 vi.mock('../src/services/storage', () => ({
   readStorage: () => null,
@@ -41,6 +43,7 @@ function param() {
   };
 }
 
+const fileBuffer = { duration: 120 } as AudioBuffer;
 const sources: (FakeNode & {
   buffer: AudioBuffer | null;
   loop: boolean;
@@ -50,10 +53,11 @@ const sources: (FakeNode & {
   stop(): void;
 })[] = [];
 const gains: (FakeNode & { gain: ReturnType<typeof param> })[] = [];
+let decodeFails = false;
+let decodeCount = 0;
 
 class FakeAudioContext {
   static initialState: AudioContextState = 'suspended';
-  sampleRate = 8000;
   currentTime = 0;
   state: AudioContextState = FakeAudioContext.initialState;
   destination = node();
@@ -71,9 +75,12 @@ class FakeAudioContext {
     gains.push(gain);
     return gain;
   }
-  createBuffer(_channels: number, length: number, sampleRate: number) {
-    const data = new Float32Array(length);
-    return { duration: length / sampleRate, getChannelData: () => data } as unknown as AudioBuffer;
+  createBuffer() {
+    throw new Error('Procedural BGM must not be rendered');
+  }
+  decodeAudioData() {
+    decodeCount++;
+    return decodeFails ? Promise.reject(new Error('bad MP3')) : Promise.resolve(fileBuffer);
   }
   createBufferSource() {
     const source = Object.assign(node(), {
@@ -100,26 +107,32 @@ class FakeAudioContext {
 
 beforeEach(() => {
   vi.resetModules();
+  vi.unstubAllGlobals();
   sources.length = 0;
   gains.length = 0;
+  decodeFails = false;
+  decodeCount = 0;
   FakeAudioContext.initialState = 'suspended';
   vi.stubGlobal('AudioContext', FakeAudioContext);
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => ({ ok: true, arrayBuffer: async () => new ArrayBuffer(8) })),
+  );
 });
 
-describe('procedural BGM through the audio bus', () => {
-  it('waits for unlock, loops through music gain, follows volume and mute, and changes scenes', async () => {
+describe('file BGM through the audio bus', () => {
+  it('starts on unlock, shares one decoded file, restarts for scenes, and follows volume and mute', async () => {
     const audio = await import('../src/services/audio');
-    audio.playBgm('board');
+    audio.playBgm('lobby');
     expect(sources).toHaveLength(0);
 
     audio.unlockAudio();
     await vi.waitFor(() => expect(sources).toHaveLength(1));
-    const board = sources[0]!;
-    expect(board.started).toBe(true);
-    expect(board.loop).toBe(true);
-    expect(board.buffer?.getChannelData(0).some((sample) => Math.abs(sample) > 0.05)).toBe(true);
-    const fade = board.connections[0]!;
-    const music = fade.connections[0] as FakeNode & { gain: ReturnType<typeof param> };
+    expect(sources[0]!.buffer).toBe(fileBuffer);
+    expect(sources[0]!.loop).toBe(true);
+    const music = sources[0]!.connections[0]!.connections[0] as FakeNode & {
+      gain: ReturnType<typeof param>;
+    };
     expect(gains).toContain(music);
     audio.setVolume('music', 0.23);
     expect(music.gain.targets.at(-1)).toBe(0.23);
@@ -129,27 +142,60 @@ describe('procedural BGM through the audio bus', () => {
     audio.setVolume('master', 0.8);
     expect(master.gain.targets.at(-1)).toBe(0.8);
 
-    audio.setMuted(true);
-    expect(board.stopped).toBe(true);
-    expect(sources).toHaveLength(1);
-    audio.setMuted(false);
-    expect(sources).toHaveLength(2);
-    expect(sources[1]!.loop).toBe(true);
-
+    audio.playBgm('board');
+    await vi.waitFor(() => expect(sources).toHaveLength(2));
+    expect(sources[0]!.stopped).toBe(true);
+    expect(sources[1]!.buffer).toBe(fileBuffer);
     audio.playBgm('dragon_battle');
+    await vi.waitFor(() => expect(sources).toHaveLength(3));
     expect(sources[1]!.stopped).toBe(true);
-    expect(sources).toHaveLength(3);
-    audio.playBgm(null);
+    expect(sources[2]!.buffer).toBe(fileBuffer);
+    expect(decodeCount).toBe(1);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledWith(`/assets/${BGM_PATH}`);
+
+    audio.setMuted(true);
     expect(sources[2]!.stopped).toBe(true);
+    audio.setMuted(false);
+    await vi.waitFor(() => expect(sources).toHaveLength(4));
+    audio.playBgm(null);
+    expect(sources[3]!.stopped).toBe(true);
   });
 
-  it('starts the pending loop when the context is already running on creation', async () => {
-    FakeAudioContext.initialState = 'running';
+  it('does not synthesize music when a listed file cannot be decoded', async () => {
+    decodeFails = true;
+    const audio = await import('../src/services/audio');
+    audio.playBgm('board');
+    audio.unlockAudio();
+    await vi.waitFor(() => expect(decodeCount).toBe(1));
+    await Promise.resolve();
+    expect(sources).toHaveLength(0);
+  });
+
+  it('uses the file after a gesture when Web Audio is unavailable', async () => {
+    const elements: FakeAudio[] = [];
+    class FakeAudio {
+      loop = false;
+      volume = 1;
+      readonly play = vi.fn(async () => undefined);
+      readonly pause = vi.fn();
+      constructor(readonly src: string) {
+        elements.push(this);
+      }
+    }
+    vi.stubGlobal('AudioContext', undefined);
+    vi.stubGlobal('Audio', FakeAudio);
     const audio = await import('../src/services/audio');
     audio.playBgm('lobby');
-    expect(sources).toHaveLength(0);
+    expect(elements).toHaveLength(0);
     audio.unlockAudio();
-    expect(sources).toHaveLength(1);
-    expect(sources[0]!.loop).toBe(true);
+    expect(elements).toHaveLength(1);
+    expect(elements[0]!.src).toBe(`/assets/${BGM_PATH}`);
+    expect(elements[0]!.loop).toBe(true);
+    audio.unlockAudio();
+    expect(elements).toHaveLength(1);
+    audio.playBgm('board');
+    expect(elements).toHaveLength(2);
+    expect(elements[0]!.pause).toHaveBeenCalledOnce();
   });
 });

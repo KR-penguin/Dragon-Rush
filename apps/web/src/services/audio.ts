@@ -1,5 +1,4 @@
 import { PROCEDURAL_VARIANTS, synthesize } from '../fx/audio/proceduralSfx';
-import { renderBgmSamples } from '../fx/audio/proceduralBgm';
 import {
   AUDIO_BUSES,
   BUS_DEFAULTS,
@@ -18,14 +17,14 @@ import {
 } from '../fx/audio/soundCatalog';
 import { dbToGain, semitonesToRate } from '../fx/core/easing';
 import { createFxRng } from '../fx/core/rng';
-import { bgmPath, type BgmName } from '../types/assetPaths';
+import { BGM_FILE, bgmPath, type BgmName } from '../types/assetPaths';
 import { assetUrl, hasAsset } from './assets';
 import { readStorage, writeStorage } from './storage';
 
 /**
  * Audio engine: one AudioContext (latencyHint interactive) created and resumed on the first user
  * gesture; sfx/ui/music/ambience buses → master → DynamicsCompressor. Sound files under
- * public/assets/audio override the procedural placeholders automatically.
+ * public/assets/audio provide BGM and override procedural SFX placeholders.
  */
 const MUTE_KEY = 'dragon-rush:muted';
 const volumeKey = (bus: AudioBus) => `dragon-rush:volume:${bus}`;
@@ -166,7 +165,8 @@ export function unlockAudio(): void {
   const g = createGraph();
   if (!g) {
     disarmUnlock();
-    bgmElementRetry();
+    if (bgm?.kind === 'element') bgm.el.play().catch(armUnlock);
+    else syncBgm(true);
     return;
   }
   if (g.ctx.state === 'running') {
@@ -390,7 +390,7 @@ let wantedBgm: BgmName | null = null;
 let playingBgm: BgmName | null = null;
 let bgm: BgmPlayer | null = null;
 let loopPoints: Promise<Record<string, LoopPoints>> | null = null;
-const proceduralLoops = new Map<BgmName, AudioBuffer>();
+let bgmRequest = 0;
 
 function loadLoopPoints(): Promise<Record<string, LoopPoints>> {
   if (!loopPoints) {
@@ -422,17 +422,6 @@ function stopBgm(): void {
   setTimeout(() => cur.gain.disconnect(), 700);
 }
 
-function proceduralLoop(g: Graph, name: BgmName): AudioBuffer {
-  const cached = proceduralLoops.get(name);
-  if (cached) return cached;
-  const sampleRate = Math.min(g.ctx.sampleRate, 22050);
-  const samples = renderBgmSamples(name, sampleRate);
-  const buffer = g.ctx.createBuffer(1, samples.length, sampleRate);
-  buffer.getChannelData(0).set(samples);
-  proceduralLoops.set(name, buffer);
-  return buffer;
-}
-
 function startBgmBuffer(g: Graph, buf: AudioBuffer, lp?: LoopPoints): void {
   const src = g.ctx.createBufferSource();
   src.buffer = buf;
@@ -453,34 +442,27 @@ function startBgmBuffer(g: Graph, buf: AudioBuffer, lp?: LoopPoints): void {
 function syncBgm(force = false): void {
   const target = muted ? null : wantedBgm;
   if (target === playingBgm && !force) return;
+  const request = ++bgmRequest;
   stopBgm();
   if (!target) return;
   const g = graph;
   if (g && g.ctx.state === 'running') {
     playingBgm = target;
-    if (!hasAsset(bgmPath(target))) {
-      startBgmBuffer(g, proceduralLoop(g, target));
-      return;
-    }
+    if (!hasAsset(bgmPath(target))) return;
     void Promise.all([loadBuffer(bgmPath(target)), loadLoopPoints()]).then(([buf, loops]) => {
-      if (playingBgm !== target || bgm) return;
-      if (buf) startBgmBuffer(g, buf, loops[target]);
-      else startBgmBuffer(g, proceduralLoop(g, target));
+      if (request !== bgmRequest || playingBgm !== target || !buf) return;
+      startBgmBuffer(g, buf, loops[BGM_FILE]);
     });
     return;
   }
-  if (!hasAsset(bgmPath(target)) || typeof Audio === 'undefined') return;
-  // Before the first gesture (or without Web Audio) a plain element keeps music working.
+  if (!graphUnavailable || !hasAsset(bgmPath(target)) || typeof Audio === 'undefined') return;
+  // Browsers without Web Audio use a plain element after the unlock gesture.
   const el = new Audio(assetUrl(bgmPath(target)));
   el.loop = true;
   el.volume = volumes.master * volumes.music;
   el.play().catch(armUnlock);
   playingBgm = target;
   bgm = { kind: 'element', el };
-}
-
-function bgmElementRetry(): void {
-  if (bgm?.kind === 'element') bgm.el.play().catch(() => undefined);
 }
 
 export function playBgm(name: BgmName | null): void {
