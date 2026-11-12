@@ -14,7 +14,7 @@ export const PHASES = [
   'SHIELD_DECISION',
   'TRAINING_CHOICE',
   'POST_MOVE',
-  // Appended last so the indices of the board phases above keep their meaning (obs_v1).
+  // Appended last so the indices of the board phases above keep their meaning in board observations.
   'COMBAT',
 ] as const;
 export type Phase = (typeof PHASES)[number];

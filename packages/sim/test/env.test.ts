@@ -18,12 +18,19 @@ describe('env server (in-process)', () => {
     const r = call(new EnvServer(), 1, 'info');
     expect(r.result).toMatchObject({
       protocol: 'rpgboard-env/1',
-      obs_dim: 253,
+      obs_dim: 257,
       action_dim: 47,
-      obs_version: 'obs_v1',
+      obs_version: 'obs_v2',
       act_version: 'act_v1',
     });
     expect(r.result.action_names).toHaveLength(47);
+    expect(r.result.action_names[0]).toBe('ROLL_DICE');
+    expect(
+      r.result.obs_layout.find((field: { name: string }) => field.name === 'g.dice'),
+    ).toMatchObject({
+      offset: 232,
+      length: 10,
+    });
   });
 
   it('rejects step before reset and unknown commands', () => {
@@ -43,7 +50,7 @@ describe('env server (in-process)', () => {
     });
     expect(r.ok).toBe(true);
     let envs = r.result.envs;
-    expect(envs[0].obs).toHaveLength(253);
+    expect(envs[0].obs).toHaveLength(257);
     expect(envs[0].obs[216]).toBe(0);
     expect(envs[0].obs[217]).toBe(1);
     expect(envs[0].episode_start.num_players).toBe(4);
@@ -153,7 +160,7 @@ describe('env server (in-process)', () => {
     expect(
       call(new EnvServer(), 1, 'reset', { config: { combat_resolver: 'outcome' } }).result
         ?.outcome_model_id,
-    ).toBe('outcome-v1-rush6-transfer');
+    ).toBe('outcome-v1-rush7-transfer');
   });
 
   it('rejects bad configs', () => {

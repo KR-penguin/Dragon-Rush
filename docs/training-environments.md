@@ -17,13 +17,13 @@ python python/examples/random_combat_agent.py --mode dragon --envs 2 --steps 40
 
 보드 예제의 `sim`은 실제 전투를 스크립트 봇으로 해결한다. `outcome`은 현재 보드·전투 규칙 버전과 호환되는 결과 예측 JSON이 있을 때 선택한다. 이 예측 JSON은 전투 **정책** 가중치가 아니다.
 
-현재 보드 규칙은 `rush-6`이다. 첫 라운드와 출발 칸 착지에서도 PvP가 일어나며, 보드 관측 `obs_v1`의 `g.graceLeft`/`g.pvpEnabled`는 시작부터 0/1이다. PvP/용전 전투를 과거 보드 스탯 분포로 학습하려면 `stat_sampler="file:packages/sim/data/rush4_stat_dist_v1.json"`을 전달할 수 있다. 이 파일은 **과거 `rush-4` 수집본**이다. 전투·스탯 기본 수치는 같지만 현행 PvP 빈도와 대전 상대 분포는 다르며 `rush-6` 분포를 재수집하지 않았다. 기본 `uniform_board`는 더 넓은 범위의 스탯을 균등하게 뽑는다.
+현재 보드 규칙은 `rush-7`이다. 이동 룰렛은 1~10이고 텔레포트는 출발 칸을 통과·도착하면 보너스를 받는다. 빠른 전투 판정은 여전히 1d6이다. 보드 관측은 `obs_v2`(257), 행동은 `act_v1`(47)이며 `g.graceLeft`/`g.pvpEnabled`는 시작부터 0/1이다. 기존 `obs_v1` 모델은 입력 차원이 달라 재학습 또는 명시적 변환이 필요하다. PvP/용전 전투를 과거 보드 스탯 분포로 학습하려면 `stat_sampler="file:packages/sim/data/rush4_stat_dist_v1.json"`을 전달할 수 있다. 이 파일은 **과거 `rush-4` 수집본**이며 현행 이동·경제·대전 상대 분포를 대표하지 않는다. `rush-7` 분포는 아직 수집하지 않았다. 기본 `uniform_board`는 더 넓은 범위의 스탯을 균등하게 뽑는다.
 
 ## Python 계약
 
 | 과제 | 생성자와 기본 제어 | `reset()` 관측 | `step()` 행동 | 현재 마스크 | 보상과 종료 |
 |---|---|---|---|---|---|
-| 보드 | `RPGBoardEnv(mode="single")`; 배치는 `RPGBoardVecEnv` | `float32 (253,)`; 배치는 `(N,253)` | `int` 0~46; 배치는 `(N,)` | `info["action_mask"]`: `bool (47,)`; 배치는 `(N,47)` | single은 에이전트 `float`, 배치는 `(N,)`; 다좌석 `mode="selfplay"`은 절대 좌석별 `(4,)`/`(N,4)` |
+| 보드 | `RPGBoardEnv(mode="single")`; 배치는 `RPGBoardVecEnv` | `float32 (257,)`; 배치는 `(N,257)` | `int` 0~46; 배치는 `(N,)` | `info["action_mask"]`: `bool (47,)`; 배치는 `(N,47)` | single은 에이전트 `float`, 배치는 `(N,)`; 다좌석 `mode="selfplay"`은 절대 좌석별 `(4,)`/`(N,4)` |
 | 1v1 결투 | `PvPCombatEnv()`/`PvPCombatVecEnv()`는 두 전투원 제어. `controlled="p0", opponent="scripted:balanced"`면 0번만 제어 | `float32 (2,160)` 또는 `(1,160)`; 배치는 앞에 N축 | `int` `(n_ctrl,2)`의 `[move,button]`; 배치는 `(N,n_ctrl,2)` | `move_mask` `(n_ctrl,9)`와 `button_mask` `(n_ctrl,4)`; 배치는 앞에 N축 | 좌석별 `float32 (n_ctrl,)`; 배치는 `(N,n_ctrl)` |
 | 용전 | `DragonCombatEnv()`/`DragonCombatVecEnv()`는 도전자 0번만 제어 | `float32 (1,160)`; 배치는 `(N,1,160)` | `int` `(1,2)`; 배치는 `(N,1,2)` | 결투와 같은 9+4 마스크 | 도전자 `float32 (1,)`; 배치는 `(N,1)` |
 
@@ -38,7 +38,7 @@ python python/examples/random_combat_agent.py --mode dragon --envs 2 --steps 40
 
 단일 `RPGBoardEnv`, `PvPCombatEnv`, `DragonCombatEnv`는 종료 후 `reset(seed=...)`을 다시 호출한다. 벡터형은 종료 즉시 같은 과제의 새 에피소드로 자동 리셋한다. 이때 `reward`, `terminated`, `truncated`, `outcome`, `final_obs`는 **끝난 에피소드**를, 새 `obs`·마스크·`episode_start`는 **다음 에피소드**를 가리킨다. 전투의 `ticks_elapsed`도 끝난 전이를 가리킨다. 같은 빌드·설정·시드·행동 열은 같은 결과를 낸다.
 
-보드 모델은 `obs_v1`(253)과 `act_v1`(47)에, 전투 모델은 `cobs_v1`(160)과 `cact_v1`(9+4 또는 flat 36)에 묶인다. 클라이언트는 서버 `info`에서 차원·레이아웃·이름·버전을 확인한다. 보드는 `env.rules_version`, 전투는 `env.combat_rules_version`과 `env.combat_rules_hash`를 기록한다. 규칙 버전이나 수치가 바뀌면 학습 모델의 성능을 다시 검증한다.
+보드 모델은 `obs_v2`(257)와 `act_v1`(47)에, 전투 모델은 `cobs_v1`(160)과 `cact_v1`(9+4 또는 flat 36)에 묶인다. 클라이언트는 서버 `info`에서 차원·레이아웃·이름·버전을 확인한다. 보드는 `env.rules_version`, 전투는 `env.combat_rules_version`과 `env.combat_rules_hash`를 기록한다. 규칙 버전이나 수치가 바뀌면 학습 모델의 성능을 다시 검증한다.
 
 ## 모델 JSON을 게임에 연결할 때
 
