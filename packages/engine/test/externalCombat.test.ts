@@ -221,6 +221,27 @@ describe('external combat: applyCombatResult for duels', () => {
     expect(getLegalActions(r.state)).toContainEqual({ type: 'UPGRADE', stat: 'atk' });
   });
 
+  it('resolves the shop after an arriving duel winner before offering purchases', () => {
+    const landing = duelLanding(['mage', 'berserker', 'swordsman'], {
+      tile: 6,
+      edit: (d) => {
+        d.players[0]!.coins = 0;
+        d.players[1]!.coins = 0;
+      },
+    });
+    expect(landing.state.pending?.phase).toBe('CHOOSE_PVP_TARGET');
+    expect(eventsOf(landing.events, 'TileResolved')).toHaveLength(0);
+    const confirmed = act(landing.state, { type: 'CHOOSE_PVP_TARGET', target: 1 });
+    expect(confirmed.state.pending?.phase).toBe('COMBAT');
+    const settled = applyCombatResult(confirmed.state, { winner: 'a', hpA: 1, hpB: 0 });
+    expect(eventsOf(settled.events, 'TileResolved')).toEqual([
+      { type: 'TileResolved', seat: 0, tile: 6, tileId: 'SHOP' },
+    ]);
+    expect(settled.state.turn.canBuy).toBe(true);
+    expect(settled.state.pending).toEqual({ actor: 0, phase: 'POST_MOVE' });
+    expect(getLegalActions(settled.state)).toContainEqual({ type: 'BUY_ITEM', item: 'shield' });
+  });
+
   it('marks capReached when the fight timed out', () => {
     const { state } = duelScenario(['mage', 'berserker', 'swordsman']);
     const r = applyCombatResult(state, { winner: 'a', hpA: 20, hpB: 15, timedOut: true });

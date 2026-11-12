@@ -96,6 +96,7 @@ it('plays a two-human shared-tile duel through both web fight sessions and retur
   await waitFor(() => latest.every((update) => update !== null));
 
   let boardActions = 0;
+  let singleTargetConfirmation = false;
   for (; boardActions < 2000; boardActions++) {
     if (latest.some((update) => update?.pending?.phase === 'COMBAT')) break;
     const index = latest.findIndex((update) => update?.legalActions.length);
@@ -104,6 +105,12 @@ it('plays a two-human shared-tile duel through both web fight sessions and retur
       continue;
     }
     const update = latest[index]!;
+    if (update.pending?.phase === 'CHOOSE_PVP_TARGET') {
+      expect(update.legalActions).toHaveLength(1);
+      expect(update.legalActions[0]?.type).toBe('CHOOSE_PVP_TARGET');
+      expect(update.events.map((event) => event.type)).toContain('PvpTriggered');
+      singleTargetConfirmation = true;
+    }
     const action =
       update.legalActions.find(
         (candidate) => candidate.type === 'SHIELD_DECISION' && !candidate.use,
@@ -116,6 +123,7 @@ it('plays a two-human shared-tile duel through both web fight sessions and retur
     if (!result.ok && result.code !== 'STALE_VERSION') throw new Error(result.code);
   }
   expect(boardActions).toBeLessThan(2000);
+  expect(singleTargetConfirmation).toBe(true);
   await waitFor(() =>
     latest.every((update) => update?.fight !== null && update?.fight !== undefined),
   );

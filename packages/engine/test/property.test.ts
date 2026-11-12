@@ -65,6 +65,8 @@ const checkInvariants = (s: GameState) => {
       expect(getLegalActions(s)).toEqual([
         { type: 'CHOOSE_PVP_TARGET', target: s.pvp.candidates[0] },
       ]);
+    } else if (s.pending?.phase === 'POST_MOVE' && s.turn.canBuy) {
+      expect(getLegalActions(s)).toContainEqual({ type: 'END_TURN' });
     } else if (s.pending) {
       expect(getLegalActions(s).length).toBeGreaterThanOrEqual(2);
     }

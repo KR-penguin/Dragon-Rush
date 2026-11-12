@@ -43,7 +43,15 @@ describe('LocalGameClient', () => {
       const u = updates.at(-1)!;
       if (!u.pending) break;
       expect(u.pending.actor).toBe(human);
-      expect(u.legalActions.length).toBeGreaterThanOrEqual(2);
+      if (u.legalActions.length === 1) {
+        if (u.pending.phase === 'CHOOSE_PVP_TARGET') {
+          expect(u.legalActions[0]?.type).toBe('CHOOSE_PVP_TARGET');
+        } else {
+          expect(u.pending.phase).toBe('POST_MOVE');
+          expect(u.publicState.turn.canBuy).toBe(true);
+          expect(u.legalActions).toEqual([{ type: 'END_TURN' }]);
+        }
+      } else expect(u.legalActions.length).toBeGreaterThanOrEqual(2);
       const action =
         u.legalActions.find((a) => a.type !== 'CHALLENGE_DRAGON') ?? u.legalActions[0]!;
       const r = await client.submit(action, u.version);
