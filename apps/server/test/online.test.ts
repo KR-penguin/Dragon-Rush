@@ -1,5 +1,14 @@
 import type { Action } from '@dragon-rush/engine';
-import { C2S, PROTOCOL_VERSION, S2C, type Ack, type GameUpdateMsg, type RoomStateMsg, type SeatStatusMsg, type SessionWelcomeMsg } from '@dragon-rush/protocol';
+import {
+  C2S,
+  PROTOCOL_VERSION,
+  S2C,
+  type Ack,
+  type GameUpdateMsg,
+  type RoomStateMsg,
+  type SeatStatusMsg,
+  type SessionWelcomeMsg,
+} from '@dragon-rush/protocol';
 import { io as connectClient, type Socket } from 'socket.io-client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { startServer, type ServerHandle } from '../src/app';
@@ -31,9 +40,20 @@ let server: ServerHandle;
 const clients: Socket[] = [];
 
 async function connect(token?: string, protocolVersion = PROTOCOL_VERSION): Promise<Client> {
-  const socket = connectClient(server.url, { transports: ['websocket'], auth: { protocolVersion, ...(token ? { sessionToken: token } : {}) }, reconnection: false, forceNew: true });
+  const socket = connectClient(server.url, {
+    transports: ['websocket'],
+    auth: { protocolVersion, ...(token ? { sessionToken: token } : {}) },
+    reconnection: false,
+    forceNew: true,
+  });
   clients.push(socket);
-  const c: Client = { socket, welcome: undefined as unknown as SessionWelcomeMsg, updates: [], rooms: [], statuses: [] };
+  const c: Client = {
+    socket,
+    welcome: undefined as unknown as SessionWelcomeMsg,
+    updates: [],
+    rooms: [],
+    statuses: [],
+  };
   socket.on(S2C.gameUpdate, (u: GameUpdateMsg) => c.updates.push(u));
   socket.on(S2C.gameSnapshot, (u: GameUpdateMsg) => c.updates.push({ ...u, events: [] }));
   socket.on(S2C.roomState, (r: RoomStateMsg) => c.rooms.push(r));
@@ -62,7 +82,8 @@ const latest = (c: Client) => c.updates.at(-1)!;
 function autoplay(c: Client): void {
   c.socket.on(S2C.gameUpdate, (u: GameUpdateMsg) => {
     if (!u.legalActions?.length) return;
-    const action: Action = u.legalActions.find((a) => a.type !== 'CHALLENGE_DRAGON') ?? u.legalActions[0]!;
+    const action: Action =
+      u.legalActions.find((a) => a.type !== 'CHALLENGE_DRAGON') ?? u.legalActions[0]!;
     void call(c, C2S.gameAction, { action, stateVersion: u.version });
   });
 }
@@ -75,9 +96,17 @@ async function lobbyWithTwoHumans(extraBots = 0, maxRounds: number | null = 4) {
   const code = created.data.roomCode;
   expect((await call(b, C2S.roomJoin, { roomCode: code, nickname: 'Bob' })).ok).toBe(true);
   for (let i = 0; i < extraBots; i++) {
-    expect((await call(a, C2S.roomConfigureSeat, { seat: 2 + i, kind: 'bot', botName: 'heuristic:growth' })).ok).toBe(true);
+    expect(
+      (
+        await call(a, C2S.roomConfigureSeat, {
+          seat: 2 + i,
+          kind: 'bot',
+          botName: 'heuristic:growth',
+        })
+      ).ok,
+    ).toBe(true);
   }
-  expect((await call(a, C2S.roomConfigure, { maxRounds })).ok).toBe(true);
+  expect((await call(a, C2S.roomConfigure, { maxRounds, quickCombat: true })).ok).toBe(true);
   expect((await call(a, C2S.roomSelectJob, { job: 'swordsman' })).ok).toBe(true);
   expect((await call(b, C2S.roomSelectJob, { job: 'archer' })).ok).toBe(true);
   expect((await call(b, C2S.roomSetReady, { ready: true })).ok).toBe(true);
@@ -117,11 +146,23 @@ describe('online multiplayer', () => {
   it('enforces lobby rules', async () => {
     const { a, b, code } = await lobbyWithTwoHumans();
     expect(await call(b, C2S.roomStart)).toMatchObject({ ok: false, error: { code: 'NOT_HOST' } });
-    expect(await call(b, C2S.roomSelectJob, { job: 'swordsman' })).toMatchObject({ ok: false, error: { code: 'JOB_TAKEN' } });
-    expect(await call(a, C2S.roomJoin, { roomCode: 'ZZZZZZ', nickname: 'x' })).toMatchObject({ ok: false, error: { code: 'ROOM_NOT_FOUND' } });
-    expect(await call(a, C2S.roomSelectJob, { job: 'wizard' })).toMatchObject({ ok: false, error: { code: 'INVALID_PAYLOAD' } });
+    expect(await call(b, C2S.roomSelectJob, { job: 'swordsman' })).toMatchObject({
+      ok: false,
+      error: { code: 'JOB_TAKEN' },
+    });
+    expect(await call(a, C2S.roomJoin, { roomCode: 'ZZZZZZ', nickname: 'x' })).toMatchObject({
+      ok: false,
+      error: { code: 'ROOM_NOT_FOUND' },
+    });
+    expect(await call(a, C2S.roomSelectJob, { job: 'wizard' })).toMatchObject({
+      ok: false,
+      error: { code: 'INVALID_PAYLOAD' },
+    });
     const c = await connect();
-    expect(await call(c, C2S.roomJoin, { roomCode: code, nickname: 'Carol' })).toMatchObject({ ok: false, error: { code: 'ROOM_FULL' } });
+    expect(await call(c, C2S.roomJoin, { roomCode: code, nickname: 'Carol' })).toMatchObject({
+      ok: false,
+      error: { code: 'ROOM_FULL' },
+    });
   });
 
   it('rejects stale versions and actions from the wrong seat', async () => {
@@ -131,10 +172,16 @@ describe('online multiplayer', () => {
     const actorClient = latest(a).legalActions ? a : b;
     const other = actorClient === a ? b : a;
     const u = latest(actorClient);
-    expect(await call(other, C2S.gameAction, { action: { type: 'ROLL_DICE' }, stateVersion: u.version })).toMatchObject({ ok: false, error: { code: 'NOT_YOUR_TURN' } });
+    expect(
+      await call(other, C2S.gameAction, { action: { type: 'ROLL_DICE' }, stateVersion: u.version }),
+    ).toMatchObject({ ok: false, error: { code: 'NOT_YOUR_TURN' } });
     const action = u.legalActions!.find((x) => x.type === 'UPGRADE') ?? { type: 'ROLL_DICE' };
-    expect((await call(actorClient, C2S.gameAction, { action, stateVersion: u.version })).ok).toBe(true);
-    expect(await call(actorClient, C2S.gameAction, { action, stateVersion: u.version })).toMatchObject({ ok: false, error: { code: 'STALE_VERSION' } });
+    expect((await call(actorClient, C2S.gameAction, { action, stateVersion: u.version })).ok).toBe(
+      true,
+    );
+    expect(
+      await call(actorClient, C2S.gameAction, { action, stateVersion: u.version }),
+    ).toMatchObject({ ok: false, error: { code: 'STALE_VERSION' } });
   });
 
   it('applies default actions on timeout and hands the seat to a bot after three timeouts', async () => {
