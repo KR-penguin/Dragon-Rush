@@ -1,6 +1,6 @@
 # 전투 AI 인터페이스 명세 — 드래곤 러쉬 (Dragon Rush)
 
-> 상태: **구현됨 (2차 개발 Phase R6, 2026-11-12)** — `packages/combat-ai`(인코더·코덱·마스크·봇·모델 정책), `packages/sim`(`combat-env-server`, 보드 `combat_resolver`), `python/rpgboard_env`(`CombatEnv`·`CombatVecEnv`). `packages/combat`의 `COBS_V1_LAYOUT`·`COBS_V1_SCALES`·`CACT_V1_NAMES`와 combat env 서버 `info` 응답이 정본이며, 이 문서가 다르면 코드에 맞춰 고친다. 처음 설계와 달라진 점은 각 절의 **[구현]** 표시로 적었다. 아직 없는 것: `model:<id>` 상대·`sim:<model>`/`outcome` 리졸버·전투 패리티 검사(사용자 가중치 포맷 수령 후), outcome 모델(§12).
+> 상태: **전투 AI 환경 구현됨** — `packages/combat-ai`(인코더·코덱·마스크·봇·모델 정책), `packages/sim`(`combat-env-server`, 보드 `combat_resolver`), `python/rpgboard_env`(`CombatEnv`·`CombatVecEnv`). `packages/combat-ai`의 `COBS_V1_LAYOUT`·`COBS_V1_SCALES`·`CACT_V1_NAMES`와 combat env 서버 `info` 응답이 정본이다. 사용자 가중치 포맷용 어댑터와 전투 패리티 검사는 아직 없다.
 > 이 문서가 **전투 관측(`cobs_v1`)·행동(`cact_v1`)·마스크·보상·combat env 서버 프로토콜·`CombatVecEnv`·전투 모델 통합 계약·보드 env의 `combat_resolver`의 정본**이다. 보드 AI는 [ai-interface-spec.md](ai-interface-spec.md), 전투 규칙·수치는 [combat-design.md](combat-design.md)(구현 후 `DEFAULT_COMBAT_RULES`).
 
 ## 1. 범위와 역할 분담
@@ -11,9 +11,8 @@
 | 트레이너·가중치 포맷 | ❌ 만들지 않음 (정보만 요청, §11) | ✅ numpy Actor-Critic |
 | 게임 내 실행 | ✅ `CombatPolicyModel` + 사용자 포맷 어댑터(수령 후), `CombatModelPolicy`, 스크립트 봇 | 가중치·패리티 샘플 |
 | 용 보스 | ✅ 결정적 스크립트 (학습 대상 아님) | — |
-| outcome 모델 (§12) | ✅ 전투 데이터 생성 도구. 적합(fit) 도구 위치는 결정 항목(development-plan D16) | 결정 |
 
-- **보드 모델과 전투 모델은 별개**다. 관측·행동·env 프로세스·가중치 파일이 모두 다르고, 한 번에 하나만 학습한다(§10). 보드 `obs_v1`/`act_v1`은 바뀌지 않는다.
+- **보드 모델과 전투 모델은 별개**다. 관측·행동·env 프로세스·가중치 파일이 다르다. 보드 `obs_v1`/`act_v1`은 전투 모델 학습으로 바뀌지 않는다.
 - 인코더·코덱·마스크는 TS에만 있다. Python은 env가 준 벡터를 그대로 쓴다. 학습 관측 = 게임(브라우저·서버) 관측.
 - 전투 모델이 없거나 어댑터가 아직 없으면 봇 전투원은 **스크립트 봇**으로 싸운다. 게임은 모델 없이도 끝까지 동작한다.
 - **[구현]** 스크립트 봇은 `@dragon-rush/combat`의 직업 인식 봇 하나에 성향 3개(`balanced`·`aggressive`·`cautious`)다(처음 안의 rusher·kiter·turtle 대신). env·리졸버 이름은 `scripted:balanced|aggressive|cautious|idle|random|pool`(`COMBAT_BOT_NAMES`): `idle` = 가만히 있는 더미(커리큘럼 0단계), `random` = 마스크 안 균등 무작위 행동을 4틱 유지, `pool` = 에피소드마다 앞의 세 성향 중 하나.
@@ -31,11 +30,11 @@
 ## 3. 결정 타이밍·반응 지연
 - sim은 60Hz. 두 좌석은 **4 라이브 틱마다 동시에** 결정한다(`action_repeat` 4, 초당 15회). 히트스톱(전역 정지) 틱은 세지 않으며, 정지 중에는 결정을 요청하지 않는다.
 - 이동은 창(4틱) 내내 유지한다. 버튼은 레벨로 유지하고, 직전 결정과 다를 때만 누름 에지가 생긴다(같은 버튼 유지 = 홀드, 예: 궁수 당기기). 같은 버튼을 다시 누르려면 한 창 동안 `none`을 고른다. 연타는 동작 중 입력이 예약되므로(combat-design §2.1) 4틱 주기로 충분하다.
-- **`actionable = false`**: 그 좌석이 창 전체 동안 경직·잠긴 회복 상태라 행동이 무시된다. 트레이너는 그 스텝을 저장하지 않고 보상을 다음 저장 스텝에 더한다(data skipping). 할인은 `γ^(k/4)`(k = `ticks_elapsed` 누적 라이브 틱).
-- **반응 지연**: 관측은 `delay`틱 전 상태의 링 버퍼에서 만든다. `delay`는 에피소드마다 좌석별로 U[4, 18]에서 뽑고 관측에 `delay/18`로 넣는다(한 정책이 모든 난이도를 처리). 마스크와 직전 행동 one-hot만 현재 값이다. 에피소드 시작 시 버퍼는 첫 상태로 채운다.
-- 실전 난이도(사용자 결정 D14, 기본안): Easy 16틱·temperature 1.3(이전 체크포인트 사용 가능) / **Normal 10틱·1.0** / Hard 5틱·0.7. Normal은 결정 지연 평균 2틱을 더해 약 200ms로 숙련 게이머 반응과 비슷하다. (`COMBAT_DIFFICULTY`)
+- **`actionable = false`**: KO이거나 긴 피격 경직으로 이번 창의 입력이 무시된다. 트레이너가 이 결정을 건너뛴다면 보상과 `ticks_elapsed`를 다음 저장 전이에 누적한다. 할인은 `γ^(k/4)`(k = 누적 라이브 틱).
+- **반응 지연**: 관측은 `delay`틱 전 상태의 링 버퍼에서 만든다. 기본 `obs_delay: [4, 18]`이면 에피소드마다 좌석별로 U[4, 18]에서 뽑고 관측에 `delay/18`로 넣는다. 정수 `obs_delay`를 주면 지연이 고정된다. 마스크와 직전 행동 one-hot만 현재 값이다. 에피소드 시작 시 버퍼는 첫 상태로 채운다.
+- `COMBAT_DIFFICULTY`의 모델 정책 기본값: Easy 16틱·temperature 1.3 / Normal 10틱·1.0 / Hard 5틱·0.7. 이 값은 `createCombatModelPolicy`에 적용되며 env의 `obs_delay` 설정과 별개다.
 - **[구현] 창 진행**: 결정 시점은 항상 라이브 틱(`hitstop = 0`)이다. env는 입력을 고정한 채 라이브 4틱을 진행하고, 그 뒤에 이어지는 정지 틱까지 마저 진행한 다음 결정을 묻는다. 정지 틱 동안에도 같은 입력이 유지된다.
-- **[구현] `actionable = false`의 정의**: KO이거나, 경직(hitstun)이 `max(입력 버퍼 6, action_repeat)` 라이브 틱보다 오래 남은 경우. 이때 env는 받은 행동 대신 **입력 없음**(이동 0, 버튼 놓음)을 적용하고 직전 행동을 `none`으로 기록하므로, 그 스텝을 건너뛰어도 정확하다(버튼 홀드 상태도 남지 않는다). 다른 잠금(긴 회복·회오리 등)은 이동·방향 입력이 일부 반영되므로 `actionable = true`로 둔다.
+- **[구현] `actionable = false`의 정의**: KO이거나 `hitstunLeft + 1 > max(rules.inputBuffer, action_repeat)`인 경우. 이때 env는 받은 행동 대신 **입력 없음**(이동 0, 버튼 놓음)을 적용하고 직전 행동을 `none`으로 기록하므로, 그 스텝을 건너뛰어도 정확하다. 다른 잠금(긴 회복·회오리 등)은 `actionable = true`로 둔다.
 - **[구현] 지연 링 버퍼**: `StateHistory`(용량 = 최대 지연 + 1)에 틱마다(정지 틱 포함) 불변 상태를 넣고 `delay`틱 전 상태를 인코딩한다. 게임 내 `CombatModelPolicy`도 같은 버퍼·창·입력 없음 규칙을 쓴다.
 
 ## 4. 관측 `cobs_v1` (float32[160])
@@ -82,7 +81,7 @@
 | off | len | 이름 | 인코딩 |
 |---|---|---|---|
 | 74 | 3 | `dragon.phase` | one-hot [1, 2, 3] |
-| 77 | 7 | `dragon.maneuver` | 예고·진행 중 기술 one-hot [claw, tail, fireball, charge, gust, breath, dive] (없으면 0) |
+| 77 | 7 | `dragon.maneuver` | 예고·진행 중 기술 one-hot [claw, tail, volley(화염구), charge, gust, breath, dive] (없으면 0) |
 | 84 | 3 | `dragon.stage` | [단계(예고·유효·회복) 진행률, 브레스까지 남은 피해 기술 수/2, 머리 숙임(약점)] |
 | 87 | 2 | `dragon.telegraphAim` | 예고 방향 [sin, cos] (없으면 0) |
 
@@ -114,17 +113,17 @@
 |---|---|
 | 이동 (9) | 항상 전부 1 (잠긴 동안은 무시될 뿐 불법이 아님) |
 | 버튼 `none` | 항상 1 |
-| `attack` / `skill` / `dash` | 쿨다운·충전·동작 잠금 때문에 **10틱(창 4 + 버퍼 6)보다 오래** 쓸 수 없으면 0. 회오리 같은 잠금 동안 `skill`은 0 |
+| `attack` / `skill` / `dash` | 지금 누른 에지가 입력 버퍼 6 라이브 틱 안에 동작으로 이어질 수 있을 때 1(정지 틱에서 누르면 5틱). 쿨다운·충전·동작 잠금을 반영 |
 | flat (36) | `mask[m·4 + b] = move[m] ∧ button[b]` |
 | 비활성 슬롯 (용전의 두 번째 좌석) | `move 0`·`button 0`만 1 |
 
 - 마스크는 현재 상태(자기 쿨다운)로 만든다. 마스크된 행동이 오면 env는 `ILLEGAL_ACTION`(원자적, 어느 env도 진행하지 않음). `actionable = false` 좌석의 행동은 마스크 안이면 받아서 무시한다.
-- **[구현] 기준 10틱 → 입력 버퍼 6틱**: 버튼 레벨이 바뀌는 에지는 창의 **첫 틱**에 생기므로, 그 입력이 실제로 쓰일 수 있는 구간은 버퍼 6 라이브 틱뿐이다(`rules.inputBuffer`, 현재 상태가 정지 틱이면 5). 그래서 `combatActionMask`는 "그 버튼을 지금 누르면 6틱 안에 동작이 시작되는가"를 sim 규칙 그대로 계산한다(`buttonReadyIn`): 경직 남은 틱 + 1, 기술·대시 남은 길이, 연타 예약(`chainFrom`), 대시 공격 캔슬(`cancelFrom`), 활 발사 후 회복, 스킬·대시 충전 타이머. 활을 당기는 중(버튼을 아직 누르고 있음)에는 `attack`이 "계속 당기기"이므로 항상 1이다. 10틱 기준이면 7~10틱 뒤에야 쓸 수 있는 입력이 허용되어 그대로 버려지고, 다음 창에 같은 버튼을 고르면 홀드라 다시 눌리지도 않는다.
+- 버튼 에지는 창의 첫 틱에 생기며 `combatActionMask`는 현재 상태에서 `buttonReadyIn`으로 입력 버퍼 안의 동작 가능 여부를 계산한다. 연타 예약(`chainFrom`), 대시 공격 캔슬(`cancelFrom`), 활 발사 후 회복, 스킬·대시 충전 타이머도 반영한다. 활을 당기는 중에는 `attack` 유지가 의미 있으므로 허용한다. 마스크는 현재 상태 기준이며, 미래 피격으로 입력이 취소될 수 있다.
 - 검증(`packages/combat-ai/test/mask.test.ts`): 스크립트 전투 7종의 모든 3틱마다 버튼별로 실제로 눌러 본다. 마스크 0이면 동작이 절대 시작되지 않고(약 5,800건), 마스크 1이고 그사이 맞지 않았으면 반드시 시작된다(약 2,000건).
 
 ## 7. 보상·종료
 - **종단**: 승 +1, 패 −1. 무승부 없음(시간 종료도 결투는 HP 비율·동률은 도착자, 용전은 도전자 패배로 승패가 난다).
-- **shaping**: `k · (Δ준 피해/상대 maxHp − Δ받은 피해/자기 maxHp)`, 스텝마다 [−1, 1]로 클리핑(종단 보상은 별도). k는 `k_start` 0.5 → `k_end` 0.1로 `anneal_decisions` 결정 동안 선형 감소(서버 프로세스가 결정 수를 센다. 권장: 전체 학습 결정 수의 25%). 피해 차이 보상은 Φ = HP%자기 − HP%상대인 potential 기반 shaping과 같아 최적 정책을 바꾸지 않는다.
+- **shaping**: `k · (Δ준 피해/상대 maxHp − Δ받은 피해/자기 maxHp)`, 스텝마다 [−1, 1]로 클리핑(종단 보상은 별도). k는 `k_start` 0.5 → `k_end` 0.1로 `anneal_decisions` 결정 동안 선형 감소한다. `anneal_decisions=0`이면 k는 0.5로 고정된다. 이 보상은 클리핑·할인 때문에 정책 불변성을 보장하는 potential shaping은 아니다.
 - 시간 벌점·명중 보너스 없음. 접근 보너스(`approach`, 거리 감소량/W × 계수)는 커리큘럼 0단계에서만 쓴다(기본 0).
 - **종료**: KO 또는 규칙 시간 종료(결투 45초, 용전 75초) → `terminated = true`. 안전 상한(규칙 시간의 2배) → `truncated = true`(부트스트랩).
 - **[구현]** 피해는 현재(지연 없는) 상태의 HP 차이(0 아래는 0)로 잰다. 고리 피해도 받은 피해에 들어간다. k 감소용 결정 수는 서버 프로세스 전체에서 활성 슬롯의 결정을 센 값이고 reset으로 초기화하지 않는다. 종단 보상은 클리핑한 shaping 값에 더한다(그 스텝 보상은 [−2, 2]). `approach`는 클리핑 뒤에 더한다.
@@ -137,9 +136,9 @@
 **reset params**
 | 키 | 타입·기본값 | 설명 |
 |---|---|---|
-| `num_envs`, `seed`, `encoding`, `auto_reset`, `expect` | 보드 env와 같음 | `expect`: `{cobs_version, cact_version, combat_rules_version?}`. 시드 = `splitmix64(seed, i, j)` |
+| `num_envs`, `seed`, `encoding`, `auto_reset`, `expect` | 보드 env와 같음 | `expect`: `{cobs_version, cact_version, combat_rules_version?}`. `combat_rules_version`은 덮어쓴 규칙의 version과 비교하며, 정확한 수치 확인에는 reset 결과의 `combat_rules_hash`를 사용한다. 시드 = `splitmix64(seed, i, j)` |
 | `config.controlled` | `"both"` \| `"p0"`, `"both"` | 외부 제어 좌석 수 `n_ctrl` = 2 / 1 |
-| `config.opponent` | `"scripted:<name>"` \| `"external"`, `"scripted:pool"` | `p0`일 때 상대 좌석(이름은 §1). `external`은 `controlled: "both"`와만 쓴다(`p0`이면 `BAD_CONFIG`). **[예정]** `"model:<id>"` = `models/combat/<id>.json`(고정 사본, 셀프플레이용)은 어댑터가 생긴 뒤 추가 |
+| `config.opponent` | `"scripted:<name>"` \| `"external"`, `"scripted:pool"` | `p0`일 때 상대 좌석(이름은 §1). `external`은 `controlled: "both"`와만 쓴다(`p0`이면 `BAD_CONFIG`) |
 | `config.mode_mix` | `{pvp, dragon}`, `{pvp: 0.75, dragon: 0.25}` | 에피소드별 모드 확률 |
 | `config.jobs` | `"uniform"` \| 좌석별 목록(직업 id 또는 `"uniform"`, 1~2개), `"uniform"` | 같은 직업 대결 허용. 목록이 1개면 두 좌석 모두에 적용 |
 | `config.stat_sampler` | `"uniform_board"` \| `"start"` \| `"file:<path>"`, `"uniform_board"` | **[구현]** `uniform_board`: `rush-1` 직업 스탯 + 강화 단계 균등 표본(결투 ATK·DEF +0~6, maxHp +0~5단계×6, HP 35~100% / 용전 ATK·DEF +3~9, maxHp +2~7단계, HP 60~100% / 검사 불굴 남음 90%; 보드 휴리스틱 3000판 로그의 p5~p95를 덮도록 정함). `start`: 직업 시작 스탯. `file:<path>`: `stat_dist_v1` 파일(§10.3)에서 같은 직업·같은 전투 종류 표본 |
@@ -161,17 +160,17 @@
 | `move_mask`, `button_mask` / `mask` | n_ctrl × 9, n_ctrl × 4 / flat이면 n_ctrl × 36 |
 | `rewards`, `actionable`, `active` | 좌석별 보상, 행동 반영 여부, 슬롯 존재 여부(용전 두 번째 슬롯 = false) |
 | `ticks_elapsed`, `tick`, `mode` | 이번 전이의 라이브 틱(보통 4), 전투 틱, `"pvp"`\|`"dragon"` |
-| `terminated`, `truncated`, `outcome` | `null` 또는 `{winner: 0\|1\|"dragon", reason: "ko"\|"timeout"\|"cap", hp: [int, int\|null], last_stand_used: [bool, bool], dragon_hp?}` |
+| `terminated`, `truncated`, `outcome` | 종료 플래그 2개와 `null` 또는 `{winner: 0\|1\|"dragon", reason: "ko"\|"timeout"\|"cap", hp: [int, int\|null], last_stand_used: [bool, bool], dragon_hp?}` |
 | `final_obs`, `episode_start` | 끝난 좌석의 종료 관측 `{"<slot>": obs}` / 새 에피소드 `{episode, seed, mode, jobs, stats, delay, mirror, opponent, dragon_hp_scale?, telegraph_scale?}` |
 
 - **[구현] 자동 리셋 응답**: `rewards`·`terminated`·`truncated`·`outcome`·`final_obs`·`ticks_elapsed`는 끝난 에피소드, `obs`·마스크·`actionable`·`active`·`tick`·`mode`·`episode_start`는 새 에피소드를 가리킨다(보드 env와 같은 규칙). `auto_reset: false`(`num_envs` 1)면 종료 후 `step`은 `EPISODE_OVER`.
-- **[구현] 슬롯**: 슬롯 0 = 전투원 a(도착자/도전자, 왼쪽), 슬롯 1 = 전투원 b. 반대편 시점은 x 미러 증강이 덮는다.
+- **[구현] 슬롯**: 슬롯 0 = 전투원 a(도착자/도전자), 슬롯 1 = 전투원 b. 용전에서 `controlled="both"`의 슬롯 1은 비활성 패딩이며 `[0, 0]`만 합법이다. `controlled="p0"`이면 슬롯 0만 반환한다.
 
 ```json
 {"id":1,"cmd":"reset","params":{"num_envs":2,"seed":7,"config":{"controlled":"both","flat_actions":true}}}
-{"id":1,"ok":true,"result":{"envs":[{"obs":["AACAPw...","AACAPw..."],"mask":[[1,1,"..."],[1,1,"..."]],"rewards":[0,0],"actionable":[true,true],"active":[true,true],"ticks_elapsed":0,"tick":0,"mode":"pvp","terminated":false,"truncated":false,"outcome":null,"final_obs":{},"episode_start":{"episode":0,"seed":912,"mode":"pvp","jobs":["mage","ninja"],"stats":"...","delay":[9,15],"mirror":{"x":false,"y":true}}},{"...":"..."}]}}
 {"id":2,"cmd":"step","params":{"actions":[[13,0],[5,32]]}}
 ```
+- 위 두 줄은 **요청 예시**다. `flat_actions: true`이므로 각 env에 flat 인덱스 2개씩 보낸다. 실제 응답의 관측·마스크·시드는 reset 때 선택된 에피소드에 따라 달라진다.
 - **결정성**: 같은 빌드·`(seed, config, actions 열)` → 바이트 단위로 같은 응답. 스크립트 봇·용·지연·미러 표본은 모두 에피소드 시드에서 파생한다.
 
 ## 9. Python API (`python/rpgboard_env`, numpy만)
@@ -210,9 +209,9 @@ obs, reward, terminated, truncated, info = env.step(actions)
 ### 10.2 커리큘럼·셀프플레이
 | 단계 | 상대 | 다음 단계 조건 |
 |---|---|---|
-| 0 | `scripted:dummy` (+ `approach` 보너스) | 승률 > 90% |
-| 1 | 스크립트 풀(rusher, kiter, turtle, random) + 용전 25%(`dragon_curriculum` HP·예고 배율 사용) | 각 상대에 승률 > 70% |
-| 2 | 셀프플레이: 최신 70% / 과거 스냅샷 20%(10만 결정마다 저장, 창 20, 어려운 상대 우선) / 스크립트 10% | — |
+| 0 | `controlled="p0", opponent="scripted:idle"` (+ 선택적 `approach` 보너스) | 승률 > 90% |
+| 1 | `scripted:pool`(balanced, aggressive, cautious)·`scripted:random` + 용전 25%(`dragon_curriculum` 사용 가능) | 각 상대에 승률 > 70% |
+| 2 | `controlled="both"`로 두 좌석을 트레이너에서 제어하고 최신·과거 정책을 배치 | — |
 - 50만 결정마다 고정 기준 집합과 상대당 200전으로 Elo 평가(시작 1200, K 16~32). 보상 합보다 Elo를 본다. 셀프플레이는 `controlled="both"`로 두 좌석에 서로 다른 가중치 사본을 넣으면 numpy만으로 된다.
 
 ### 10.3 스탯 분포·처리량
@@ -221,55 +220,37 @@ obs, reward, terminated, truncated, info = env.step(actions)
 - 처리량 목표(벤치마크로 확인): sim 1틱 ≤ 5µs, env 프로세스당 ≥ 30k 결정/s(64 env 배치), numpy 포함 종단 ≥ 10k 결정/s. 코어당 프로세스 하나로 확장.
   - **[구현] 측정값**(개발 PC, Node 22, 64 env): sim 1틱 약 0.45µs(입력 없음)·1.8µs(스크립트 봇 2개 포함), 인코딩+마스크 약 1.1µs. env 서버 단독 `both` 약 7만 결정/s, `p0`(상대 스크립트 봇이 매 틱 판단) 약 4만 결정/s. numpy 예제 포함 종단 `both` 약 2만, `p0` 약 1.2만 결정/s. Vitest 벤치마크(`combatEnv.test.ts`)가 매 실행마다 값을 출력한다.
 
-### 10.4 두 모델의 학습 순서
-- 두 모델을 동시에 학습하지 않는다. 전투 모델을 고정한 채 보드 모델을 학습하고, 전투 모델을 다시 학습하면 outcome 모델을 다시 만든 뒤 보드 모델을 미세 조정한다.
-
 ## 11. 전투 모델 통합 계약
 ```ts
 interface CombatPolicyModel { readonly meta: CombatModelMeta; forward(obs: Float32Array): Float32Array; value?(obs: Float32Array): number } // 출력 13(9+4) 또는 36
-type CombatWeightAdapter = (raw: unknown) => CombatPolicyModel;             // 형식 오류 시 ModelFormatError
+type CombatWeightAdapter = (raw: unknown, id: string) => CombatPolicyModel; // 형식 오류 시 CombatModelFormatError
 interface CombatModelMeta { id: string; cobsVersion: string | null; cactVersion: string | null; head: 'multi' | 'flat'; output: 'logits' | 'probs'; obsDim: 160 }
-createCombatModelPolicy(model, { difficulty: 'easy' | 'normal' | 'hard'; temperature?: number; mode?: 'sample' | 'argmax' })
+createCombatModelPolicy(model, { difficulty?: 'easy' | 'normal' | 'hard'; temperature?: number; mode?: 'sample' | 'argmax'; delay?: number; actionRepeat?: number; fallback?: CombatPolicy; onFallback?: (reason: string) => void })
 ```
-- **파이프라인**: 난이도 지연만큼 늦은 관측 → `forward` → 가지별 마스크 → temperature 샘플링(기본 `sample`) → `[move, button]` → 입력 마스크를 4틱 유지. 출력 길이 불일치·NaN·유효값 없음이면 그 결정만 스크립트 봇으로 대체하고 경고. 온라인은 서버, 오프라인은 브라우저에서만 추론한다(리플레이는 입력 저장이라 엔진 간 추론 결정성은 불필요).
-- **[구현]** `createCombatModelPolicy(model, { difficulty?, temperature?, mode?, delay?, actionRepeat?, fallback?, onFallback? })`는 `CombatPolicy`(전투 하나당 하나, 상태 있음)를 돌려주므로 `runCombat`·서버·브라우저에서 스크립트 봇과 같은 자리에 꽂힌다. 내부는 env와 같은 `StateHistory`·창 진행·"actionable이 아니면 입력 없음" 규칙을 써서 학습과 실전이 같다. `selectCombatAction(out, mask, meta, opts, random)`이 마스크·argmax·샘플링만 따로 제공한다. 전투용 패리티 검사(`checkParity`의 전투판)는 어댑터와 함께 추가한다.
+- **정책 파이프라인**: 난이도 지연만큼 늦은 관측 → `forward` → 가지별 또는 flat 마스크 → temperature 샘플링(기본 `sample`) → `[move, button]` → 입력을 `actionRepeat` 틱 유지. 출력 길이 불일치·NaN·유효값 없음이면 그 결정만 스크립트 봇으로 대체하고 `onFallback`에 이유를 전달한다.
+- **[구현]** `createCombatModelPolicy(model, { difficulty?, temperature?, mode?, delay?, actionRepeat?, fallback?, onFallback? })`는 상태를 가진 `CombatPolicy`를 반환한다. 내부는 env와 같은 `StateHistory`·창 진행·"actionable이 아니면 입력 없음" 규칙을 쓴다. `selectCombatAction(out, mask, meta, opts, random)`은 마스크·argmax·샘플링을 따로 제공한다. 전투용 패리티 검사는 현재 없다.
 - **어댑터 자리**: `packages/combat-ai/src/model/adapters/index.ts`의 `USER_COMBAT_WEIGHT_ADAPTER`(포맷 수령 전 `null`, 모델 전투원은 "준비 중"). 보드 어댑터와 따로 둔다.
-- **파일**: `models/combat/<name>.json`(`^[a-z0-9_-]+\.json$`, 서버 `COMBAT_MODELS_DIR` 기본 `models/combat`), 패리티 샘플 `models/combat/parity/<name>.json`. 보드 레지스트리는 `models/` 최상위만 보므로 섞이지 않는다. Easy용 이전 체크포인트는 `<name>-easy.json`(선택).
+- **파일**: 사용자 전투 가중치와 패리티 샘플은 보드 모델과 구분해 `models/combat/<name>.json`, `models/combat/parity/<name>.json`에 준비한다. 현재 어댑터는 `null`이라 이 파일을 정책으로 로드할 수 없다.
 - **사용자에게 요청할 정보** (보드 모델과 같은 항목, [ai-interface-spec.md §9](ai-interface-spec.md)): ① 층 수·크기, actor/critic 공유 여부, bias ② 활성화 함수 ③ 행렬 배치(`x @ W` / `W @ x`, 행 우선, dtype) ④ 입력 정규화(러닝 평균·표준편차 위치, 클리핑) ⑤ actor 출력: logits/확률, **head 구조(9+4 두 head 또는 36 flat, 출력 벡터 안 순서)** ⑥ critic 출력 ⑦ JSON 키 예시 파일 ⑧ **패리티 샘플**: obs 5개 이상 + 각 obs의 마스크(9+4 또는 36) + 마스크 전 actor 원출력 + critic 값(버튼이 일부 막힌 경우 포함 권장).
-- 패리티 허용 오차는 보드와 같다: `abs(ts − ref) ≤ 1e-5 + 1e-5·abs(ref)`, 마스크 후 argmax 일치.
-- **권장 메타데이터**: `"cobs_version": "cobs_v1"`, `"cact_version": "cact_v1"`, `"obs_dim": 160`, `"head": "multi" | "flat"`, `"output": "logits"`, `"combat_rules_version"`, 학습 설정 요약. 버전이 있으면 로드 시 일치를 검사한다.
+- **패리티 확인 기준**: 어댑터 구현 시 마스크 전 13개(9+4) 또는 36개 출력을 `abs(ts − ref) ≤ 1e-5 + 1e-5·abs(ref)`로 비교하고, 마스크 후 선택한 argmax도 맞춰야 한다. critic을 내보내면 그 값도 비교한다. 이 검사는 현재 구현되어 있지 않다.
+- **권장 메타데이터**: `"cobs_version": "cobs_v1"`, `"cact_version": "cact_v1"`, `"obs_dim": 160`, `"head": "multi"` 또는 `"flat"`, `"output": "logits"` 또는 `"probs"`, `"combat_rules_version"`, 학습 설정 요약. 현재 사용자 포맷 로더가 없으므로 이 메타데이터의 자동 검증도 아직 없다.
 
 ## 12. 보드 env의 전투 해결 (`combat_resolver`)
-- 보드 env(`rpgboard-env/1`) reset에 `config.combat_resolver: "dice" | "outcome:<file>" | "sim:<combat-model-id>"`를 추가한다. 기본은 첫 전투 모델이 나오기 전까지 `dice`, 그 뒤 `outcome`. `obs_v1`/`act_v1`은 그대로다. `info`가 `combat_resolver`·`combat_model_id`·`outcome_model_id`를 알려 주고, `expect`와 다르면 `VERSION_MISMATCH`.
-- 구현: `dice`는 엔진 `combat.mode = 'dice'`. `outcome`·`sim`은 `'external'`로 두고 env가 `COMBAT`에서 결과를 만들어 `applyCombatResult`로 넣는다(combat-design §8.1). `sim`은 고정 전투 모델로 실제 전투를 끝까지 돌린다(전투당 약 10~50ms, 주기적 점검·미세 조정용).
-- **[구현] 현재 상태** (`packages/sim/src/combatResolver.ts`): `combat_resolver: "dice" | "sim"`, 기본 `dice`.
-  - `dice` = `resolveCombatWithDice`(이전 동작과 바이트 단위로 같음).
-  - `sim` = `boardCombatSetup(state)`(`@dragon-rush/combat-ai`)로 두 플레이어의 보드 스탯(직업, hp, maxHp, atk, def, 불굴 남음 여부; 용은 규칙의 hp·atk·def)을 전투 setup으로 바꾸고, 양쪽 `scripted:balanced` 봇으로 `runCombat`을 끝까지 돌린 뒤 `applyCombatResult`. 전투 시드는 에피소드(게임) 시드와 전투 순번에서 파생되어 결정적이다. 전투당 약 1ms(봇 포함 sim 1.8µs/틱 × 평균 약 490틱). 모델 기반 `sim:<id>`와 `outcome:<file>`은 전투 모델·outcome 모델이 생긴 뒤 추가한다.
-  - reset 결과에 `combat_resolver`가 붙고, `expect.combat_resolver`가 다르면 `VERSION_MISMATCH`. Python `RPGBoardEnv(combat_resolver="sim")`.
-  - 밸런스 CLI: `pnpm sim --combat dice|sim [--combat-bot scripted:<name>] [--log-fights <file>]`. 4인 2000판 기준(휴리스틱, seed 1, 2026-11-12, 보정 전 `combat-1`): `dice` 평균 10.2라운드·용 처치 종료 85.9%·용 도전 성공률 77.2%·직업 승률 검/궁/마/닌/광 27.5/24.6/26.6/23.1/23.2% → `sim` 9.7라운드·96.5%·**100%**·27.3/22.9/25.9/24.9/24.1%(판당 전투 2.04회, 전투당 sim 시간 8.2초), 단일 스레드 140 → 117판/s. 실시간 용전이 보드 용(HP 88)에 비해 너무 쉬우므로 전투 보정(R5) 때 다시 잰다.
-- **outcome 모델** (보드 학습 기본):
-  1. 전투 모델 버전을 고정한다.
-  2. 워커 프로세스로 20만 전투(봇 vs 봇, Normal 지연, 샘플링 행동, 용전 포함)를 생성한다. 설정은 `stat_dist_v1.json`에서 뽑는다.
-  3. 특징: 모드, 양쪽 직업 one-hot(또는 용), 양쪽 hp·maxHp·atk·def, 불굴 가능, combat-design §4 공식으로 구한 양쪽 log(처치 타수).
-  4. 모델: 2×32 MLP 또는 직업 쌍 상호작용이 있는 로지스틱 회귀. 출력 = P(도착자 승) 또는 P(도전자 승), 승자 HP% 10구간 히스토그램, P(불굴 소모).
-  5. 통과 기준: 10분위마다 보정 오차 ±3% 이내(Brier 점수, 신뢰도 곡선).
-  6. 보드 env에서: 시드 RNG로 승자 → HP 구간 → 구간 안 정수 HP(≥ 1)를 균등하게 뽑는다.
-- **강건성**: 보드 학습 중 좌석·에피소드마다 로짓 실력 편차 ε ~ N(0, 0.5)(`config.outcome_skill_noise`)를 더해 보드 AI가 전투 승률을 과신하지 않게 한다.
-- 같은 outcome 모델을 UI "용의 눈"과 HeuristicBot 추정에도 쓴다(실시간 모드, combat-design §8.4).
-- 적합(fit) 도구와 `outcome_v1` 파일 포맷을 저장소에 둘지는 사용자 결정이다(development-plan D16. 기본안: numpy 전용 적합 스크립트와 포맷을 우리가 제공하며, 이것은 정책 트레이너가 아니다).
+- 현재 선택값은 `config.combat_resolver: "dice" | "sim"`이며 기본값은 `"dice"`다. 두 방식 모두 보드 관측 `obs_v1`과 행동 `act_v1`을 그대로 쓴다. reset 응답에는 `combat_resolver`가 있고, `expect.combat_resolver`가 설정값과 다르면 `VERSION_MISMATCH`다. Python에서는 `RPGBoardEnv(combat_resolver="sim")`으로 고른다.
+- `dice`는 엔진의 `resolveCombatWithDice`로 해결한다. `sim`은 `boardCombatSetup(state)`으로 보드 전투원의 직업·HP·ATK·DEF·불굴 가능 여부를 전투 setup에 옮긴 뒤, 두 `scripted:balanced` 봇으로 `runCombat`을 끝까지 실행하고 `applyCombatResult`로 반영한다. 전투 시드는 게임 시드와 전투 순번에서 파생된다. 이는 **학습한 전투 모델의 결과가 아니라 스크립트 봇의 결과**다.
+- 보드 균형 시뮬레이션 CLI에서도 `pnpm sim --combat dice|sim [--combat-bot scripted:<name>] [--log-fights <file>]`을 쓸 수 있다.
 
-## 13. 테스트 계획
-| 테스트 | 내용 |
+## 13. 계약 검증
+
+| 현재 테스트 | 확인 내용 |
 |---|---|
-| 레이아웃 | `COBS_V1_LAYOUT` offset 연속, 합 160, 값 범위([−1, 2]), 원-핫 합 ∈ {0, 1}, `CACT_V1_NAMES` 길이 9·4·36 |
-| cobs 골든 | 고정 시드 전투(직업 5종, 용전 3페이즈, 투사체·예고 포함)의 관측 벡터 스냅샷. 버전 상수 변경 없이 바뀌면 실패 |
-| 마스크·코덱 | 속성 테스트: 마스크 0 ⇔ 10틱 넘게 사용 불가, flat ↔ multi 왕복, 미러 왕복(관측·행동) |
-| 결정성 | 같은 시드·행동 열 → 같은 바이트, env 프로세스 2개 비교 |
-| env 계약 | spawn → info/reset/step/close, `ILLEGAL_ACTION` 원자성, 자동 리셋, `actionable`·`active`, data skipping 보상 합 보존, stdout에 로그 없음 |
-| Python | pytest: 형태·dtype, b64 디코딩, 버전 불일치, 예제 루프 |
-| 패리티·outcome | 사용자 샘플로 TS forward 비교(어댑터 구현 시), outcome 모델 10분위 보정 ±3% |
+| `packages/combat-ai/test/layout.test.ts`, `obs.test.ts` | 160칸 레이아웃·값 범위·원-핫·미러, tick 0 골든 스냅샷 |
+| `packages/combat-ai/test/codec.test.ts`, `mask.test.ts` | 9×4 ↔ flat 36 왕복, 버튼 마스크와 실제 sim 입력 비교 |
+| `packages/combat-ai/test/modelPolicy.test.ts` | 정책 선택·폴백·지연·보드 setup |
+| `packages/sim/test/combatEnv.test.ts` | 프로토콜·원자적 오류·자동 리셋·`p0`/flat·결정성·stdio spawn |
+| `python/tests/test_combat.py` | numpy 형태·dtype·b64 디코딩·버전 오류·클라이언트 루프 |
 
-- **[구현] 테스트 위치**: `packages/combat-ai/test/`(layout, obs — 25쌍+용전 범위·원-핫·미러·tick 0 골든 스냅샷, mask — 실제 눌러 보는 양방향 검사, codec, modelPolicy — 선택·폴백·봇 이름·지연 버퍼·보드 setup 변환), `packages/sim/test/combatEnv.test.ts`(info·오류 코드·자동 리셋·보상·`p0`+flat·원자성·바이트 결정성·`auto_reset: false`·actionable·스탯 파일·커리큘럼·64 env 벤치마크·stdio spawn), `runner.test.ts`·`env.test.ts`(`sim` 리졸버 재현성), `python/tests/test_combat.py`. 골든 스냅샷은 tick 0 관측만 고정한다(전투 수치 보정 중에도 깨지지 않도록). 데이터 스키핑 보상 합 보존은 트레이너 쪽 일이라 env 테스트에는 없다.
+사용자 가중치 포맷의 패리티 검사는 아직 없다. 학습 정책의 data skipping 보상 누적도 트레이너에서 검증해야 한다.
 
 ## 14. 출처 (핵심)
 - 행동 반복·반응 지연: https://openai.com/index/openai-five/ · https://ice.ci.ritsumei.ac.jp/~ftgaic/index-3.html · https://unity-technologies.github.io/ml-agents/Learning-Environment-Design-Agents/
