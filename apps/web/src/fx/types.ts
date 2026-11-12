@@ -44,6 +44,7 @@ interface CueTiming {
 export type FxCue = CueTiming &
   (
     | { readonly type: 'shake'; readonly trauma: number }
+    | { readonly type: 'speedLines'; readonly strength: number }
     | { readonly type: 'hitStop'; readonly ms: number }
     | {
         readonly type: 'slowMo';

@@ -90,6 +90,31 @@ const MOVE_SOUND: Readonly<Record<MoveId, SoundName>> = {
   whirlwind: 'axe',
 };
 
+const STRONG_MOVES: ReadonlySet<MoveId> = new Set([
+  'counter',
+  'fullShot',
+  'meteor',
+  'greataxe',
+  'whirlwind',
+]);
+
+const TELEGRAPH_CAPTION: Readonly<
+  Record<
+    'claw' | 'tail' | 'volley' | 'charge' | 'gust' | 'breath' | 'dive' | 'meteor' | 'fireball',
+    string
+  >
+> = {
+  claw: '용의 발톱 공격!',
+  tail: '용의 꼬리 공격!',
+  volley: '용의 연속 공격!',
+  charge: '용이 돌진한다!',
+  gust: '돌풍이 몰려온다!',
+  breath: '용이 숨을 들이쉰다!',
+  dive: '용이 날아오른다!',
+  meteor: '메테오가 떨어진다!',
+  fireball: '화염구가 날아온다!',
+};
+
 const isLocal = (ctx: FightFxContext, who: CombatantId | 'ring'): boolean =>
   who !== 'dragon' && who !== 'ring' && ctx.localSides.includes(who);
 
@@ -100,9 +125,33 @@ const isLocal = (ctx: FightFxContext, who: CombatantId | 'ring'): boolean =>
 export function fightFxFor(e: CombatEvent, ctx: FightFxContext): FightFxCommand[] {
   switch (e.type) {
     case 'AttackStart':
-      return ctx.replay ? [] : [{ type: 'cues', cues: [sound(MOVE_SOUND[e.move], 0.8)] }];
+      return ctx.replay
+        ? []
+        : [
+            {
+              type: 'cues',
+              cues: [
+                sound(MOVE_SOUND[e.move], 0.8),
+                ...(STRONG_MOVES.has(e.move)
+                  ? [{ type: 'speedLines', strength: 0.7 } as const]
+                  : []),
+              ],
+            },
+          ];
     case 'SkillUsed':
-      return ctx.replay ? [] : [{ type: 'cues', cues: [sound(MOVE_SOUND[e.skill])] }];
+      return ctx.replay
+        ? []
+        : [
+            {
+              type: 'cues',
+              cues: [
+                sound(MOVE_SOUND[e.skill]),
+                ...(STRONG_MOVES.has(e.skill)
+                  ? [{ type: 'speedLines', strength: 0.7 } as const]
+                  : []),
+              ],
+            },
+          ];
     case 'Dash':
       if (ctx.replay) return [];
       return [
@@ -111,6 +160,9 @@ export function fightFxFor(e: CombatEvent, ctx: FightFxContext): FightFxCommand[
           cues: [
             sound('dash', 0.8),
             { type: 'burst', preset: 'dust', at: point(ctx, e.pos), amount: 0.5 },
+            ...(e.dash === 'shoulderCharge' || e.dash === 'shadowStep'
+              ? [{ type: 'speedLines', strength: e.dash === 'shoulderCharge' ? 1 : 0.65 } as const]
+              : []),
           ],
         },
       ];
@@ -162,6 +214,7 @@ export function fightFxFor(e: CombatEvent, ctx: FightFxContext): FightFxCommand[
       }
       if (dot && e.kind !== 'breath') callouts.push(sound('thud', 0.35));
       if (callouts.length) out.push({ type: 'cues', cues: callouts });
+      if (heavy && !dot) out.push({ type: 'cues', cues: [{ type: 'speedLines', strength: 0.85 }] });
       if (e.kind === 'dive' || e.kind === 'charge')
         out.push({ type: 'cues', cues: [{ type: 'shake', trauma: 0.2 }] });
       return out;
@@ -222,8 +275,7 @@ export function fightFxFor(e: CombatEvent, ctx: FightFxContext): FightFxCommand[
             : e.kind === 'gust'
               ? [sound('telegraph', 0.5)]
               : [sound('telegraph', e.kind === 'fireball' ? 0.45 : 0.8)];
-      if (e.kind === 'charge') cues.push({ type: 'caption', text: '용이 돌진한다!' });
-      if (e.kind === 'dive') cues.push({ type: 'caption', text: '용이 날아오른다!' });
+      cues.push({ type: 'caption', text: TELEGRAPH_CAPTION[e.kind] });
       return [{ type: 'cues', cues }];
     }
     case 'TelegraphEnd': {
@@ -236,6 +288,7 @@ export function fightFxFor(e: CombatEvent, ctx: FightFxContext): FightFxCommand[
             type: 'cues',
             cues: [
               { type: 'shake', trauma: 0.65 },
+              { type: 'speedLines', strength: 1 },
               { type: 'ring', preset: 'dive', at: c, color: '#FFB25B' },
               { type: 'burst', preset: 'landDust', at: c, amount: 1.5 },
               sound('land'),
@@ -259,7 +312,10 @@ export function fightFxFor(e: CombatEvent, ctx: FightFxContext): FightFxCommand[
           out.push({ type: 'cues', cues: [sound('dragon_breath')] });
           break;
         case 'charge':
-          out.push({ type: 'cues', cues: [sound('dash'), sound('dragon_roar', 0.4)] });
+          out.push({
+            type: 'cues',
+            cues: [sound('dash'), sound('dragon_roar', 0.4), { type: 'speedLines', strength: 1 }],
+          });
           break;
         case 'claw':
         case 'tail':

@@ -13,6 +13,7 @@ export interface BurstOptions {
 /** Everything a cue can ask for. The screen runtime and the arena FX each implement it. */
 export interface FxSink {
   shake(trauma: number): void;
+  speedLines(strength: number): void;
   hitStop(ms: number): void;
   slowMo(factor: number, ms: number, rampMs?: number): void;
   bossStop(stop: BossStop): void;
@@ -37,6 +38,8 @@ export function runCue(cue: FxCue, sink: FxSink, resolve: (a: FxAnchor) => FxPoi
   switch (cue.type) {
     case 'shake':
       return sink.shake(cue.trauma);
+    case 'speedLines':
+      return sink.speedLines(cue.strength);
     case 'hitStop':
       return sink.hitStop(cue.ms);
     case 'slowMo':

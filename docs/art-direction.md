@@ -204,6 +204,11 @@
 | P1 | 둘 다 | 불의 고리 VFX, 저체력 심장박동 + 비네트(≤1.5Hz), 음악 더킹, 모서리 소품·둥지 상태·소품 대화창·범례 호버, 탈락·승리(색종이 120~200 + 팡파르) | — |
 | P2 | — | 클릭 소품(용 콧김, 보물 짤랑), 보드 용 숨쉬기, 전투 정면·후면, WebGL 아지랑이·왜곡 링, 게임패드 진동, 음악 스템, 보스 스톱 로우패스 | — |
 
+### 11.2.1 전투·보드 속도감 보강 (2026-11-12)
+- 강한 기술 시작·강타·어깨 돌진·용의 돌진/강하 발동과 보드 텔레포트 출발/도착에만 180ms 가장자리 속도선을 낸다. 화면 중앙은 비우고 320ms 재발동 간격을 두어 연속 타격도 계속 선을 연장하지 못하게 한다. 기존 FX 캔버스에서만 활성 프레임을 그리고 다섯 묶음으로 선을 그린다. 용의 적대적 예고가 진행되는 동안 전투 속도선을 숨겨 위험 영역의 모양과 빗금이 먼저 읽히게 한다.
+- 예고 9종은 각기 다른 소리와 **공격 이름을 알리는 자막**을 함께 쓴다. 자막 기본값은 켬이며 사용자가 끌 수 있다. 동작 줄이기에서는 속도선을 생략하고 기존 소리·자막·충격 링·히트스톱을 유지한다. 보드/전투 sim의 틱·피해·판정은 건드리지 않는다.
+- 근거: [GDC Juice It or Lose It](https://www.gdcvault.com/play/1016789/Juice-It-or-Lose) (반응을 여러 감각 채널로 쌓기), [GDC Juicing Your Cameras](https://media.gdcvault.com/gdc2016/Presentations/Eiserloh_Squirrel_JuicingYourCameras.pdf) (흔들림을 절제하고 감쇠시키기), [GDC Powerful and Effective Animation](https://media.gdcvault.com/gdcchina14/presentations/833784_MarielCartwright_PowerfulAndEffective_EN.pdf) (접촉 순간 히트스톱), [GDC VFX as a Game Design Language](https://media.gdcvault.com/GDC%2B2022/Speaker%2BSlides/VFXasagamedesignlanguage_Nguyen_An-Tim.pdf) (위험 신호의 정보성 및 색 외의 시각 언어), [MDN reduced motion](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/%40media/prefers-reduced-motion) (시스템 동작 선호 반영), [MDN Optimizing canvas](https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Optimizing_canvas) (캔버스 호출 묶기와 비활성 프레임 렌더링 회피). 가장자리 속도선의 위치·시간은 이 원칙을 Dragon Rush에 적용한 연출 선택이다.
+
 ### 11.3 Trauma 흔들림
 - shake = trauma², trauma 선형 감쇠 1.5/s, 1D Perlin 20Hz, 채널(roll, x, y) 오프셋 0/100/200. 기본 카메라의 **복사본**에만 적용.
 - 상한: 보드 20 CSS px(1080p 기준, 뷰포트 높이 ÷ 1080로 스케일) + 1° 회전, `.world-shake`에 적용. 경기장 16 논리px + 2°. **HUD는 흔들지 않는다.** 적 예고가 채워지는 동안은 4px·회전 0으로 제한. 모두 흔들림 슬라이더를 곱한다.

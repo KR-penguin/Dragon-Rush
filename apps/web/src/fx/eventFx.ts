@@ -111,6 +111,7 @@ function visualCues(e: GameEvent, ctx: FxEventContext): FxCue[] {
         const last = hops.at(-1);
         const arrive = last?.landMs ?? 0;
         return [
+          { type: 'speedLines', strength: 0.7 },
           ...magicCues(tile(e.from)),
           ...hops
             .slice(0, -1)
@@ -126,6 +127,7 @@ function visualCues(e: GameEvent, ctx: FxEventContext): FxCue[] {
           { type: 'ring', preset: 'heavy', at: tile(e.to), color: '#B38CFF', delayMs: arrive },
           { type: 'punch', at: tile(e.to), kind: 'glow', delayMs: arrive },
           { type: 'shake', trauma: TRAUMA.thiefOrTeleport, delayMs: arrive },
+          { type: 'speedLines', strength: 0.9, delayMs: arrive },
         ];
       }
       const cues: FxCue[] = hops.map((h) => ({
@@ -277,6 +279,7 @@ function visualCues(e: GameEvent, ctx: FxEventContext): FxCue[] {
       const dragon = e.kind === 'dragonFight';
       return [
         { type: 'shake', trauma: TRAUMA.challenge },
+        { type: 'speedLines', strength: dragon ? 1 : 0.75 },
         { type: 'flash', tone: 'white', alpha: 0.3, ms: 80 },
         { type: 'vignette', tone: dragon ? 'red' : 'dark', strength: 0.5, ms: 900 },
         { type: 'duck' },

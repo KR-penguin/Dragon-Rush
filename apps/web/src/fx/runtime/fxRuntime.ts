@@ -20,10 +20,12 @@ import {
   type RingPresetName,
 } from '../core/particlePresets';
 import { createFxRng, hashSeed } from '../core/rng';
+import { createSpeedLineBurst } from '../core/speedLines';
 import type { BossStop, FxClock } from '../core/time';
 import { createRisingSequence, type SoundName } from '../audio/soundCatalog';
 import { hitCues, hitStrength, type HitRecipe } from '../recipes';
 import { drawParticles } from '../render/drawParticles';
+import { drawSpeedLines } from '../render/drawSpeedLines';
 import type { FxPolicy } from '../settings/fxSettings';
 import type {
   FlashTone,
@@ -118,6 +120,7 @@ export class FxRuntime implements FxSink {
   private readonly texts;
   private readonly flashes: FlashGovernor;
   private readonly rng = createFxRng();
+  private readonly speedLineBurst = createSpeedLineBurst(() => this.clock.realNow());
   private surface: FxSurface | null = null;
   private ctx2d: CanvasRenderingContext2D | null = null;
   private textLayer: ReturnType<typeof createTextLayer> | null = null;
@@ -280,6 +283,13 @@ export class FxRuntime implements FxSink {
   shake(trauma: number): void {
     if (this.policy().shakeScale <= 0) return;
     this.camera.addTrauma(trauma);
+    this.ensureLoop();
+  }
+
+  speedLines(strength: number): void {
+    const p = this.policy();
+    if (p.reduceMotion || p.particleScale <= 0) return;
+    this.speedLineBurst.trigger(strength);
     this.ensureLoop();
   }
 
@@ -476,12 +486,22 @@ export class FxRuntime implements FxSink {
     this.handleArrivals(policy);
 
     const ctx = this.ctx2d;
-    if (ctx && (this.particles.count > 0 || this.canvasDirty)) {
+    const lines =
+      !policy.reduceMotion && policy.particleScale > 0 ? this.speedLineBurst.sample() : null;
+    if (ctx && (this.particles.count > 0 || lines || this.canvasDirty)) {
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, s.canvas.width, s.canvas.height);
       ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+      if (lines)
+        drawSpeedLines(
+          ctx,
+          s.canvas.width / this.dpr,
+          s.canvas.height / this.dpr,
+          lines,
+          '#F6D47A',
+        );
       drawParticles(ctx, this.particles);
-      this.canvasDirty = this.particles.count > 0;
+      this.canvasDirty = this.particles.count > 0 || lines !== null;
     }
 
     const items = this.texts.live();
@@ -521,6 +541,7 @@ export class FxRuntime implements FxSink {
 
     const active =
       this.particles.count > 0 ||
+      lines !== null ||
       items.length > 0 ||
       shaking ||
       !this.camera.isIdle() ||
@@ -556,6 +577,7 @@ export class FxRuntime implements FxSink {
     this.flights.clear();
     this.vignetteState = null;
     this.camera.reset();
+    this.speedLineBurst.reset();
     for (const el of this.shakeTargets) el.style.transform = '';
     this.shakeApplied = false;
     const s = this.surface;

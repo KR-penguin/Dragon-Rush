@@ -23,11 +23,13 @@ import {
   type RingPresetName,
 } from '../core/particlePresets';
 import { createFxRng, hashSeed } from '../core/rng';
+import { createSpeedLineBurst } from '../core/speedLines';
 import type { BossStop } from '../core/time';
 import type { SoundName } from '../audio/soundCatalog';
 import { arenaHitCues, type ArenaHitKind } from '../recipes';
 import { drawFloatingTexts } from '../render/drawFloatingText';
 import { drawParticles } from '../render/drawParticles';
+import { drawSpeedLines } from '../render/drawSpeedLines';
 import type { FxPolicy } from '../settings/fxSettings';
 import type { FlashTone, FxAnchor, FxCue, FxPoint, PunchKind, VignetteTone } from '../types';
 import { runCue, type BurstOptions, type FxSink } from './cueRunner';
@@ -38,7 +40,7 @@ export type ScreenSink = Pick<FxSink, 'flash' | 'vignette' | 'sound' | 'duck' | 
 
 export interface ArenaFxOptions {
   /** Presentation clock (ms) for texts and camera; typically `fxTime`. */
-  readonly clock: ClockLike;
+  readonly clock: ClockLike & { readonly realNow?: () => number };
   readonly policy: () => FxPolicy;
   readonly screen?: ScreenSink;
   /** Fight seed: FX randomness never touches the sim RNG. */
@@ -76,6 +78,7 @@ export class ArenaFx implements FxSink {
   private readonly policy: () => FxPolicy;
   private readonly screen: ScreenSink | undefined;
   private readonly rng;
+  private readonly speedLineBurst;
   private telegraph = false;
 
   constructor(o: ArenaFxOptions) {
@@ -83,6 +86,7 @@ export class ArenaFx implements FxSink {
     this.policy = o.policy;
     this.screen = o.screen;
     this.rng = createFxRng(hashSeed(o.seed ?? 1));
+    this.speedLineBurst = createSpeedLineBurst(() => o.clock.realNow?.() ?? o.clock.now());
     this.camera = createCameraRig(ARENA_CAMERA, o.clock);
     this.particles = createParticlePool(PARTICLE_CAP);
     this.texts = createFloatingTextBook(() => this.clock.now());
@@ -166,20 +170,30 @@ export class ArenaFx implements FxSink {
 
   /** Draws particles and numbers in logical space (call inside the camera transform). */
   draw(ctx: CanvasRenderingContext2D): void {
+    const policy = this.policy();
+    const lines = this.speedLineBurst.sample();
+    if (lines && !policy.reduceMotion && policy.particleScale > 0 && !this.telegraph)
+      drawSpeedLines(ctx, 960, 540, lines, '#FFF6E0');
     drawParticles(ctx, this.particles);
-    drawFloatingTexts(ctx, this.texts.live(), this.clock.now(), this.policy().textInPlace);
+    drawFloatingTexts(ctx, this.texts.live(), this.clock.now(), policy.textInPlace);
   }
 
   clear(): void {
     this.particles.clear();
     this.texts.clear();
     this.camera.reset();
+    this.speedLineBurst.reset();
   }
 
   // --- FxSink -------------------------------------------------------------------------------
 
   shake(trauma: number): void {
     if (this.policy().shakeScale > 0) this.camera.addTrauma(trauma);
+  }
+
+  speedLines(strength: number): void {
+    const p = this.policy();
+    if (!p.reduceMotion && p.particleScale > 0) this.speedLineBurst.trigger(strength);
   }
 
   /** The sim owns arena hit-stop; presentation freezes only if a screen clock is wired. */
