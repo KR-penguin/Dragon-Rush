@@ -22,7 +22,8 @@ import {
   legalIndices,
   type Policy,
 } from '@dragon-rush/ai';
-import { autoResolveCombat, deriveSeed, randomJobs } from '../runner';
+import { createCombatResolver, type CombatResolver } from '../combatResolver';
+import { deriveSeed, randomJobs } from '../runner';
 import type { EnvConfig } from './config';
 
 export class EnvError extends Error {
@@ -78,6 +79,7 @@ export class EnvInstance {
   private controlled = new Set<SeatId>();
   private bots = new Map<SeatId, Policy>();
   private random: () => number = Math.random;
+  private resolveCombat: CombatResolver = (r) => r;
   private episode = -1;
   private done = false;
   private agentSeat: SeatId | null = null;
@@ -103,6 +105,7 @@ export class EnvInstance {
     const seed = deriveSeed(this.baseSeed, this.index, this.episode);
     this.random = createPolicyRandom(deriveSeed(seed, 7, 7));
     const c = this.config;
+    this.resolveCombat = createCombatResolver(c.combat_resolver, { seed: deriveSeed(seed, 9, 9) });
     const n = Array.isArray(c.num_players)
       ? c.num_players[Math.floor(this.random() * c.num_players.length)]!
       : c.jobs !== 'random'
@@ -164,7 +167,7 @@ export class EnvInstance {
 
   private apply(action: Action, rewards: number[], events: GameEvent[], eliminated: SeatId[]): void {
     const before = this.state;
-    const r = autoResolveCombat(applyAction(this.state, action));
+    const r = this.resolveCombat(applyAction(this.state, action));
     this.state = r.state;
     events.push(...r.events);
     for (const e of r.events) {

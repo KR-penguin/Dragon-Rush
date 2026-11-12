@@ -24,25 +24,36 @@ def repo_root(cwd: str | os.PathLike[str] | None = None) -> Path:
     return Path(__file__).resolve().parents[2]
 
 
-def resolve_command(server_cmd: str | Sequence[str] | None) -> tuple[list[str], bool]:
+def resolve_command(
+    server_cmd: str | Sequence[str] | None,
+    default: Sequence[str] = DEFAULT_SERVER,
+    env_var: str = "RPGBOARD_ENV_CMD",
+) -> tuple[list[str], bool]:
     """Returns (command, is_default)."""
     if server_cmd is None:
-        server_cmd = os.environ.get("RPGBOARD_ENV_CMD")
+        server_cmd = os.environ.get(env_var)
     if server_cmd is None:
-        return list(DEFAULT_SERVER), True
+        return list(default), True
     if isinstance(server_cmd, str):
         return shlex.split(server_cmd, posix=os.name != "nt"), False
     return list(server_cmd), False
 
 
 class ServerProcess:
-    def __init__(self, server_cmd: str | Sequence[str] | None, cwd: str | os.PathLike[str] | None, timeout: float) -> None:
+    def __init__(
+        self,
+        server_cmd: str | Sequence[str] | None,
+        cwd: str | os.PathLike[str] | None,
+        timeout: float,
+        default: Sequence[str] = DEFAULT_SERVER,
+        env_var: str = "RPGBOARD_ENV_CMD",
+    ) -> None:
         root = repo_root(cwd)
-        cmd, is_default = resolve_command(server_cmd)
-        if is_default and not (root / DEFAULT_SERVER[1]).exists():
+        cmd, is_default = resolve_command(server_cmd, default, env_var)
+        if is_default and not (root / default[1]).exists():
             raise RPGBoardEnvError(
                 "SERVER_NOT_BUILT",
-                f"{root / DEFAULT_SERVER[1]} not found. Run `pnpm install && pnpm build` in {root}.",
+                f"{root / default[1]} not found. Run `pnpm install && pnpm build` in {root}.",
             )
         self.timeout = timeout
         self._next_id = 0

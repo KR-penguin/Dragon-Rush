@@ -1,6 +1,7 @@
 import { JOB_IDS } from '@dragon-rush/engine';
 import { BOT_NAMES } from '@dragon-rush/ai';
 import { z } from 'zod';
+import { COMBAT_RESOLVERS } from '../combatResolver';
 
 const seatList = z.array(z.number().int().min(0).max(3));
 const botName = z.enum(BOT_NAMES);
@@ -26,6 +27,8 @@ export const EnvConfigSchema = z
       .nullable()
       .default(null),
     return_events: z.boolean().default(false),
+    /** How fights are settled: 'dice' (board dice duel) or 'sim' (real-time sim with scripted bots). */
+    combat_resolver: z.enum(COMBAT_RESOLVERS).default('dice'),
   })
   .strict();
 
@@ -37,7 +40,9 @@ export const ResetParamsSchema = z
     seed: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),
     encoding: z.enum(['b64', 'json']).default('b64'),
     auto_reset: z.boolean().default(true),
-    expect: z.object({ obs_version: z.string().optional(), act_version: z.string().optional() }).optional(),
+    expect: z
+      .object({ obs_version: z.string().optional(), act_version: z.string().optional(), combat_resolver: z.string().optional() })
+      .optional(),
     config: EnvConfigSchema.default(EnvConfigSchema.parse({})),
   })
   .strict();

@@ -207,7 +207,7 @@
 | R3 FX·오디오 | rAF FX 루프, trauma 흔들림, 파티클 풀, 피해 숫자, 코인 비행, FlashGovernor, 오디오 버스·더킹·변형, 접근성 설정, 주스 디버그 패널 | FX가 엔진·sim RNG 미사용(lint), juice off A/B, 프레임 독립, 섬광 제한 테스트 |
 | R4 실시간 전투 sim + 봇 | `packages/combat`(60Hz·Q8·BAM, 직업 키트, 결투 규칙, 용 스크립트, 히트스톱·넉백), `packages/combat-ai` 스크립트 봇, 로컬 핫시트 결투·용전 화면(도형 + 경기장 P0 FX), 키보드 테스트 | 골든 리플레이 해시 Node + Chromium·Firefox·WebKit 일치, 1만 판 퍼즈, 프레임 데이터·피해 표 테스트, 45초·75초 상한 |
 | R5 보드↔전투 통합 + 온라인 | 엔진 `COMBAT` phase(`combat.mode: 'external'`) 연결, 로컬·온라인 매치업, 서버 60Hz 전투 루프·`fight:*` 메시지·예측·재시뮬, AI 대행, 전투 리플레이, `PROTOCOL_VERSION` 2 | 소켓 통합 테스트(150ms RTT·20ms 지터·1% 손실), `FightSync` 재접속, 관전자 보간, `dice` 모드 골든 유지 |
-| R6 전투 학습 환경 | `cobs_v1`/`cact_v1`, `combat-env-server`, `CombatVecEnv`, `stat_dist_v1.json`, 보드 env `combat_resolver`, TS MLP 런타임·패리티 도구, 전투 데이터 생성 도구 | 마스크·코덱·미러 속성 테스트, cobs 골든, env 계약·pytest, 처리량 측정(목표 ≥ 30k 결정/s/프로세스). ★ D15 후 사용자 전투 학습 시작 |
+| R6 전투 학습 환경 | `cobs_v1`/`cact_v1`, `combat-env-server`, `CombatVecEnv`, `stat_dist_v1.json`, 보드 env `combat_resolver`, TS MLP 런타임·패리티 도구, 전투 데이터 생성 도구 | 마스크·코덱·미러 속성 테스트, cobs 골든, env 계약·pytest, 처리량 측정(목표 ≥ 30k 결정/s/프로세스). ★ D15 후 사용자 전투 학습 시작. **대부분 완료** (`feature/combat-ai-env`): 인코더·코덱·마스크·env·`CombatVecEnv`·`combat_resolver: dice\|sim`·`--log-fights`, 측정 약 7만 결정/s/프로세스. 남음: TS MLP 런타임·전투 패리티(D13 후), outcome 모델(D16), `stat_dist_v1.json`은 저장소에 넣지 않고 필요할 때 생성 |
 | R7 7~10분 밸런스 | `RulesConfig` 재조정(밸런스 담당), `pnpm sim`에 예상 게임 시간(턴 연출 + 전투 시간) 지표 | 4인 중앙값 7~10분, `RulesConfig.version` 증가, 기획서 §15 갱신 |
 | R8 아트·오디오 통합 | §4.2 파일 배치, `loops.json`, 크레딧 화면(game-icons CC BY 3.0), 이모지 폴백 유지 | 누락 파일은 플레이스홀더로 동작·오류 0, 라이선스 목록 |
 

@@ -12,6 +12,8 @@
   },
   "dependencies": {
     "@dragon-rush/ai": "workspace:*",
+    "@dragon-rush/combat": "workspace:*",
+    "@dragon-rush/combat-ai": "workspace:*",
     "@dragon-rush/engine": "workspace:*",
     "zod": "^4.6.7"
   }

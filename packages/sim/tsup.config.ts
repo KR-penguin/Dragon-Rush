@@ -1,7 +1,7 @@
 import { defineConfig } from 'tsup';
 
 export default defineConfig({
-  entry: ['src/env-server.ts', 'src/cli.ts', 'src/simWorker.ts'],
+  entry: ['src/env-server.ts', 'src/combat-env-server.ts', 'src/cli.ts', 'src/simWorker.ts'],
   format: ['esm'],
   platform: 'node',
   target: 'node22',

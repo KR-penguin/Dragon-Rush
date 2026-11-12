@@ -70,12 +70,15 @@ export class EnvServer {
     const p = parsed.data;
     if (p.expect?.obs_version && p.expect.obs_version !== OBS_VERSION) throw new EnvError('VERSION_MISMATCH', `obs ${OBS_VERSION}`);
     if (p.expect?.act_version && p.expect.act_version !== ACT_VERSION) throw new EnvError('VERSION_MISMATCH', `act ${ACT_VERSION}`);
+    if (p.expect?.combat_resolver && p.expect.combat_resolver !== p.config.combat_resolver) {
+      throw new EnvError('VERSION_MISMATCH', `combat_resolver ${p.config.combat_resolver}`);
+    }
     if (!p.auto_reset && p.num_envs !== 1) throw new EnvError('BAD_CONFIG', 'auto_reset=false requires num_envs=1');
     const seed = p.seed ?? (Date.now() % 2 ** 31) * 1000 + Math.floor(Math.random() * 1000);
     const rules = buildRules(p.config);
     this.params = { ...p, seed };
     this.envs = Array.from({ length: p.num_envs }, (_, i) => new EnvInstance(i, seed, p.config, rules));
-    return { seed, envs: this.envs.map((env) => this.serialize(env.reset())) };
+    return { seed, combat_resolver: p.config.combat_resolver, envs: this.envs.map((env) => this.serialize(env.reset())) };
   }
 
   private step(raw: Json): Json {
