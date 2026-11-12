@@ -6,7 +6,7 @@ import { GameIcon } from '../icons/GameIcon';
 interface JobChooserProps {
   seatNumber: number;
   value: JobId | null;
-  /** Offer "무작위" (no job; the server picks a free one at start). */
+  /** Offer "무작위" (no job; a job is drawn when each game starts). */
   optional: boolean;
   disabled: boolean;
   onChange: (job: JobId | null) => void;
@@ -42,7 +42,7 @@ export function JobChooser({ seatNumber, value, optional, disabled, onChange }: 
           aria-pressed={value === null}
           className={`job-pick${value === null ? ' is-on' : ''}`}
           disabled={disabled}
-          title="시작할 때 남은 직업 중 무작위"
+          title="시작할 때 5개 직업 중 무작위"
           onClick={() => onChange(null)}
         >
           <span className="asset asset-icon job-pick-art" aria-hidden="true">

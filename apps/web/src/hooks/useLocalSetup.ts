@@ -20,9 +20,9 @@ export function useLocalSetup() {
 
   const start = () => {
     if (errors.length > 0) return;
-    const config = toLocalConfig(form);
     // No seed: every game, including "다시 하기", gets a fresh random seed.
     const create = () => {
+      const config = toLocalConfig(form);
       const client = new LocalGameClient({
         seats: config.seats,
         maxRounds: config.maxRounds,

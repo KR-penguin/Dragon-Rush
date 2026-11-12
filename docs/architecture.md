@@ -280,7 +280,7 @@ apps/server/src/
 | C→S | `room:leave` | `{}` | 퇴장 |
 | C→S | `room:configure` | `{ maxRounds: number \| null, quickCombat?: boolean }` | 호스트 전용, 로비에서만. 빠른 전투는 주사위로 해결 |
 | C→S | `room:configureSeat` | `{ seat, kind, botName?, modelId? }` | 호스트 전용. kind = human/bot/model/empty |
-| C→S | `room:selectJob` | `{ job \| null, seat? }` | 직업 선택(중복 가능, null = 해제). `seat`는 호스트가 AI 좌석을 지정할 때만 |
+| C→S | `room:selectJob` | `{ job \| null, seat? }` | 직업 선택(중복 가능, null = 매 게임 시작 시 5직업 중 무작위). `seat`는 호스트가 AI 좌석을 지정할 때만 |
 | C→S | `room:setReady` | `{ ready }` | 준비 토글 |
 | C→S | `room:start` | `{}` | 호스트 전용. 2명 이상 + 사람 전원 준비 |
 | C→S | `room:rematch` | `{}` | 종료된 방의 호스트 전용. 같은 코드·좌석·설정을 유지하고 로비로 복귀 |
@@ -294,7 +294,7 @@ apps/server/src/
 | S→C | `seat:takeover` | `{ seat, name }` | 접속 중이던 사람이 퇴장·끊김으로 봇에게 제어권을 넘길 때 한 번 알림. 스냅샷·유예 만료·시간 초과 대리에는 보내지 않음 |
 | S→C | `error` | `{ code, message }` | ack가 없는 비동기 오류 |
 
-- `pending` = `{ actor, phase, timeLeftMs }`. 시계 동기화 없이 남은 시간만 보낸다. 게임 종료는 `GameEnded` 이벤트 + `room:state.status = 'finished'`. 종료된 방은 빈 사람 좌석에 새 참가자가 들어올 수 있다. 호스트의 `room:rematch`는 완료된 세션을 폐기하고 `status = 'lobby'`로 되돌린다. 방 코드, 남은 사람·AI 좌석, 직업과 옵션은 유지하고 사람의 준비 상태는 해제한다. 새 `room:start`는 버전 0의 새 세션을 만든다. 방에 서로 같은 직업을 고른 좌석이 있어도 시작할 수 있다.
+- `pending` = `{ actor, phase, timeLeftMs }`. 시계 동기화 없이 남은 시간만 보낸다. 게임 종료는 `GameEnded` 이벤트 + `room:state.status = 'finished'`. 종료된 방은 빈 사람 좌석에 새 참가자가 들어올 수 있다. 호스트의 `room:rematch`는 완료된 세션을 폐기하고 `status = 'lobby'`로 되돌린다. 방 코드, 남은 사람·AI 좌석, 직업 선택(무작위 선택 포함)과 옵션은 유지하고 사람의 준비 상태는 해제한다. 새 `room:start`는 버전 0의 새 세션을 만들며 무작위 좌석은 다시 추첨한다. 방에 서로 같은 직업을 고른 좌석이 있어도 시작할 수 있다.
 - 실시간 전투 중에는 `pending.phase = 'COMBAT'`, 보드 행동은 `[]`이다. 전투 메시지는 §12.3의 `fight:*` 계약을 따른다. 전투 결과 확정 뒤 보드 `version`이 증가하고 `game:update`가 발행된다.
 - **zod 검증**: 서버는 모든 수신 페이로드를 `safeParse`, 실패 시 `INVALID_PAYLOAD`. 타입은 `z.infer`로 생성하고, `z.infer<typeof ActionSchema>`와 엔진 `Action`의 동일성을 타입 테스트로 고정한다. 송신 검증은 dev/test에서만.
 - **오류 코드**: `PROTOCOL_MISMATCH`, `INVALID_PAYLOAD`, `SESSION_INVALID`, `ROOM_NOT_FOUND`, `ROOM_FULL`, `ROOM_IN_PROGRESS`, `NOT_IN_ROOM`, `NOT_HOST`, `SEAT_OCCUPIED`, `JOB_TAKEN`(기존 클라이언트 호환용), `NOT_READY`, `NOT_YOUR_TURN`, `STALE_VERSION`, `ILLEGAL_ACTION`, `MODEL_NOT_FOUND`, `RATE_LIMITED`, `INTERNAL`. 정본은 `packages/protocol/src/errors.ts`.

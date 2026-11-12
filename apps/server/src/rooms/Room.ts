@@ -176,7 +176,7 @@ export class Room {
     seat.ready = ready;
   }
 
-  /** Validates start conditions and fills missing AI jobs. Returns the seats that will play. */
+  /** Validates start conditions and resolves random jobs for this game only. */
   prepareStart(playerId: string, pick: () => number): LobbySeat[] {
     this.assertLobby();
     this.assertHost(playerId);
@@ -187,14 +187,10 @@ export class Room {
     for (const s of active) {
       if (s.kind === 'human' && s.playerId !== this.hostId && !s.ready)
         throw new ProtocolError('NOT_READY', `${s.nickname} is not ready`);
-      if (s.kind === 'human' && !s.job)
-        throw new ProtocolError('NOT_READY', `${s.nickname} has no job`);
     }
-    for (const s of active) {
-      if (s.job) continue;
-      const free = JOB_IDS.filter((j) => !active.some((o) => o.job === j));
-      s.job = free[Math.floor(pick() * free.length)]!;
-    }
-    return active;
+    return active.map((s) => ({
+      ...s,
+      job: s.job ?? JOB_IDS[Math.floor(pick() * JOB_IDS.length)]!,
+    }));
   }
 }

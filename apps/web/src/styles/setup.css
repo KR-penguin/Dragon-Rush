@@ -67,10 +67,37 @@
   line-height: 1.5;
 }
 
+.setup-job-label {
+  color: var(--bone-dim);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
 .job-picker {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 6px;
+}
+
+.seat-editor .job-picker.has-random {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.seat-editor .job-picker.has-random .job-pick-art {
+  width: 26px;
+  height: 26px;
+}
+
+.seat-editor .job-picker.has-random .job-pick small {
+  font-size: 0.62rem;
+}
+
+.setup-random-job {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink, #382517);
+  font-size: 0.85rem;
 }
 
 .job-pick {
@@ -275,6 +302,10 @@
 
   .setup .job-pick {
     min-height: 56px;
+  }
+
+  .seat-editor .job-picker.has-random {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .setup-footer {

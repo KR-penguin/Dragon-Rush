@@ -37,7 +37,7 @@ Reading order for any task: this file → `coding_convention.md` → canonical d
 ## 3. Product in ~10 lines
 - Web roulette board game with light RPG growth. 2–4 seats in any mix of human, bot and user model.
 - 24-tile ring board (0–23, clockwise), one 1–10 roulette spin per move. Tile 0 `START` permits PvP on landing and pays a bonus when a roulette move or teleport passes or lands on it. START (0), shops (6, 18), and inn (12) are fixed; other tile types and positions vary by seeded game. Mystery cards use a shared effect pool.
-- Stats: `hp`, `maxHp`, `atk`, `def`, `coins`. Five jobs (`swordsman`, `archer`, `mage`, `ninja`, `berserker`), each with a passive; multiple seats may choose the same job.
+- Stats: `hp`, `maxHp`, `atk`, `def`, `coins`. Five jobs (`swordsman`, `archer`, `mage`, `ninja`, `berserker`), each with a passive; multiple seats may choose the same job. Human and bot seats may choose a random job, resolved from all five jobs anew at each game start and rematch.
 - Coins buy stat upgrades during your own turn (`PRE_ROLL`/`POST_MOVE`, anywhere, escalating cost). On a SHOP tile they also buy items: `teleport`, `shield`, `thief` (single-use).
 - Landing on any tile with another player opens a duel confirmation, then a 1v1 fight (real-time by default, dice in quick-combat mode). Initial co-location at tile 0 is not a landing. The loser is eliminated; the winner takes `floor(coins / 2)` plus all items, gains 30 coins, and heals to max HP. A shield cancels the duel.
 - `CHALLENGE_DRAGON` is a PRE_ROLL main action (no dice that turn). Win = game over; loss = eliminated, coins and items vanish.

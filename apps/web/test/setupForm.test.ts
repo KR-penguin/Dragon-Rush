@@ -64,6 +64,18 @@ describe('local setup form', () => {
     });
   });
 
+  it('chooses a fresh random job for a bot or human each time a game is created', () => {
+    const form = updateSeat(defaultSetup(), 1, { job: null });
+    expect(setupErrors(form)).toEqual([]);
+    expect(toLocalConfig(form, () => 0).seats[1]!.job).toBe(JOB_IDS[0]);
+    expect(toLocalConfig(form, () => 0.999).seats[1]!.job).toBe(JOB_IDS.at(-1));
+    expect(form.seats[1]!.job).toBeNull();
+    expect(updateSeat(form, 1, { kind: 'human' }).seats[1]!.job).toBeNull();
+    const human = updateSeat(form, 0, { job: null });
+    expect(setupErrors(human)).toEqual([]);
+    expect(toLocalConfig(human, () => 0.999).seats[0]!.job).toBe(JOB_IDS.at(-1));
+  });
+
   it('scales stat bars by the strongest job', () => {
     const scale = jobStatScale(DEFAULT_RULES.jobs);
     expect(scale.hp).toBe(Math.max(...JOB_IDS.map((j) => DEFAULT_RULES.jobs[j].hp)));

@@ -149,14 +149,13 @@ describe('start eligibility', () => {
     expect(r.reasons.join()).toContain('2명 이상');
   });
 
-  it('needs every human to have a job and every guest to be ready', () => {
+  it('lets humans use random jobs but still needs guests to be ready', () => {
     const r = startEligibility(room(), 'p_alice');
     expect(r.canStart).toBe(false);
-    expect(r.reasons).toEqual([
-      '내 직업을 먼저 고르세요.',
-      'Bob님이 직업을 고르지 않았습니다.',
-      'Bob님이 아직 준비하지 않았습니다.',
-    ]);
+    expect(r.reasons).toEqual(['Bob님이 아직 준비하지 않았습니다.']);
+    const random = room();
+    random.seats[1]!.ready = true;
+    expect(startEligibility(random, 'p_alice')).toEqual({ canStart: true, reasons: [] });
   });
 
   it('allows the host to start once guests are ready (AI jobs may stay random)', () => {
@@ -235,7 +234,7 @@ describe('room view', () => {
     });
   });
 
-  it('asks for a job before ready and marks disconnected players', () => {
+  it('allows a random job before ready and marks disconnected players', () => {
     const r = room([
       human(0, 'p_alice', 'Alice'),
       human(1, 'p_bob', 'Bob', { connected: false }),
@@ -243,9 +242,10 @@ describe('room view', () => {
       seat(3),
     ]);
     const v = buildRoomView(r, 'p_bob');
-    expect(v.me.readyBlocker).toBe('직업을 먼저 고르세요.');
+    expect(v.me.readyBlocker).toBeNull();
     expect(v.seats[1]!.statusLabel).toBe('연결 끊김');
-    expect(v.seats[1]!.jobHint).toBe('직업 미선택');
+    expect(v.seats[1]!.jobHint).toBe('시작할 때 5개 직업 중 무작위');
+    expect(v.seats[1]!.jobOptional).toBe(true);
     expect(v.seats[2]!.statusLabel).toBe('닫힘');
   });
 

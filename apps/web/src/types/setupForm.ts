@@ -20,7 +20,8 @@ export interface SeatForm {
   readonly name: string;
   readonly kind: SeatKindChoice;
   readonly bot: BotOptionId;
-  readonly job: JobId;
+  /** Null means this seat draws one of the five jobs when a new game starts. */
+  readonly job: JobId | null;
 }
 
 export interface SetupForm {
@@ -109,14 +110,20 @@ export function jobStatScale(jobs: Readonly<Record<JobId, JobDef>>): JobDef {
   };
 }
 
-export function toLocalConfig(form: SetupForm): LocalSetupConfig {
+export function toLocalConfig(form: SetupForm, pick: () => number = Math.random): LocalSetupConfig {
   return {
     maxRounds: form.maxRounds,
     seats: form.seats.map((s) => {
       const name = s.name.trim();
-      return s.kind === 'bot'
-        ? { name, job: s.job, kind: 'bot', botName: s.bot }
-        : { name, job: s.job, kind: 'human' };
+      const job = s.job ?? JOB_IDS[Math.floor(pick() * JOB_IDS.length)]!;
+      if (s.kind === 'bot')
+        return {
+          name,
+          job,
+          kind: 'bot',
+          botName: s.bot,
+        };
+      return { name, job, kind: 'human' };
     }),
   };
 }

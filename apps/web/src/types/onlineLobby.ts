@@ -81,7 +81,7 @@ const ERROR_TEXT: Record<LobbyErrorCode, string> = {
   NOT_HOST: '방장만 할 수 있습니다.',
   SEAT_OCCUPIED: '이미 플레이어가 앉아 있는 좌석입니다.',
   JOB_TAKEN: '다른 좌석이 이미 고른 직업입니다.',
-  NOT_READY: '아직 시작할 수 없습니다. 모든 플레이어가 직업을 고르고 준비해야 합니다.',
+  NOT_READY: '아직 시작할 수 없습니다. 모든 플레이어가 준비해야 합니다.',
   NOT_YOUR_TURN: '지금은 내 차례가 아닙니다.',
   STALE_VERSION: '게임 상태가 바뀌었습니다. 다시 시도하세요.',
   ILLEGAL_ACTION: '지금은 할 수 없는 행동입니다.',
@@ -212,7 +212,7 @@ export interface SeatView {
   readonly choice: SeatChoice;
   /** The viewer may pick this seat's job (own seat, or an AI seat for the host). */
   readonly jobEditable: boolean;
-  /** AI seats may leave the job empty; the server picks a free one at start. */
+  /** Any occupied seat may leave the job empty to draw at game start. */
   readonly jobOptional: boolean;
 }
 
@@ -262,11 +262,6 @@ export function startEligibility(room: RoomStateMsg, playerId: string): StartEli
     );
   for (const s of active) {
     if (s.kind !== 'human') continue;
-    const me = s.playerId === playerId;
-    if (!s.job)
-      reasons.push(
-        me ? '내 직업을 먼저 고르세요.' : `${seatName(s)}님이 직업을 고르지 않았습니다.`,
-      );
     if (s.playerId !== room.hostId && !s.ready)
       reasons.push(`${seatName(s)}님이 아직 준비하지 않았습니다.`);
   }
@@ -324,8 +319,7 @@ function seatTitle(s: LobbySeat): string {
 
 function jobHint(s: LobbySeat): string {
   if (s.job) return '';
-  if (isAi(s)) return '시작할 때 남은 직업 중 무작위';
-  if (s.kind === 'human' && s.playerId !== null) return '직업 미선택';
+  if (isAi(s) || (s.kind === 'human' && s.playerId !== null)) return '시작할 때 5개 직업 중 무작위';
   return '';
 }
 
@@ -352,7 +346,7 @@ export function seatView(room: RoomStateMsg, s: LobbySeat, playerId: string): Se
     configurable: lobby && amHost && s.playerId === null,
     choice: seatChoiceOf(s),
     jobEditable: lobby && (isMe || (amHost && isAi(s))),
-    jobOptional: isAi(s),
+    jobOptional: isAi(s) || (s.kind === 'human' && s.playerId !== null),
   };
 }
 
@@ -374,7 +368,7 @@ export function buildRoomView(room: RoomStateMsg, playerId: string): RoomView {
       job: mine?.job ?? null,
       ready: mine?.ready ?? false,
       needsReady,
-      readyBlocker: needsReady && !mine?.ready && !mine?.job ? '직업을 먼저 고르세요.' : null,
+      readyBlocker: null,
     },
     start: startEligibility(room, playerId),
   };

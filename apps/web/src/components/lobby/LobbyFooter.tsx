@@ -58,7 +58,7 @@ export function LobbyFooter({
         <GameIcon name={me.ready ? 'ready' : 'scroll'} />
         {me.ready
           ? `준비 완료! ${hostName}님이 게임을 시작하기를 기다리는 중…`
-          : '직업을 고르고 준비 버튼을 누르세요.'}
+          : '직업을 고르거나 무작위로 두고 준비하세요.'}
       </p>
       {me.needsReady && (
         <span className="lobby-start-wrap" title={me.readyBlocker ?? undefined}>

@@ -1,8 +1,9 @@
-import { JOB_IDS, type JobDef, type JobId } from '@dragon-rush/engine';
+import type { JobDef, JobId } from '@dragon-rush/engine';
 import type { CSSProperties } from 'react';
-import { JOB_LABEL, seatColor, seatCrest } from '../../types/labels';
-import { JobArt } from '../icons/Art';
+import { seatColor, seatCrest } from '../../types/labels';
 import { Crest } from '../icons/Crest';
+import { GameIcon } from '../icons/GameIcon';
+import { JobChooser } from '../lobby/JobChooser';
 import {
   BOT_OPTIONS,
   type BotOptionId,
@@ -81,25 +82,21 @@ export function SeatEditor({ index, seat, jobs, scale, onChange }: SeatEditorPro
           {BOT_STYLE_HELP[seat.bot]}
         </p>
       )}
-      <div className="job-picker" role="radiogroup" aria-label="직업">
-        {JOB_IDS.map((job) => {
-          return (
-            <button
-              key={job}
-              type="button"
-              role="radio"
-              aria-checked={seat.job === job}
-              className={`job-pick${seat.job === job ? ' is-on' : ''}`}
-              title={JOB_LABEL[job]}
-              onClick={() => onChange({ job })}
-            >
-              <JobArt job={job} className="job-pick-art" />
-              <small>{JOB_LABEL[job]}</small>
-            </button>
-          );
-        })}
-      </div>
-      <JobCard job={seat.job} stats={jobs[seat.job]} scale={scale} />
+      <span className="setup-job-label">직업</span>
+      <JobChooser
+        seatNumber={index + 1}
+        value={seat.job}
+        optional
+        disabled={false}
+        onChange={(job) => onChange({ job })}
+      />
+      {seat.job ? (
+        <JobCard job={seat.job} stats={jobs[seat.job]} scale={scale} />
+      ) : (
+        <div className="job-card parchment setup-random-job">
+          <GameIcon name="dice" /> 게임을 시작할 때 5개 직업 중 하나를 뽑습니다.
+        </div>
+      )}
     </section>
   );
 }
