@@ -152,7 +152,7 @@
 | `audio/sfx/dragon/` | `claw_windup`(0.4~0.6s) · `tail_windup`(0.5s) · `burning_floor_loop`(2s) · `stunned_loop`(1.5s) · `gust` 날개 돌풍(1~1.5s) · `breath_end`(0.4~0.6s) · `dive_takeoff`(1s) · `dive_whistle` 그림자 고정(0.5s) · `dive_land`(1~1.5s) · `weakpoint_hit` 머리 약점(0.3s) · `growl_idle_01..02` 대기·둥지(2~3s) | P1 |
 
 - 용의 공격은 모두 **고유한 예고 소리**를 가진다(예고 3겹 중 하나). 타격음은 순간음 + 몸통 + 꼬리로 레이어링하고, 자주 나는 소리는 같은 세션에서 변형을 녹음한다.
-- 이전 이름 대응(`sfxPath()`를 새 폴더로 바꾸거나 같은 이름 복사본): `dice_roll` → `board/dice_land_01`, `move_step` → `board/pawn_hop_01`, `attack_hit` → `combat/hit_light_01`, `coin` → `board/coin_gain_01`, `upgrade` → `board/stat_up`, `item_use` → `board/item_use`, `shield` → `board/item_shield`, `dragon_breath` → `dragon/breath_loop`, `victory`·`defeat` → `bgm/stinger_victory`·`stinger_defeat`.
+- 이전 이름 대응은 `apps/web/src/fx/audio/soundCatalog.ts`의 `soundFileCandidates()` 별칭으로 구현했다(2026-11-12). 파일을 `public/assets/` 아래 표의 경로에 놓으면 자동으로 절차 효과음을 대체한다. 예: `dice_roll` → `board/dice_land_01`, `move_step` → `board/pawn_hop_01`, `attack_hit` → `combat/hit_light_01`, `coin` → `board/coin_gain_01`, `upgrade` → `board/stat_up`, `item_use` → `board/item_use`, `shield` → `board/item_shield`, `dragon_breath` → `dragon/breath_loop`, `victory`·`defeat` → `bgm/stinger_victory`·`stinger_defeat`.
 
 **음악 8개 + 환경음 3개**
 | 용도 | 경로·파일명 | 길이·규격 | 우선 |
