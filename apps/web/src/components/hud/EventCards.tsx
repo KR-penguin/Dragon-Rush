@@ -63,7 +63,11 @@ function EventCard({ card, reduced }: { card: LiveCard; reduced: boolean }) {
             <GameIcon name={face.icon} />
           </span>
           <strong className="event-card-title">{face.title}</strong>
-          {face.flavor && <p className="event-card-flavor">{face.flavor}</p>}
+          {face.reward ? (
+            <strong className="event-card-title">{face.reward}</strong>
+          ) : (
+            face.flavor && <p className="event-card-flavor">{face.flavor}</p>
+          )}
           {face.notice && <p className="event-card-notice">{face.notice}</p>}
           <EffectChips chips={face.chips} className="event-card-chips" />
         </div>

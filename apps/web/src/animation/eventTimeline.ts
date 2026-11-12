@@ -133,7 +133,7 @@ function describeEffect(
     case 'skipTurn':
       return `${n} 다음 턴에 쉽니다`;
     case 'randomItem':
-      return `${n} ${ITEM_LABEL[e.item ?? 'shield']} 획득`;
+      return e.item ? `${n} ${ITEM_LABEL[e.item]} 획득` : `${n} 아이템 획득`;
     default:
       return null;
   }
@@ -183,7 +183,7 @@ export function eventIcon(e: GameEvent): IconName {
       if (e.effect === 'stat') return STAT_ICON_NAME[e.stat ?? 'atk'];
       if (e.effect === 'maxHp') return 'maxHp';
       if (e.effect === 'skipTurn') return 'sleep';
-      if (e.effect === 'randomItem') return ITEM_ICON_NAME[e.item ?? 'shield'];
+      if (e.effect === 'randomItem') return e.item ? ITEM_ICON_NAME[e.item] : 'bag';
       return 'scroll';
     case 'StatUpgraded':
       return 'anvil';
