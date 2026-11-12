@@ -156,7 +156,7 @@ interface RulesConfig {
   dragon: { hp: number; atk: number; def: number; breathEvery: number };
 }
 ```
-- 기본값은 `engine/src/rules/defaultRules.ts`의 `DEFAULT_RULES` 한 곳(수치 정의의 정본은 [game-design.md](game-design.md), 일치는 골든 테스트로 보장). 현행 `rush-7`은 `movement.rollSides = 10`과 빠른 전투의 `combat.dieSides = 6`을 분리한다. 텔레포트는 시계 방향으로 1~23칸 이동하며 0번 통과·도착 보너스를 받고 목적지에서만 이벤트·PvP를 처리한다. `ROLL_DICE`·`DiceRolled` 식별자는 호환성을 위해 유지한다. `createGame`이 `validateRules`로 형태(칸 수, 직업 5종 등)를 검증하며, 다른 코드에 수치 리터럴을 하드코딩하지 않는다.
+- 기본값은 `engine/src/rules/defaultRules.ts`의 `DEFAULT_RULES` 한 곳(수치 정의의 정본은 [game-design.md](game-design.md), 일치는 골든 테스트로 보장). 현행 `rush-8`은 `movement.rollSides = 10`과 빠른 전투의 `combat.dieSides = 6`을 분리한다. 텔레포트는 시계 방향으로 1~23칸 이동하며 0번 통과·도착 보너스를 받고 목적지에서만 이벤트·PvP를 처리한다. `ROLL_DICE`·`DiceRolled` 식별자는 호환성을 위해 유지한다. `createGame`이 `validateRules`로 형태(칸 수, 직업 5종 등)를 검증하며, 다른 코드에 수치 리터럴을 하드코딩하지 않는다.
 
 ### 3.6 Seeded PRNG
 - 알고리즘: **sfc32** (상태 128비트 = uint32 × 4). `seed`(최대 2^53 정수)를 상태로 확장 후 워밍업.
@@ -403,7 +403,7 @@ Python (사용자 트레이너) ─┬─ RPGBoardEnv/RPGBoardVecEnv ── stdi
 - `RulesConfig.combat.mode: 'dice' | 'external'`. `external`이면 전투 시작 시 `CombatStarted`를 내고 `pending = { actor: a, phase: 'COMBAT' }`, `state.combat = { kind: 'duel' | 'dragonFight', a, b }`에서 멈춘다. 이 phase의 `getLegalActions`는 `[]`.
 - 결과 입력: `applyCombatResult(state, { winner, hpA, hpB, indomitableUsedA?, indomitableUsedB?, timedOut? })`. 엔진이 검증(`InvalidCombatResultError`)하고 `CombatEnded`·탈락·전리품·승리 판정을 이어 간다. `resolveCombatWithDice(state)`는 대기 중인 전투를 주사위 규칙으로 정리한다(`dice` 리졸버·대체 경로).
 - 서버: `GameSession`이 `COMBAT`에 들어가면 턴 타이머를 멈추고 전투 방(`FightRoom`)을 연다. 서버가 확정한 결과는 `GameSession.submitCombatResult(fightId, result)` 한 경로로 들어오며 활성 `fightId`와 `COMBAT` phase를 검사한 뒤 적용한다. 방의 `quickCombat` 선택만 주사위 해결 경로를 쓴다. 로컬은 `LocalGameClient`가 브라우저 sim 결과를 같은 엔진 함수에 넣는다.
-- `PROTOCOL_VERSION`은 2다. 보드 정책은 `COMBAT`에서 결정하지 않는다. 별도로 `rush-7`의 10칸 룰렛 때문에 보드 관측만 `obs_v2`(257차원)로 올랐고 행동은 `act_v1`(47개)을 유지한다.
+- `PROTOCOL_VERSION`은 2다. 보드 정책은 `COMBAT`에서 결정하지 않는다. 별도로 `rush-7`에서 도입된 10칸 룰렛 때문에 보드 관측만 `obs_v2`(257차원)로 올랐고 행동은 `act_v1`(47개)을 유지한다.
 
 ### 12.3 온라인 롤백·전송 (`packages/netcode`, `packages/protocol`)
 | 방향 | 이름 | 페이로드·역할 |

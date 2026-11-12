@@ -2,7 +2,7 @@
 
 > 상태: **구현 예정 (2차 개발 Phase R2·R3·R8)**. 모든 수치는 v1 기본값이며 플레이테스트와 주스(juice) 디버그 패널로 조정한다.
 > 이 문서가 **보드 화면·연출·효과(FX)·오디오 규칙·접근성 설정의 정본**이다. 실시간 전투 규칙과 sim 안의 수치(히트스톱·넉백·예고 시간)는 [combat-design.md](combat-design.md)(구현 후 `packages/combat`의 `DEFAULT_COMBAT_RULES`), 에셋 파일 목록은 [development-plan.md §4.2](development-plan.md), 규칙은 [game-design.md](game-design.md)가 정본이다.
-> 이 문서의 항목은 표현(presentation)이다. 현행 `rush-7` 이동은 1~10 룰렛이며 보드 관측은 `obs_v2`다. 내부 `ROLL_DICE`/`DiceRolled` 명칭은 호환성을 위해 유지한다. 연출은 기존 이벤트 예산 안에 맞춘다: `DiceRolled` 700ms, `Moved` 160ms/칸, `TileResolved`·`EffectApplied` 각 250ms, `MysteryCardDrawn` 600ms, `CombatStarted` 600ms, `CombatEnded` 700ms, `PlayerEliminated` 900ms. 서버 타이머는 연출을 기다리지 않는다.
+> 이 문서의 항목은 표현(presentation)이다. 현행 `rush-8` 이동은 1~10 룰렛이며 보드 관측은 `obs_v2`다. 내부 `ROLL_DICE`/`DiceRolled` 명칭은 호환성을 위해 유지한다. 연출은 기존 이벤트 예산 안에 맞춘다: `DiceRolled` 700ms, `Moved` 160ms/칸, `TileResolved`·`EffectApplied` 각 250ms, `MysteryCardDrawn` 600ms, `CombatStarted` 600ms, `CombatEnded` 700ms, `PlayerEliminated` 900ms. 서버 타이머는 연출을 기다리지 않는다.
 
 ## 1. 콘셉트
 - **Ember Table (불씨의 작전 탁자)**: 어두운 홀의 조각된 호두나무 작전 탁자를 보드 한가운데 용의 둥지가 아래에서 비춘다. 칸은 나무에 박힌 양피지 명판, 영웅은 채색 판지 스탠디(standee), UI는 금테를 두른 원정대 문구류다.
@@ -107,7 +107,7 @@
 | good | GOBLIN, HERB, WOLF, TREASURE, BLACKSMITH, ORC, FOUNTAIN, TROLL (사냥 칸은 칩 두 개) |
 | bad | POISON_SWAMP, BANDIT, TRAP, PICKPOCKET, CURSED_ALTAR, ROCKFALL, SPIDER_WEB, STORM |
 | special | TRAINING, MYSTERY×2, WANDERING_MERCHANT |
-| corner landmarks (visual category) | START, SHOP×2, INN — 외형 분류일 뿐이다. 현행 `rush-7`에서는 START를 포함해 PvP 안전 칸이 없다 |
+| corner landmarks (visual category) | START, SHOP×2, INN — 외형 분류일 뿐이다. 현행 `rush-8`에서는 START를 포함해 PvP 안전 칸이 없다 |
 
 - **모서리 랜드마크**: 명판에서 솟은 스탠디 소품, `rotateX(-40deg)` 빌보드. START = 깃발 문, SHOP = 등불 단 상인 천막(2곳 공용), INN = 굴뚝 연기 나는 목조 여관. 대기 루프 2~4초.
 - **살아 있는 둥지** (600×600, 외형 전용, 규칙 영향 없음): 현무암 분화구 + 용암 균열(`background-position` 6초 루프) + 불씨.
@@ -119,6 +119,7 @@
 | 포효 | 용 도전 시작 | 포효 SFX, 음악 더킹, trauma 0.55 |
 
 - HP는 분할된 "비늘" 바로, 브레스는 룬석 3개와 "브레스까지 N" 의도 아이콘으로 보여 준다. 둥지 빛은 라운드마다 +2%(최대 +30%). 전투 전 화면에는 플레이어와 상대의 현재 스탯·선택지만 표시하고 승률 예측은 노출하지 않는다.
+- `ShieldUsed`가 누구에게서 발생하든(상대·봇 포함) 플레이어 이름과 "결투 취소"를 전용 방어막 알림으로 2.4초 보여 준다. 일반 토스트 대기열과 독립적으로 표시한다.
 - **주변 움직임 상한**: 용암 루프 6초, 모서리 소품 2~4초, 현재 말 숨쉬기 1.6초, 둥지 용 숨쉬기 3초(둥지 안만). 그 외는 정지. 코인 반짝임 같은 추가 루프는 두지 않는다.
 
 ## 7. 말(스탠디)과 이동
@@ -245,6 +246,8 @@
 - 대비 10% 넘는 줄무늬가 화면 20% 이상을 덮지 않는다. 스프라이트 피격 섬광은 면적이 작고 개체당 100ms 제한.
 
 ### 11.6 피해 숫자 (경기장, Black Han Sans)
+
+화면의 피해 수치만 소수점 첫째 자리로 반올림한다. 전투 계산에 사용하는 원래 정밀도는 유지한다.
 | 종류 | 규격 |
 |---|---|
 | 보통 | 12 논리px, 팝 0.4→1.25→1(150ms), 700ms 동안 20px 상승, 마지막 30% 페이드, 2px 어두운 외곽선 |
