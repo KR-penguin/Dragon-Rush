@@ -17,7 +17,12 @@ const duelReplay = () =>
     randomInputs(12, 2700),
   );
 const dragonReplay = () =>
-  play(createCombat(dragonFight('archer'), 2026), randomInputs(13, 4500), [], 4500);
+  play(
+    createCombat(dragonFight('archer'), 2026),
+    randomInputs(13, DEFAULT_COMBAT_RULES.timeLimit.dragonFight),
+    [],
+    DEFAULT_COMBAT_RULES.timeLimit.dragonFight,
+  );
 
 describe('snapshot / restore', () => {
   it('serialize -> deserialize round-trips every state of a duel and a dragon fight', () => {

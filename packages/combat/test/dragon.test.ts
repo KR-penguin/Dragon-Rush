@@ -34,16 +34,17 @@ function botFight(
 }
 
 describe('dragon script', () => {
-  it('keeps the tougher real-time dragon in combat rules rather than changing board stats', () => {
+  it('scales the stronger board dragon for real-time fights', () => {
     const d = createCombat(dragonFight(statFighter('swordsman', 70, 9, 8)), 1).dragon!;
     expect(d.maxHp).toBe(194);
-    expect(d.atk).toBe(11);
+    expect(d.atk).toBe(55);
     expect(R.damage.dragonDamageTakenScale).toBe(0.3);
   });
 
   it('telegraphs every maneuver for 24+ live ticks and resolves within one live tick', () => {
+    const wall = statFighter('swordsman', 5000, 1, 60);
     for (const seed of [1, 2, 3, 4]) {
-      const { states, events } = botFight(seed);
+      const { states, events } = botFight(seed, wall);
       const starts = eventsOf(events, 'TelegraphStart');
       expect(starts.length).toBeGreaterThan(3);
       for (const st of starts) {
@@ -64,8 +65,9 @@ describe('dragon script', () => {
   });
 
   it('every 3rd damaging maneuver is Breath (gust does not count)', () => {
+    const wall = statFighter('swordsman', 5000, 1, 60);
     for (const seed of [5, 6, 7]) {
-      const { states, events } = botFight(seed);
+      const { states, events } = botFight(seed, wall);
       let breaths = 0;
       for (let i = 1; i < states.length; i++) {
         const before = states[i - 1]!.dragon!.sinceBreath;
@@ -89,7 +91,7 @@ describe('dragon script', () => {
   });
 
   it('changes phase at 60% and 25% HP with an invulnerable roar', () => {
-    const strong = statFighter('berserker', 200, 30, 20);
+    const strong = statFighter('berserker', 5000, 30, 60);
     const { states, events } = botFight(9, strong);
     const phases = eventsOf(events, 'PhaseChange');
     expect(phases.map((e) => e.phase)).toEqual([2, 3]);
@@ -103,7 +105,9 @@ describe('dragon script', () => {
     expect(combatResult(states.at(-1)!)?.winner).toBe('a');
   });
 
-  it('the challenger loses at the time limit and the dragon soft-enrages at 50 s', () => {
+  it('the challenger loses at 30 s and the dragon soft-enrages at 20 s', () => {
+    expect(R.timeLimit.dragonFight).toBe(30 * R.tickHz);
+    expect(R.dragon.softEnrageTick).toBe(20 * R.tickHz);
     const wall = statFighter('swordsman', 5000, 1, 60);
     const p = play(createCombat(dragonFight(wall), 3), randomInputs(3, 6000), [], 6000);
     expect(p.final.tick).toBe(R.timeLimit.dragonFight);

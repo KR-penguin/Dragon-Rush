@@ -241,11 +241,11 @@ describe('bot-only fights', () => {
 
   it('offers a replay screen even when no human plays', async () => {
     const g = open({
-      seed: 3,
+      seed: 0,
       maxRounds: 25,
       seats: [
-        { name: 'R1', job: 'berserker', kind: 'bot', botName: 'heuristic:rush' },
-        { name: 'R2', job: 'swordsman', kind: 'bot', botName: 'heuristic:rush' },
+        { name: 'R1', job: 'berserker', kind: 'bot', botName: 'heuristic:aggro' },
+        { name: 'R2', job: 'swordsman', kind: 'bot', botName: 'heuristic:aggro' },
       ],
     });
     g.sched.flush();
@@ -256,6 +256,7 @@ describe('bot-only fights', () => {
     expect(await g.client.reportFight(fight.id, fight.replay!.result)).toEqual({ ok: true });
     expect(g.latest().fight).toBeNull();
     expect(eventTypes(g.latest())).toContain('CombatEnded');
+    g.client.dispose();
   });
 
   /** Plays as the human (never challenging) until a bot-only fight is offered; null if the game ends first. */

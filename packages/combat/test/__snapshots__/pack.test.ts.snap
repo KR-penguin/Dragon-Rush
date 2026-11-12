@@ -2,21 +2,14 @@
 
 exports[`golden replays > dragon fight: FNV-1a state hash every 60 ticks and the result 1`] = `
 {
-  "events": 80,
-  "final": 1748302998,
+  "events": 17,
+  "final": 2798188907,
   "hashes": [
-    3591085893,
-    2140682529,
-    630856080,
-    2158412723,
-    2944620594,
-    1402611459,
-    1055103186,
-    2675546179,
-    97899201,
+    843451759,
+    2639802627,
   ],
   "outcome": {
-    "tick": 537,
+    "tick": 90,
     "timedOut": false,
     "winner": "b",
   },
@@ -82,7 +75,7 @@ exports[`golden replays > duel: FNV-1a state hash every 60 ticks and the result 
 
 exports[`golden replays > rules hash identifies DEFAULT_COMBAT_RULES 1`] = `
 {
-  "hash": 904891838,
-  "version": "combat-3",
+  "hash": 287821921,
+  "version": "combat-4",
 }
 `;

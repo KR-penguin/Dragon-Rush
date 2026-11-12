@@ -209,23 +209,72 @@ describe('movement and tiles', () => {
     expect(hp.maxHp - hp.hp).toBe(0);
   });
 
-  it('ninja may adjust the roll, then waits out the cooldown', () => {
-    let s = newGame(['ninja', 'mage'], 11);
+  it('ninja move adjustment is available every other own turn and zero does not start cooldown', () => {
+    const rules = withRules({
+      board: DEFAULT_RULES.board.map((tile) => ({ ...tile, safe: true, effects: [] })),
+    });
+    let s = newGame(['ninja', 'mage'], 11, rules);
     const ninja = seatOfJob(s, 'ninja');
-    if (ninja !== 0) s = act(s, { type: 'ROLL_DICE' }).state;
-    while (s.pending?.phase !== 'PRE_ROLL' || s.current !== ninja) s = act(s, firstLegal(s)).state;
+    s = patch(s, (d) => {
+      d.current = ninja;
+      d.pending = { actor: ninja, phase: 'PRE_ROLL' };
+    });
+    const nextNinjaTurn = (state: GameState): GameState => {
+      let next = act(state, firstLegal(state)).state;
+      while (next.pending?.phase !== 'PRE_ROLL' || next.current !== ninja) {
+        next = act(next, firstLegal(next)).state;
+      }
+      return next;
+    };
+
     s = act(s, { type: 'ROLL_DICE' }).state;
     expect(s.pending?.phase).toBe('MOVE_ADJUST');
     s = act(s, { type: 'ADJUST_MOVE', delta: 1 }).state;
-    expect(s.players[ninja]!.passive.ninjaCooldown).toBe(
-      DEFAULT_RULES.passives.ninjaAdjustCooldown,
-    );
-    while (s.pending?.phase !== 'PRE_ROLL' || s.current !== ninja) s = act(s, firstLegal(s)).state;
-    expect(s.players[ninja]!.passive.ninjaCooldown).toBe(
-      DEFAULT_RULES.passives.ninjaAdjustCooldown - 1,
-    );
-    const rolled = act(s, { type: 'ROLL_DICE' }).state;
-    expect(rolled.pending?.phase).not.toBe('MOVE_ADJUST');
+    expect(s.players[ninja]!.passive.ninjaCooldown).toBe(2);
+
+    s = nextNinjaTurn(s);
+    expect(s.players[ninja]!.passive.ninjaCooldown).toBe(1);
+    s = act(s, { type: 'ROLL_DICE' }).state;
+    expect(s.pending?.phase).not.toBe('MOVE_ADJUST');
+
+    s = nextNinjaTurn(s);
+    expect(s.players[ninja]!.passive.ninjaCooldown).toBe(0);
+    s = act(s, { type: 'ROLL_DICE' }).state;
+    expect(s.pending?.phase).toBe('MOVE_ADJUST');
+    s = act(s, { type: 'ADJUST_MOVE', delta: 0 }).state;
+    expect(s.players[ninja]!.passive.ninjaCooldown).toBe(0);
+
+    s = nextNinjaTurn(s);
+    s = act(s, { type: 'ROLL_DICE' }).state;
+    expect(s.pending?.phase).toBe('MOVE_ADJUST');
+  });
+
+  it('counts a resting ninja turn toward the move-adjust cooldown', () => {
+    const rules = withRules({
+      board: DEFAULT_RULES.board.map((tile) => ({ ...tile, safe: true, effects: [] })),
+    });
+    let s = newGame(['ninja', 'mage'], 11, rules);
+    const ninja = seatOfJob(s, 'ninja');
+    s = patch(s, (d) => {
+      d.current = ninja;
+      d.pending = { actor: ninja, phase: 'PRE_ROLL' };
+    });
+    s = act(s, { type: 'ROLL_DICE' }).state;
+    s = act(s, { type: 'ADJUST_MOVE', delta: 1 }).state;
+    s = patch(s, (d) => {
+      d.players[ninja]!.skipNextTurn = true;
+    });
+    while (s.pending?.phase !== 'PRE_ROLL' || !s.turn.resting || s.current !== ninja) {
+      s = act(s, firstLegal(s)).state;
+    }
+    expect(s.players[ninja]!.passive.ninjaCooldown).toBe(1);
+    expect(getLegalActions(s)).not.toContainEqual({ type: 'ROLL_DICE' });
+    s = act(s, { type: 'END_TURN' }).state;
+    while (s.pending?.phase !== 'PRE_ROLL' || s.current !== ninja) {
+      s = act(s, firstLegal(s)).state;
+    }
+    expect(s.players[ninja]!.passive.ninjaCooldown).toBe(0);
+    expect(act(s, { type: 'ROLL_DICE' }).state.pending?.phase).toBe('MOVE_ADJUST');
   });
 });
 

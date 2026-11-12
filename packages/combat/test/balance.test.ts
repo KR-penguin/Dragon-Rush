@@ -101,10 +101,11 @@ describe('stats matter', () => {
     expect(upgradeRate('mage', { maxHp: 18 }, N, 13)).toBeGreaterThan(0.6);
   });
 
-  it('the dragon beats base stats and loses more often to upgraded challengers', () => {
+  it('the stronger dragon beats base stats but remains beatable by a heavily upgraded challenger', () => {
     const base = dragonSeries(baseFighter('berserker'), 30, 31);
-    const strong = dragonSeries(statFighter('berserker', 80, 11, 10), 30, 31);
+    const strong = dragonSeries(statFighter('berserker', 160, 18, 15), 30, 31);
     expect(base.winsA / base.n).toBeLessThan(0.15);
-    expect(strong.winsA / strong.n).toBeGreaterThan(0.45);
+    expect(strong.winsA / strong.n).toBeGreaterThan(0.3);
+    expect(strong.winsA).toBeGreaterThan(base.winsA);
   });
 });

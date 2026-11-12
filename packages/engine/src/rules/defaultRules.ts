@@ -75,7 +75,7 @@ const MYSTERY_DECK: readonly MysteryCardDef[] = [
 ];
 
 export const DEFAULT_RULES: RulesConfig = deepFreeze({
-  version: 'rush-7',
+  version: 'rush-8',
   startingCoins: 10,
   startingItems: {},
   startBonus: { coins: 35, hp: 6 },
@@ -96,7 +96,7 @@ export const DEFAULT_RULES: RulesConfig = deepFreeze({
     archerFirstStrikeBonus: 3,
     mageDefDivisor: 2,
     ninjaEvadeDie: 8,
-    ninjaAdjustCooldown: 4,
+    ninjaAdjustCooldown: 2,
     berserkerRageNum: 13,
     berserkerRageDen: 10,
   },
@@ -115,7 +115,7 @@ export const DEFAULT_RULES: RulesConfig = deepFreeze({
   mysteryDeck: MYSTERY_DECK,
   movement: { rollSides: 10 },
   combat: { maxExchanges: 100, dieSides: 6, mode: 'external' },
-  dragon: { hp: 88, atk: 10, def: 10, breathEvery: 3 },
+  dragon: { hp: 88, atk: 50, def: 10, breathEvery: 3 },
 });
 
 function deepFreeze<T>(value: T): T {

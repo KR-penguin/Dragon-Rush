@@ -130,7 +130,10 @@ describe('invariants (seeded fuzz)', () => {
       expect(p.final.tick).toBeLessThanOrEqual(DEFAULT_COMBAT_RULES.timeLimit.duel);
     }
     for (let seed = 0; seed < 5; seed++) {
-      const p = play(createCombat(dragonFight(JOB_IDS[seed]!), seed), randomInputs(seed, 4500));
+      const p = play(
+        createCombat(dragonFight(JOB_IDS[seed]!), seed),
+        randomInputs(seed, DEFAULT_COMBAT_RULES.timeLimit.dragonFight),
+      );
       for (const s of p.states) checkInvariants(s);
       expect(p.final.outcome).not.toBeNull();
     }

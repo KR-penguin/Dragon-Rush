@@ -350,11 +350,11 @@ const NO_ARMOR = { armorFrom: -1, armorTo: -1 } as const;
 
 /** Every combat number lives here (decision sheet v1 §3; board passives come from the engine's DEFAULT_RULES). */
 export const DEFAULT_COMBAT_RULES: CombatRules = deepFreeze({
-  version: 'combat-3',
+  version: 'combat-4',
   tickHz: COMBAT_TICK_HZ,
   arena: { duel: { w: 800, h: 448 }, dragonFight: { w: 896, h: 448 } },
   duelGap: 480,
-  timeLimit: { duel: 2700, dragonFight: 4500 },
+  timeLimit: { duel: 2700, dragonFight: 1800 },
   inputBuffer: 6,
   body: { hurtRadius: 12, bodyRadius: 14 },
   accelTicks: 4,
@@ -821,7 +821,7 @@ export const DEFAULT_COMBAT_RULES: CombatRules = deepFreeze({
       [30, 55],
     ],
     firstIdle: 30,
-    softEnrageTick: 3000,
+    softEnrageTick: 1200,
     softEnrageIdleNum: 4,
     softEnrageIdleDen: 5,
     phase2Pct: 60,
