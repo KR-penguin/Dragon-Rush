@@ -5,7 +5,7 @@ numpy Actor-Critic으로 "드래곤 러쉬"를 학습시키기 위한 안내서�
 - 관측: `obs_v1`, float32 **253개**
 - 행동: `act_v1`, 이산 **47개** + 행동 마스크
 - 의존성: numpy만 (gymnasium·torch 없음)
-- **전투 모델은 별도 모델·별도 env**다(`CombatVecEnv`, `cobs_v1`/`cact_v1`). §9를 본다.
+- **전투 모델은 별도 모델·별도 env**다(`CombatVecEnv`, `cobs_v1`/`cact_v1`). 보드 가중치와 전투 가중치는 호환되지 않는다. §9를 본다.
 
 ## 1. 빠른 시작
 
@@ -19,13 +19,14 @@ python python/examples/random_agent.py --episodes 20
 import numpy as np
 from rpgboard_env import RPGBoardEnv
 
+rng = np.random.default_rng(0)
 env = RPGBoardEnv(mode="single", num_players=4, opponents="heuristic", max_rounds=100)
 obs, info = env.reset(seed=0)                 # obs: float32 (253,)
 while True:
-    logits = my_actor(obs)                    # (47,)
+    logits = np.zeros(env.action_dim)         # 예제용 균등 로짓; 학습한 actor(obs)로 교체
     logits = np.where(info["action_mask"], logits, -np.inf)
     p = np.exp(logits - logits.max()); p /= p.sum()
-    action = int(np.random.choice(47, p=p))
+    action = int(rng.choice(env.action_dim, p=p))
     obs, reward, terminated, truncated, info = env.step(action)
     if terminated or truncated:
         break
@@ -149,7 +150,8 @@ env.obs_layout                   # [{"name", "offset", "length"}, ...] 서버가
 | `opponents` | `"heuristic"` | `random`, `random:uniform`, `heuristic`(성향 무작위), `heuristic:aggro`/`growth`/`rush`, 또는 좌석별 목록 |
 | `jobs` | `"random"` | 좌석별 직업 목록으로 고정 가능 |
 | `max_rounds` | 100 | `None`이면 무제한 |
-| `combat_resolver` | `"dice"` | 결투·용 도전 해결 방식. `dice`: 보드 주사위 전투 / `sim`: 실시간 전투 sim을 스크립트 봇끼리 끝까지 돌린 결과(전투당 약 1ms, `obs_v1`은 그대로) |
+| `combat_resolver` | `"dice"` | `dice`: 보드 주사위 전투 / `sim`: 두 `scripted:balanced` 봇의 실시간 전투 결과. 학습한 전투 모델은 사용하지 않으며 `obs_v1`은 그대로 |
+| `rules`, `reward_shaping`, `return_events` | `"default"`, `None`, `False` | 보드 규칙 일부 덮어쓰기 / §5 보상 계수 / 전이 이벤트 포함 |
 | `server_cmd`, `cwd` | — | env 서버 실행 커맨드와 저장소 루트 (환경변수 `RPGBOARD_ENV_CMD`, `RPGBOARD_ROOT`) |
 
 - **배치**: `RPGBoardVecEnv(num_envs=64, ...)`를 쓴다. 끝난 env는 자동으로 리셋되고, 반환 배열 앞에 `N` 축이 붙는다. 64 env 셀프플레이 기준 약 21,000 step/s다.
@@ -191,7 +193,7 @@ rng = np.random.default_rng(0)
 env = CombatVecEnv(num_envs=64, controlled="both")         # 두 전투원 모두 내가 조종(셀프플레이)
 obs, info = env.reset(seed=0)                               # obs (64, 2, 160)
 for _ in range(1000):
-    logits = my_actor(obs)                                  # (64, 2, 13) = 이동 9 + 버튼 4
+    logits = np.zeros((*obs.shape[:2], 13))                  # 예제용 균등 로짓; 두 head actor(obs)로 교체
     move = masked_sample(logits[..., :9], info["move_mask"], rng)
     button = masked_sample(logits[..., 9:], info["button_mask"], rng)
     obs, reward, terminated, truncated, info = env.step(np.stack([move, button], axis=-1))
@@ -256,16 +258,17 @@ env.close()
 | 인자 | 기본값 | 설명 |
 |---|---|---|
 | `controlled` | `"both"` | `both`: 슬롯 0(전투원 a, 도착자/도전자)과 슬롯 1(b) 모두 외부 제어 / `p0`: 슬롯 0만, 상대는 `opponent` |
-| `opponent` | `"scripted:pool"` | `scripted:balanced`·`aggressive`·`cautious`·`idle`·`random`·`pool`(에피소드마다 앞의 세 성향 중 하나) |
+| `opponent` | `"scripted:pool"` | `scripted:balanced`·`aggressive`·`cautious`·`idle`·`random`·`pool`(에피소드마다 앞의 세 성향 중 하나). `p0`에서 사용 |
 | `mode_mix` | `{"pvp": 0.75, "dragon": 0.25}` | 에피소드별 결투/용전 확률 |
 | `jobs` | `"uniform"` | 또는 슬롯별 목록, 예 `["ninja", "uniform"]` (같은 직업 대결 허용) |
 | `stat_sampler` | `"uniform_board"` | `rush-1` 직업 스탯 + 강화 단계(보드 휴리스틱 3000판 로그의 p5~p95 범위)에서 균등 표본 / `"start"`(시작 스탯) / `"file:<path>"`(`pnpm sim --games 10000 --log-fights <path>`가 만든 `stat_dist_v1`) |
 | `action_repeat` / `obs_delay` | 4 / `(4, 18)` | 결정당 라이브 틱 / 반응 지연 범위(정수면 고정) |
 | `flat_actions` / `mirror` | False / True | |
+| `reward`, `return_events` | None, False | shaping 계수(`k_start`, `k_end`, `anneal_decisions`, `approach`) / 전투 이벤트 포함 |
 | `dragon_curriculum` | None | `{"hp_scale": [0.5, 0.6], "telegraph_scale": [1.3, 1.3]}`처럼 용 HP·예고 길이 배율 범위 |
 | `rules` | `"default"` | `DEFAULT_COMBAT_RULES` 부분 덮어쓰기, 예 `{"timeLimit": {"duel": 1200}}` |
 | `server_cmd`, `cwd` | — | 환경변수 `RPGBOARD_COMBAT_ENV_CMD`, `RPGBOARD_ROOT` |
 
 - `CombatEnv(...)`는 단일 env(자동 리셋 없음)다. 관측 `(n_ctrl, 160)`, 행동 `(n_ctrl, 2)`.
 - 속도(64 env 셀프플레이, 개발 PC): 서버 단독 약 7만 결정/s, numpy 포함 종단 약 2만 결정/s. 코어당 프로세스 하나로 늘린다.
-- 학습한 전투 모델을 게임에 넣으려면 §8과 같은 정보에 **head 구조(9 + 4 두 head 또는 36 flat, 출력 순서)** 를 더해 보낸다. 파일은 `models/combat/<이름>.json`, 패리티 샘플은 `models/combat/parity/<이름>.json`에 둔다.
+- 학습한 전투 모델을 게임에 넣으려면 보드 모델과 별도의 JSON·패리티 샘플을 준비한다(§8의 항목 + **head 구조와 출력 순서**). 파일은 `models/combat/<이름>.json`, 샘플은 `models/combat/parity/<이름>.json`에 둔다. 현재 전투 가중치 어댑터는 비어 있으므로 바로 로드되지는 않는다.
