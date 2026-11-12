@@ -1,8 +1,10 @@
 import type { JobId } from '@dragon-rush/engine';
-import { jobImagePath } from '../../types/assetPaths';
-import { JOB_ICON, JOB_LABEL, JOB_PASSIVE } from '../../types/labels';
+import type { CSSProperties } from 'react';
+import { JOB_LABEL, JOB_PASSIVE, seatColor, seatCrest, seatInk } from '../../types/labels';
 import type { SeatChoice, SeatChoiceGroup, SeatView } from '../../types/onlineLobby';
-import { AssetImage } from '../common/AssetImage';
+import { JobArt } from '../icons/Art';
+import { Crest } from '../icons/Crest';
+import { GameIcon } from '../icons/GameIcon';
 import { JobChooser } from './JobChooser';
 
 interface SeatCardProps {
@@ -14,62 +16,69 @@ interface SeatCardProps {
   onSelectJob: (job: JobId | null) => void;
 }
 
-/** One lobby seat: who sits here, their job and ready state, plus host / own-seat controls. */
+/** One lobby seat: portrait medallion, seat ribbon and crest, status badges, then host / own-seat controls. */
 export function SeatCard({ seat, groups, disabled, onConfigure, onSelectJob }: SeatCardProps) {
   const classes = ['lobby-seat', `tone-${seat.tone}`];
   if (seat.isMe) classes.push('is-me');
   const showPresence = seat.kind === 'human' && seat.occupied;
+  const style = {
+    '--seat-color': seatColor(seat.seat),
+    '--seat-ink': seatInk(seat.seat),
+  } as CSSProperties;
 
   return (
-    <section className={classes.join(' ')} aria-label={`좌석 ${seat.seat + 1}`}>
+    <section className={classes.join(' ')} style={style} aria-label={`좌석 ${seat.seat + 1}`}>
       <header className="lobby-seat-head">
-        <span className="lobby-seat-no">좌석 {seat.seat + 1}</span>
-        {seat.isHost && (
-          <span className="lobby-crown" title="방장" aria-label="방장">
-            👑
-          </span>
-        )}
-        {seat.isMe && <span className="lobby-me">나</span>}
-        <span className={`lobby-pill tone-${seat.tone}`}>{seat.statusLabel}</span>
-      </header>
-
-      <div className="lobby-seat-who">
-        <div className="lobby-seat-avatar">
+        <div className="lobby-medallion" aria-hidden="true">
           {seat.job ? (
-            <AssetImage
-              path={jobImagePath(seat.job)}
-              fallback={JOB_ICON[seat.job]}
-              alt={JOB_LABEL[seat.job]}
-            />
+            <JobArt job={seat.job} className="lobby-portrait" />
           ) : (
-            <span aria-hidden="true">{seat.kindIcon}</span>
+            <GameIcon name={seat.kindIcon} className="lobby-portrait" />
+          )}
+          {seat.isHost && (
+            <span className="lobby-medal-crown">
+              <GameIcon name="crown" />
+            </span>
           )}
         </div>
         <div className="lobby-seat-id">
-          <strong className="lobby-seat-name" title={seat.title}>
-            {seat.title}
-          </strong>
+          <span className="lobby-seat-no">
+            좌석 {seat.seat + 1}
+            {seat.isMe && <span className="lobby-me">나</span>}
+          </span>
+          <div className="lobby-ribbon">
+            <Crest shape={seatCrest(seat.seat)} className="lobby-crest" />
+            <strong className="lobby-seat-name" title={seat.title}>
+              {seat.title}
+            </strong>
+          </div>
           <small className="lobby-seat-kind">
-            {seat.kindIcon} {seat.kindLabel}
-            {showPresence && (
-              <span className={`lobby-presence${seat.connected ? ' is-on' : ''}`}>
-                {seat.connected ? '접속 중' : '접속 끊김'}
-              </span>
-            )}
+            <GameIcon name={seat.kindIcon} /> {seat.kindLabel}
           </small>
         </div>
+      </header>
+
+      <div className="lobby-badges">
+        <span className={`lobby-badge tone-${seat.tone}`}>
+          <GameIcon name={seat.statusIcon} /> {seat.statusLabel}
+        </span>
+        {showPresence && (
+          <span className={`lobby-badge lobby-presence${seat.connected ? ' is-on' : ''}`}>
+            <GameIcon name={seat.connected ? 'online' : 'disconnected'} />{' '}
+            {seat.connected ? '접속 중' : '접속 끊김'}
+          </span>
+        )}
       </div>
 
       {seat.job ? (
-        <div className="lobby-seat-job">
-          <strong>
-            {JOB_ICON[seat.job]} {JOB_LABEL[seat.job]}
-          </strong>
+        <div className="lobby-seat-job parchment">
+          <strong>{JOB_LABEL[seat.job]}</strong>
           <small>{JOB_PASSIVE[seat.job]}</small>
         </div>
       ) : (
         seat.jobHint !== '' && (
           <div className="lobby-seat-job is-empty">
+            <GameIcon name={seat.jobOptional ? 'dice' : 'scroll'} />
             <small>{seat.jobHint}</small>
           </div>
         )
@@ -77,7 +86,9 @@ export function SeatCard({ seat, groups, disabled, onConfigure, onSelectJob }: S
 
       {seat.configurable && (
         <label className="field lobby-seat-config">
-          <span>좌석 설정</span>
+          <span>
+            <GameIcon name="settings" /> 좌석 설정
+          </span>
           <select
             value={seat.choice}
             disabled={disabled}
@@ -98,6 +109,7 @@ export function SeatCard({ seat, groups, disabled, onConfigure, onSelectJob }: S
 
       {seat.jobEditable && (
         <JobChooser
+          seatNumber={seat.seat + 1}
           value={seat.job}
           taken={seat.takenJobs}
           optional={seat.jobOptional}

@@ -1,7 +1,10 @@
 import { JOB_IDS, type JobId } from '@dragon-rush/engine';
-import { JOB_ICON, JOB_LABEL, JOB_PASSIVE } from '../../types/labels';
+import { JOB_LABEL, JOB_PASSIVE } from '../../types/labels';
+import { JobArt } from '../icons/Art';
+import { GameIcon } from '../icons/GameIcon';
 
 interface JobChooserProps {
+  seatNumber: number;
   value: JobId | null;
   taken: readonly JobId[];
   /** Offer "무작위" (no job; the server picks a free one at start). */
@@ -10,13 +13,20 @@ interface JobChooserProps {
   onChange: (job: JobId | null) => void;
 }
 
-/** Five unique jobs; jobs held by other seats are locked. */
-export function JobChooser({ value, taken, optional, disabled, onChange }: JobChooserProps) {
+/** Five unique jobs (same tokens as the local seat editor); jobs held by other seats are locked. */
+export function JobChooser({
+  seatNumber,
+  value,
+  taken,
+  optional,
+  disabled,
+  onChange,
+}: JobChooserProps) {
   return (
     <div
       className={`job-picker lobby-job-picker${optional ? ' has-random' : ''}`}
-      role="radiogroup"
-      aria-label="직업 선택"
+      role="group"
+      aria-label={`좌석 ${seatNumber} 직업 선택`}
     >
       {JOB_IDS.map((job) => {
         const isTaken = taken.includes(job);
@@ -24,8 +34,7 @@ export function JobChooser({ value, taken, optional, disabled, onChange }: JobCh
           <button
             key={job}
             type="button"
-            role="radio"
-            aria-checked={value === job}
+            aria-pressed={value === job}
             className={`job-pick${value === job ? ' is-on' : ''}`}
             disabled={disabled || isTaken}
             title={
@@ -35,7 +44,7 @@ export function JobChooser({ value, taken, optional, disabled, onChange }: JobCh
             }
             onClick={() => onChange(job)}
           >
-            <span>{JOB_ICON[job]}</span>
+            <JobArt job={job} className="job-pick-art" />
             <small>{JOB_LABEL[job]}</small>
           </button>
         );
@@ -43,14 +52,15 @@ export function JobChooser({ value, taken, optional, disabled, onChange }: JobCh
       {optional && (
         <button
           type="button"
-          role="radio"
-          aria-checked={value === null}
+          aria-pressed={value === null}
           className={`job-pick${value === null ? ' is-on' : ''}`}
           disabled={disabled}
           title="시작할 때 남은 직업 중 무작위"
           onClick={() => onChange(null)}
         >
-          <span>🎲</span>
+          <span className="asset asset-icon job-pick-art" aria-hidden="true">
+            <GameIcon name="dice" />
+          </span>
           <small>무작위</small>
         </button>
       )}

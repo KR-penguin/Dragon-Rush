@@ -10,7 +10,12 @@ import { RoomStatusBanner } from '../components/lobby/RoomStatusBanner';
 import { SeatCard } from '../components/lobby/SeatCard';
 import { useClipboard } from '../hooks/useClipboard';
 import { useOnlineLobby } from '../hooks/useOnlineLobby';
-import { inviteText, ONLINE_MAX_ROUND_OPTIONS, ROOM_STATUS_LABEL } from '../types/onlineLobby';
+import {
+  inviteText,
+  ONLINE_MAX_ROUND_OPTIONS,
+  ROOM_STATUS_ICON,
+  ROOM_STATUS_LABEL,
+} from '../types/onlineLobby';
 import '../styles/lobby.css';
 
 interface OnlinePageProps {
@@ -42,7 +47,12 @@ export function OnlinePage({ onBack }: OnlinePageProps) {
             ← 처음으로
           </button>
         )}
-        <h1>온라인 게임</h1>
+        <div className="page-title">
+          <span className="page-kicker">
+            {view ? '원정대가 모이는 막사' : '방 코드로 모이는 원정대'}
+          </span>
+          <h1>온라인 게임</h1>
+        </div>
         <ConnectionBadge status={lobby.connection} onRetry={() => void lobby.connect()} />
       </header>
 
@@ -66,6 +76,7 @@ export function OnlinePage({ onBack }: OnlinePageProps) {
           <RoomHeader
             code={view.code}
             statusLabel={ROOM_STATUS_LABEL[view.status]}
+            statusIcon={ROOM_STATUS_ICON[view.status]}
             hostName={view.hostName}
             codeCopied={clipboard.copied === 'code'}
             inviteCopied={clipboard.copied === 'invite'}
@@ -122,6 +133,9 @@ export function OnlinePage({ onBack }: OnlinePageProps) {
 
       {confirmLeave && (
         <Modal
+          className="modal-scroll"
+          icon="exit"
+          kicker="원정대 이탈"
           title="방에서 나갈까요?"
           onClose={() => setConfirmLeave(false)}
           footer={

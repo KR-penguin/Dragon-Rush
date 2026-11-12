@@ -11,6 +11,7 @@ import {
   type RoomStateMsg,
   type RoomStatus,
 } from '@dragon-rush/protocol';
+import type { IconName } from './icons';
 import { botLabel } from './labels';
 import { BOT_OPTIONS } from './setupForm';
 
@@ -195,12 +196,13 @@ export interface SeatView {
   readonly seat: number;
   readonly kind: LobbySeatKind;
   readonly occupied: boolean;
-  readonly kindIcon: string;
+  readonly kindIcon: IconName;
   readonly kindLabel: string;
   readonly title: string;
   readonly job: JobId | null;
   readonly jobHint: string;
   readonly statusLabel: string;
+  readonly statusIcon: IconName;
   readonly tone: SeatTone;
   readonly connected: boolean;
   readonly isMe: boolean;
@@ -279,11 +281,11 @@ export function startEligibility(room: RoomStateMsg, playerId: string): StartEli
   return { canStart: reasons.length === 0, reasons };
 }
 
-const KIND_ICON: Record<LobbySeatKind, string> = {
-  human: '👤',
-  bot: '🤖',
-  model: '🧠',
-  empty: '🚫',
+const KIND_ICON: Record<LobbySeatKind, IconName> = {
+  human: 'human',
+  bot: 'bot',
+  model: 'model',
+  empty: 'lock',
 };
 const KIND_LABEL: Record<LobbySeatKind, string> = {
   human: '사람',
@@ -292,20 +294,26 @@ const KIND_LABEL: Record<LobbySeatKind, string> = {
   empty: '닫힘',
 };
 
-function seatStatus(s: LobbySeat, hostId: string): { label: string; tone: SeatTone } {
+interface SeatStatus {
+  label: string;
+  tone: SeatTone;
+  icon: IconName;
+}
+
+function seatStatus(s: LobbySeat, hostId: string): SeatStatus {
   switch (s.kind) {
     case 'empty':
-      return { label: '닫힘', tone: 'closed' };
+      return { label: '닫힘', tone: 'closed', icon: 'lock' };
     case 'bot':
     case 'model':
-      return { label: 'AI', tone: 'ai' };
+      return { label: 'AI', tone: 'ai', icon: KIND_ICON[s.kind] };
     case 'human':
-      if (s.playerId === null) return { label: '빈 자리', tone: 'open' };
-      if (!s.connected) return { label: '연결 끊김', tone: 'offline' };
-      if (s.playerId === hostId) return { label: '방장', tone: 'host' };
+      if (s.playerId === null) return { label: '빈 자리', tone: 'open', icon: 'key' };
+      if (!s.connected) return { label: '연결 끊김', tone: 'offline', icon: 'disconnected' };
+      if (s.playerId === hostId) return { label: '방장', tone: 'host', icon: 'crown' };
       return s.ready
-        ? { label: '준비 완료', tone: 'ready' }
-        : { label: '준비 중', tone: 'waiting' };
+        ? { label: '준비 완료', tone: 'ready', icon: 'ready' }
+        : { label: '준비 중', tone: 'waiting', icon: 'cooldown' };
   }
 }
 
@@ -338,12 +346,13 @@ export function seatView(room: RoomStateMsg, s: LobbySeat, playerId: string): Se
     seat: s.seat,
     kind: s.kind,
     occupied: s.playerId !== null,
-    kindIcon: s.kind === 'human' && s.playerId === null ? '⏳' : KIND_ICON[s.kind],
+    kindIcon: s.kind === 'human' && s.playerId === null ? 'cooldown' : KIND_ICON[s.kind],
     kindLabel: KIND_LABEL[s.kind],
     title: seatTitle(s),
     job: s.job,
     jobHint: jobHint(s),
     statusLabel: status.label,
+    statusIcon: status.icon,
     tone: status.tone,
     connected: s.connected,
     isMe,
@@ -387,6 +396,12 @@ export const ROOM_STATUS_LABEL: Record<RoomStatus, string> = {
   lobby: '대기 중',
   playing: '게임 진행 중',
   finished: '게임 종료',
+};
+
+export const ROOM_STATUS_ICON: Record<RoomStatus, IconName> = {
+  lobby: 'cooldown',
+  playing: 'duel',
+  finished: 'trophy',
 };
 
 /** Text to paste to a friend. */

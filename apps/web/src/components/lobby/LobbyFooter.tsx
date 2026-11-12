@@ -1,4 +1,5 @@
 import type { MyLobbyState, StartEligibility } from '../../types/onlineLobby';
+import { GameIcon } from '../icons/GameIcon';
 
 interface LobbyFooterProps {
   isHost: boolean;
@@ -10,7 +11,7 @@ interface LobbyFooterProps {
   onStart: () => void;
 }
 
-/** Ready toggle for guests, start button (with the reason it is locked) for the host. */
+/** Wooden dock: ready toggle for guests, start button (with the reason it is locked) for the host. */
 export function LobbyFooter({
   isHost,
   hostName,
@@ -23,24 +24,28 @@ export function LobbyFooter({
   if (isHost) {
     const reason = start.reasons.join('\n');
     return (
-      <footer className="lobby-footer">
+      <footer className="dock-row lobby-footer">
         {start.reasons.length > 0 ? (
           <ul className="form-errors lobby-reasons" aria-live="polite">
             {start.reasons.map((r) => (
-              <li key={r}>{r}</li>
+              <li key={r}>
+                <GameIcon name="cooldown" /> {r}
+              </li>
             ))}
           </ul>
         ) : (
-          <p className="lobby-ready-note">모두 준비되었습니다. 게임을 시작하세요!</p>
+          <p className="dock-status lobby-ready-note" aria-live="polite">
+            <GameIcon name="ready" /> 모두 준비되었습니다. 게임을 시작하세요!
+          </p>
         )}
         <span className="lobby-start-wrap" title={reason || undefined}>
           <button
             type="button"
-            className="btn btn-primary btn-lg"
+            className="btn btn-primary btn-lg dock-primary"
             disabled={!start.canStart || busy}
             onClick={onStart}
           >
-            ⚔️ 게임 시작
+            <GameIcon name="duel" /> 게임 시작
           </button>
         </span>
       </footer>
@@ -48,8 +53,9 @@ export function LobbyFooter({
   }
 
   return (
-    <footer className="lobby-footer">
-      <p className="lobby-ready-note muted">
+    <footer className="dock-row lobby-footer">
+      <p className="dock-status lobby-ready-note" aria-live="polite">
+        <GameIcon name={me.ready ? 'ready' : 'scroll'} />
         {me.ready
           ? `준비 완료! ${hostName}님이 게임을 시작하기를 기다리는 중…`
           : '직업을 고르고 준비 버튼을 누르세요.'}
@@ -58,12 +64,12 @@ export function LobbyFooter({
         <span className="lobby-start-wrap" title={me.readyBlocker ?? undefined}>
           <button
             type="button"
-            className={`btn btn-lg ${me.ready ? 'btn-ghost' : 'btn-primary'}`}
+            className={`btn btn-lg dock-primary ${me.ready ? 'btn-ghost' : 'btn-primary'}`}
             aria-pressed={me.ready}
             disabled={busy || me.readyBlocker !== null}
             onClick={() => onReady(!me.ready)}
           >
-            {me.ready ? '준비 취소' : '✋ 준비'}
+            <GameIcon name={me.ready ? 'close' : 'ready'} /> {me.ready ? '준비 취소' : '준비'}
           </button>
         </span>
       )}

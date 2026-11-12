@@ -90,6 +90,16 @@ export const ICON_NAMES = [
   'trophy',
   'restart',
   'settings',
+  // online lobby
+  'human',
+  'model',
+  'ready',
+  'copy',
+  'invite',
+  'key',
+  'castle',
+  'lock',
+  'warning',
 ] as const;
 
 export type IconName = (typeof ICON_NAMES)[number];
