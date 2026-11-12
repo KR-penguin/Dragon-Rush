@@ -86,6 +86,8 @@ export interface FighterState {
   /** Aim of the current move (facing or aim-assisted exact angle). */
   readonly aim: number;
   readonly hp: number;
+  /** Exact duel HP in Q8; hp is the board-facing ceiling. */
+  readonly hpQ8: number;
   readonly maxHp: number;
   readonly atk: number;
   readonly def: number;

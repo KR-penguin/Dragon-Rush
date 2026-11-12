@@ -44,5 +44,11 @@ export {
   type BotRole,
 } from './bots/combatBot';
 export { MATCHUPS, favouredJob, type MatchupEdge } from './matchups';
-export { COMBAT_PASSIVES, computeDamage, effectiveAtk, type CombatPassive } from './damage';
+export {
+  COMBAT_PASSIVES,
+  computeDamage,
+  computeDamageQ8,
+  effectiveAtk,
+  type CombatPassive,
+} from './damage';
 export { Q, MOVE_BAM, atan2i, sinQ14, cosQ14, isqrt, bamToMove } from './math';

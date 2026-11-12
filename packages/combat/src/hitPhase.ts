@@ -88,12 +88,13 @@ function apply(c: Ctx, it: Intent): void {
     knockback: it.hit.knockback,
     hitstun: it.hit.hitstun,
     hitstop: fighterHitstop(c.r, it.hit.power, it.multi, rage),
-    parryable: true,
+    parryable: f.move !== 'shoulderCharge',
     srcX: f.x,
     srcY: f.y,
     rage,
     backstab: false,
     projectile: null,
+    armorBreak: f.move === 'meteor',
   };
   let out;
   if (it.dragonCircle && c.s.dragon) {

@@ -1,4 +1,4 @@
-import { COMBAT_PASSIVES, computeDamage, dragonScale, isRaging } from './damage';
+import { COMBAT_PASSIVES, computeDamage, computeDamageQ8, dragonScale, isRaging } from './damage';
 import { enterPhaseIfNeeded } from './dragonPhase';
 import {
   angleDiff,
@@ -51,6 +51,7 @@ export interface HitDesc {
   /** Power already includes the backstab bonus. */
   readonly backstab: boolean;
   readonly projectile: MProjectile | null;
+  readonly armorBreak?: boolean;
 }
 
 export type HitOutcome = 'hit' | 'parried' | 'evaded' | 'immune';
@@ -104,6 +105,17 @@ function tryParry(c: Ctx, t: MFighter, h: HitDesc): boolean {
   const spec = c.r.moves.parry as ParryMoveSpec;
   const toSrc = atan2i(h.srcY - t.y, h.srcX - t.x);
   if (angleDiff(toSrc, t.facing) > spec.half) return false;
+  const move = c.r.moves[h.kind as keyof typeof c.r.moves];
+  const result =
+    h.attacker === 'dragon'
+      ? h.kind === 'fireball'
+        ? 'reflect'
+        : 'counter'
+      : move?.type === 'melee'
+        ? move.parry
+        : h.projectile?.kind === 'bolt'
+          ? 'absorb'
+          : 'reflect';
   const attacker = h.attacker === 'ring' ? 'dragon' : h.attacker;
   emit(c, `${t.side}:${h.kind}:${h.srcId}`, {
     type: 'Parry',
@@ -111,27 +123,34 @@ function tryParry(c: Ctx, t: MFighter, h: HitDesc): boolean {
     attacker,
     kind: h.kind,
     pos: pos(t.x, t.y),
-    reflected: h.projectile !== null,
+    reflected: result === 'reflect',
   });
   addHitstop(c, Math.min(c.r.hitstop.parry, c.r.hitstop.cap));
   // the counter-slash turns toward whoever was parried (aim assist then snaps to the exact angle)
   t.facing = MOVE_BAM[bamToMove(toSrc)]!;
-  if (spec.refundOnParry && h.attacker !== 'dragon') {
-    t.skillCharges = c.r.jobs[t.job].skillCharges;
-    t.skillTimer = 0;
+  if (h.attacker !== 'dragon' && (result === 'counter' || result === 'reflect')) {
+    t.skillTimer = Math.min(t.skillTimer, 90);
+    t.dashCharges = c.r.dashes[c.r.jobs[t.job].dash].charges;
+    t.dashTimer = 0;
   }
   // a parried melee attacker reels unless it is in super armor (armor is how the berserker beats parry)
   const a =
     h.projectile === null && (h.attacker === 'a' || h.attacker === 'b')
       ? fighterOf(c.s, h.attacker)
       : null;
-  if (a && a.mode !== 'ko' && !a.superArmor && spec.stagger > 0) {
+  if (a && a.mode !== 'ko' && !a.superArmor && result === 'counter' && spec.stagger > 0) {
     cancelMove(a);
     a.mode = 'hitstun';
     a.hitstun = spec.stagger;
     a.kbLeft = 0;
   }
-  startMove(c, t, spec.counter, 'attack');
+  if (result === 'counter') startMove(c, t, spec.counter, 'attack');
+  else {
+    cancelMove(t);
+    t.mode = result === 'crush' ? 'hitstun' : 'idle';
+    t.hitstun = result === 'crush' ? 8 : 0;
+    if (result === 'crush') setKnockback(t, (toSrc + 128) & 255, 24, 8);
+  }
   return true;
 }
 
@@ -155,12 +174,15 @@ export function hitFighter(c: Ctx, t: MFighter, h: HitDesc): HitOutcome {
       return 'evaded';
     }
   }
-  let dmg = h.fixed > 0 ? h.fixed : computeDamage(r, h.power, h.atkNum, h.atkDen, t.def, h.defDiv);
+  let dmgQ8 =
+    h.fixed > 0 ? h.fixed * 256 : computeDamageQ8(r, h.power, h.atkNum, h.atkDen, t.def, h.defDiv);
   const flat = takeFirstStrike(c, h.attacker);
-  dmg += flat;
+  dmgQ8 += flat * 256;
+  const dmg = dmgQ8 / 256;
   let hitstop = Math.min(h.hitstop, r.hitstop.cap);
-  if (t.hp - dmg <= 0 && t.lastStandAvailable) {
+  if (t.hpQ8 - dmgQ8 <= 0 && t.lastStandAvailable) {
     t.hp = 1;
+    t.hpQ8 = 256;
     t.lastStandAvailable = false;
     t.lastStandUsed = true;
     t.iframeDelay = 0;
@@ -169,15 +191,17 @@ export function hitFighter(c: Ctx, t: MFighter, h: HitDesc): HitOutcome {
     hitstop = r.hitstop.lastStand;
     emit(c, t.side, { type: 'LastStand', who: t.side, pos: pos(t.x, t.y) });
   } else {
-    t.hp -= dmg;
+    t.hpQ8 -= dmgQ8;
+    t.hp = Math.ceil(t.hpQ8 / 256);
   }
-  // a backstab breaks super armor: the rushdown's answer to armored brawlers
-  const flinch = (!t.superArmor || h.backstab) && t.hp > 0 && h.hitstun > 0;
+  // Only armor-break hits interrupt super armor; rear damage remains a positional reward.
+  const flinch = (!t.superArmor || h.armorBreak) && t.hp > 0 && h.hitstun > 0;
   if (flinch) {
     cancelMove(t);
     t.mode = 'hitstun';
-    t.hitstun = h.hitstun;
-    setKnockback(t, h.dir, h.knockback, h.hitstun);
+    const poise = h.armorBreak ? 100 : r.jobs[t.job].poisePct;
+    t.hitstun = h.armorBreak ? 22 : Math.round((h.hitstun * poise) / 100);
+    setKnockback(t, h.dir, Math.round((h.knockback * poise) / 100), t.hitstun);
   }
   if (!t.raging && isRaging(t)) {
     t.raging = true;
@@ -192,8 +216,10 @@ export function hitFighter(c: Ctx, t: MFighter, h: HitDesc): HitOutcome {
     dir: h.dir,
     pos: pos(t.x, t.y),
     hpAfter: t.hp,
-    knockback: flinch ? h.knockback : 0,
-    hitstun: flinch ? h.hitstun : 0,
+    knockback: flinch
+      ? Math.round((h.knockback * (h.armorBreak ? 100 : r.jobs[t.job].poisePct)) / 100)
+      : 0,
+    hitstun: flinch ? t.hitstun : 0,
     hitstop,
     weakPoint: false,
     firstStrike: flat > 0,

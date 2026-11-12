@@ -15,6 +15,7 @@ export interface Task {
   readonly n: number;
   readonly styleA: BotStyle;
   readonly styleB: BotStyle;
+  readonly reaction?: 5 | 10 | 16 | 'pooled';
 }
 
 export interface TaskResult {
@@ -80,14 +81,18 @@ if (parentPort) {
   const rules = sets.length > 0 ? patchRules(DEFAULT_COMBAT_RULES, sets) : DEFAULT_COMBAT_RULES;
   const out: TaskResult[] = [];
   for (const t of tasks) {
-    const pa = createCombatBot(t.styleA);
-    const pb = createCombatBot(t.styleB);
+    const bots = [5, 10, 16].map(
+      (reaction) =>
+        [createCombatBot(t.styleA, { reaction }), createCombatBot(t.styleB, { reaction })] as const,
+    );
     let winsA = 0;
     let timeouts = 0;
     const ticks: number[] = [];
     const t0 = performance.now();
     for (let i = 0; i < t.n; i++) {
-      const r = runCombat(t.setup, [pa, pb], t.seed0 + i, rules);
+      const reaction = t.reaction === 'pooled' ? (i % 2 === 0 ? 10 : 16) : (t.reaction ?? 10);
+      const policies = bots[reaction === 5 ? 0 : reaction === 10 ? 1 : 2]!;
+      const r = runCombat(t.setup, policies, t.seed0 + i, rules);
       if (r.result.winner === 'a') winsA += 1;
       if (r.result.timedOut) timeouts += 1;
       ticks.push(r.ticks);

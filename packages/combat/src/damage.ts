@@ -25,14 +25,17 @@ export const COMBAT_PASSIVES: Readonly<Record<JobId, CombatPassive>> = {
   berserker: { rage: true },
 };
 
-export function isRaging(f: Pick<FighterState, 'job' | 'hp' | 'maxHp'>): boolean {
-  return COMBAT_PASSIVES[f.job].rage === true && f.hp > 0 && 2 * f.hp <= f.maxHp;
+export function isRaging(
+  f: Pick<FighterState, 'job' | 'hp' | 'maxHp'> & Partial<Pick<FighterState, 'hpQ8'>>,
+): boolean {
+  const hpQ8 = f.hpQ8 ?? f.hp * 256;
+  return COMBAT_PASSIVES[f.job].rage === true && hpQ8 > 0 && 2 * hpQ8 <= f.maxHp * 256;
 }
 
 /** Effective ATK as an integer ratio [num, den]. */
 export function effectiveAtk(
   r: CombatRules,
-  f: Pick<FighterState, 'job' | 'hp' | 'maxHp' | 'atk'>,
+  f: Pick<FighterState, 'job' | 'hp' | 'maxHp' | 'atk'> & Partial<Pick<FighterState, 'hpQ8'>>,
 ): [number, number] {
   return isRaging(f)
     ? [f.atk * r.passives.berserkerRageNum, r.passives.berserkerRageDen]
@@ -68,6 +71,22 @@ export function computeDamage(
     den *= k;
   }
   return Math.max(min, divRound(num, den));
+}
+
+/** Q8 damage for duels, rounded only after the full ratio is evaluated. */
+export function computeDamageQ8(
+  r: CombatRules,
+  power: number,
+  atkNum: number,
+  atkDen: number,
+  def: number,
+  defDiv: number,
+): number {
+  const { sNum, sDen, k, min } = r.damage;
+  const div = defDiv > 0 ? defDiv : 1;
+  const num = 256 * sNum * power * atkNum * k * div;
+  const den = sDen * 100 * atkDen * (defDiv > 0 ? k * div + def : k * div);
+  return Math.max(256 * min, divRound(num, den));
 }
 
 /** Hitstop for a fighter's hit: by power class, +rage bonus; the caller caps it. */
