@@ -3,3 +3,5 @@ dist
 coverage
 docs
 *.md
+packages/ai/src/outcome/model.json
+packages/sim/data/*_stat_dist_v1.json
