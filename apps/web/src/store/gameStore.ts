@@ -8,6 +8,10 @@ export interface LogEntry {
   readonly text: string;
 }
 
+export interface GameNoticeEntry extends LogEntry {
+  readonly seat: SeatId;
+}
+
 export type AnimationSpeed = 1 | 2 | 4;
 
 export interface GameStoreState {
@@ -19,6 +23,7 @@ export interface GameStoreState {
   queue: GameEvent[];
   current: GameEvent | null;
   log: LogEntry[];
+  notices: GameNoticeEntry[];
   speed: AnimationSpeed;
   lastError: string | null;
   attach(client: GameClient): void;
@@ -27,6 +32,7 @@ export interface GameStoreState {
   /** Pops the next queued event into `current` and returns how long to show it (ms). */
   advance(): number | null;
   snap(): void;
+  drainNotices(): GameNoticeEntry[];
   setSpeed(speed: AnimationSpeed): void;
   submit(action: Action): Promise<SubmitResult>;
 }
@@ -35,6 +41,7 @@ const MAX_LOG = 300;
 
 export const createGameStore = () => {
   let unsubscribe: (() => void) | null = null;
+  let unsubscribeNotices: (() => void) | null = null;
   let logId = 0;
   return createStore<GameStoreState>()((set, get) => ({
     client: null,
@@ -43,6 +50,7 @@ export const createGameStore = () => {
     queue: [],
     current: null,
     log: [],
+    notices: [],
     speed: 1,
     lastError: null,
 
@@ -55,14 +63,30 @@ export const createGameStore = () => {
         queue: [],
         current: null,
         log: [],
+        notices: [],
         lastError: null,
       });
       unsubscribe = client.subscribe((u) => get().receive(u));
+      unsubscribeNotices =
+        client.subscribeNotices?.((notice) => {
+          if (notice.type !== 'botTakeover') return;
+          const entry: GameNoticeEntry = {
+            id: ++logId,
+            seat: notice.seat,
+            text: `${notice.name}님이 나갔습니다. 봇이 대신 플레이합니다.`,
+          };
+          set({
+            notices: [...get().notices, entry],
+            log: [...get().log, entry].slice(-MAX_LOG),
+          });
+        }) ?? null;
     },
 
     detach() {
       unsubscribe?.();
       unsubscribe = null;
+      unsubscribeNotices?.();
+      unsubscribeNotices = null;
       get().client?.dispose();
       set({ client: null });
     },
@@ -97,6 +121,12 @@ export const createGameStore = () => {
     snap() {
       const latest = get().latest;
       set({ queue: [], current: null, display: latest ? latest.publicState : null });
+    },
+
+    drainNotices() {
+      const notices = get().notices;
+      if (notices.length) set({ notices: [] });
+      return notices;
     },
 
     setSpeed(speed) {

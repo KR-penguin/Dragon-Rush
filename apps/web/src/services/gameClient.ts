@@ -89,10 +89,17 @@ export interface PendingFight {
 
 export type SubmitResult = { ok: true } | { ok: false; code: string; message?: string };
 
+export interface GameNotice {
+  readonly type: 'botTakeover';
+  readonly seat: SeatId;
+  readonly name: string;
+}
+
 /** Port between the UI and a game backend (local engine or online server). */
 export interface GameClient {
   readonly mode: 'local' | 'online';
   subscribe(onUpdate: (u: GameUpdate) => void): () => void;
+  subscribeNotices?(onNotice: (notice: GameNotice) => void): () => void;
   submit(action: Action, stateVersion: number): Promise<SubmitResult>;
   requestSnapshot(): void;
   dispose(): void;

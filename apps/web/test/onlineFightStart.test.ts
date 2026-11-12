@@ -28,6 +28,7 @@ it('keeps fight:start received before the COMBAT update and applies the final bo
     {
       update: () => {},
       seatStatus: () => {},
+      seatTakeover: () => {},
       ended: () => {},
       fightStarted: (fight) => {
         launch = fight;

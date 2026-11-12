@@ -12,9 +12,17 @@ import {
   type GameSnapshotMsg,
   type GameUpdateMsg,
   type SeatStatusMsg,
+  type SeatTakeoverMsg,
 } from '@dragon-rush/protocol';
 import { NETCODE_VERSION, combatBuildId, checkFightStart } from '@dragon-rush/netcode';
-import type { GameClient, GameUpdate, PendingFight, SeatInfo, SubmitResult } from './gameClient';
+import type {
+  GameClient,
+  GameNotice,
+  GameUpdate,
+  PendingFight,
+  SeatInfo,
+  SubmitResult,
+} from './gameClient';
 import type { KeyTracker } from './fight/keyboardInput';
 import type { FightSession } from './fight/types';
 import { OnlineFightSession } from './fight/OnlineFightSession';
@@ -52,6 +60,8 @@ export function toGameUpdate(
 export class OnlineGameClient implements GameClient {
   readonly mode = 'online' as const;
   private listeners = new Set<(u: GameUpdate) => void>();
+  private noticeListeners = new Set<(notice: GameNotice) => void>();
+  private announcedTakeovers = new Set<number>();
   private last: GameUpdate | null = null;
   private overrides = new Map<number, SeatStatusMsg>();
   private readonly offs: (() => void)[] = [];
@@ -94,10 +104,19 @@ export class OnlineGameClient implements GameClient {
     };
     const onStatus = (msg: SeatStatusMsg) => {
       this.overrides.set(msg.seat, msg);
+      if (msg.connected && msg.controlledBy === 'human') this.announcedTakeovers.delete(msg.seat);
+    };
+    const onTakeover = (msg: SeatTakeoverMsg) => {
+      if (this.last?.controllableSeats.includes(msg.seat) || this.announcedTakeovers.has(msg.seat))
+        return;
+      this.announcedTakeovers.add(msg.seat);
+      for (const listener of this.noticeListeners)
+        listener({ type: 'botTakeover', seat: msg.seat, name: msg.name });
     };
     socket.on(S2C.gameUpdate, onUpdate);
     socket.on(S2C.gameSnapshot, onSnapshot);
     socket.on(S2C.seatStatus, onStatus);
+    socket.on(S2C.seatTakeover, onTakeover);
     const onFightStart = (raw: unknown) => {
       const parsed = FightStartSchema.safeParse(raw);
       if (!parsed.success) return;
@@ -146,6 +165,7 @@ export class OnlineGameClient implements GameClient {
       () => socket.off(S2C.gameUpdate, onUpdate),
       () => socket.off(S2C.gameSnapshot, onSnapshot),
       () => socket.off(S2C.seatStatus, onStatus),
+      () => socket.off(S2C.seatTakeover, onTakeover),
       () => socket.off(FIGHT_S2C.start, onFightStart),
       () => socket.off(FIGHT_S2C.go, onFightGo),
       () => socket.off(FIGHT_S2C.replay, onReplay),
@@ -220,6 +240,11 @@ export class OnlineGameClient implements GameClient {
     return () => this.listeners.delete(onUpdate);
   }
 
+  subscribeNotices(onNotice: (notice: GameNotice) => void): () => void {
+    this.noticeListeners.add(onNotice);
+    return () => this.noticeListeners.delete(onNotice);
+  }
+
   async submit(action: Action, stateVersion: number): Promise<SubmitResult> {
     const r = await this.session.call(C2S.gameAction, { action, stateVersion });
     return r.ok ? { ok: true } : { ok: false, code: r.error.code, message: r.error.message };
@@ -232,5 +257,6 @@ export class OnlineGameClient implements GameClient {
   dispose(): void {
     for (const off of this.offs) off();
     this.listeners.clear();
+    this.noticeListeners.clear();
   }
 }

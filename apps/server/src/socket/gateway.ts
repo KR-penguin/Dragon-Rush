@@ -152,6 +152,7 @@ export function registerGateway(io: Server, deps: GatewayDeps): { dispose(): voi
           for (const pid of room.members) emitTo(pid, S2C.gameUpdate, game.updateFor(pid, events));
         },
         seatStatus: (msg) => io.to(channel(room)).emit(S2C.seatStatus, msg),
+        seatTakeover: (msg) => io.to(channel(room)).emit(S2C.seatTakeover, msg),
         ended: () => {
           room.status = 'finished';
           broadcastRoom(room);

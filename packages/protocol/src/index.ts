@@ -36,6 +36,7 @@ export type {
   GameUpdateMsg,
   GameSnapshotMsg,
   SeatStatusMsg,
+  SeatTakeoverMsg,
   ErrorMsg,
   ModelInfo,
 } from './messages';

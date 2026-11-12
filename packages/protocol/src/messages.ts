@@ -74,6 +74,12 @@ export interface SeatStatusMsg {
   graceMsLeft?: number;
 }
 
+/** Emitted once when a connected human leaves and a bot begins controlling that seat. */
+export interface SeatTakeoverMsg {
+  seat: SeatId;
+  name: string;
+}
+
 export interface ErrorMsg {
   code: string;
   message: string;

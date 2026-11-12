@@ -21,5 +21,6 @@ export const S2C = {
   gameUpdate: 'game:update',
   gameSnapshot: 'game:snapshot',
   seatStatus: 'seat:status',
+  seatTakeover: 'seat:takeover',
   error: 'error',
 } as const;

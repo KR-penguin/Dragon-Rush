@@ -1244,6 +1244,14 @@
   gap: 6px;
 }
 
+.toasts.toasts-overlay {
+  display: flex !important;
+  position: fixed;
+  z-index: 49;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  left: max(16px, env(safe-area-inset-left));
+}
+
 .game[data-players='3'] .toasts,
 .game[data-players='4'] .toasts {
   bottom: calc(var(--card-h) + var(--gap) * 2 + 10 * var(--u));
@@ -1259,7 +1267,8 @@
     toast-out 0.4s ease-in calc(var(--toast-life) - 400ms) forwards;
 }
 
-.toast button {
+.toast button,
+.toast-notice {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1271,6 +1280,10 @@
   font-size: max(12px, calc(14 * var(--u)));
   text-align: left;
   cursor: pointer;
+}
+
+.toast-notice {
+  cursor: default;
 }
 
 .toast-icon {

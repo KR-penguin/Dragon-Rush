@@ -288,6 +288,7 @@ apps/server/src/
 | S→C | `game:update` | `{ version, publicState, events, pending, seats, yourSeat, legalActions? }` | 행동 적용 결과. `legalActions`는 수신자가 actor일 때만 |
 | S→C | `game:snapshot` | `{ version, publicState, pending, seats, yourSeat, legalActions? }` | 재접속·갭 복구 (이벤트 없음) |
 | S→C | `seat:status` | `{ seat, connected, controlledBy, graceMsLeft? }` | 연결 끊김·대리 플레이·복귀 표시 |
+| S→C | `seat:takeover` | `{ seat, name }` | 접속 중이던 사람이 퇴장·끊김으로 봇에게 제어권을 넘길 때 한 번 알림. 스냅샷·유예 만료·시간 초과 대리에는 보내지 않음 |
 | S→C | `error` | `{ code, message }` | ack가 없는 비동기 오류 |
 
 - `pending` = `{ actor, phase, timeLeftMs }`. 시계 동기화 없이 남은 시간만 보낸다. 게임 종료는 `GameEnded` 이벤트 + `room:state.status = 'finished'`.
@@ -328,7 +329,7 @@ sequenceDiagram
 - `timeoutAction(state)`은 서버 `game/timeoutAction.ts`의 순수 함수이며, 만료 시 `source: 'timer'`로 일반 제출과 똑같이 검증된다.
 
 ### 8.3 재접속·대리 플레이
-1. 끊김 → `connected=false`, `seat:status` 방송, `RECONNECT_GRACE_MS`(60초) 유예 시작, 대리 Policy = HeuristicBot. 이후 그 좌석의 결정은 `GameSession.runPolicy`가 처리(턴 타이머 불필요).
+1. 끊김 → `connected=false`, `seat:status` 방송, 사람이 제어하던 좌석이면 `seat:takeover`로 남은 참가자에게 이름과 봇 인계를 한 번 알림. `RECONNECT_GRACE_MS`(60초) 유예 시작, 대리 Policy = HeuristicBot. 이후 그 좌석의 결정은 `GameSession.runPolicy`가 처리(턴 타이머 불필요).
 2. 유예 안에 같은 `sessionToken`으로 재연결 → 대리 해제·제어권 반환, 예약된 대리 행동은 `stateVersion` 검사로 자연 폐기, `room:state` + `game:snapshot` 전송.
 3. 유예 만료 → (기본안) 좌석을 HeuristicBot 좌석으로 영구 전환하고 토큰은 관전용으로 강등. 이 동작은 [development-plan.md](development-plan.md)의 확인 항목이다.
 4. 연속 3회 시간 초과 → 연결은 유지한 채 1과 같은 대리로 전환(`seat:status.controlledBy`). 대리 중인 좌석의 소켓에서 어떤 메시지든 오면 정책 행동 예약보다 먼저 대리를 해제하고(카운터 0) 그 메시지를 일반 경로로 처리한다.

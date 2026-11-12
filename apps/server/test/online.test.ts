@@ -7,6 +7,7 @@ import {
   type GameUpdateMsg,
   type RoomStateMsg,
   type SeatStatusMsg,
+  type SeatTakeoverMsg,
   type SessionWelcomeMsg,
 } from '@dragon-rush/protocol';
 import { io as connectClient, type Socket } from 'socket.io-client';
@@ -34,6 +35,7 @@ interface Client {
   updates: GameUpdateMsg[];
   rooms: RoomStateMsg[];
   statuses: SeatStatusMsg[];
+  takeovers: SeatTakeoverMsg[];
 }
 
 let server: ServerHandle;
@@ -53,11 +55,13 @@ async function connect(token?: string, protocolVersion = PROTOCOL_VERSION): Prom
     updates: [],
     rooms: [],
     statuses: [],
+    takeovers: [],
   };
   socket.on(S2C.gameUpdate, (u: GameUpdateMsg) => c.updates.push(u));
   socket.on(S2C.gameSnapshot, (u: GameUpdateMsg) => c.updates.push({ ...u, events: [] }));
   socket.on(S2C.roomState, (r: RoomStateMsg) => c.rooms.push(r));
   socket.on(S2C.seatStatus, (s: SeatStatusMsg) => c.statuses.push(s));
+  socket.on(S2C.seatTakeover, (s: SeatTakeoverMsg) => c.takeovers.push(s));
   c.welcome = await new Promise<SessionWelcomeMsg>((resolve, reject) => {
     socket.once(S2C.sessionWelcome, resolve);
     socket.once('connect_error', reject);
@@ -191,9 +195,50 @@ describe('online multiplayer', () => {
     await call(a, C2S.roomStart);
     await until(() => a.statuses.some((s) => s.controlledBy === 'bot'));
     const proxied = a.statuses.find((s) => s.controlledBy === 'bot')!.seat;
+    expect(a.takeovers).toEqual([]);
     const owner = latest(a).yourSeat === proxied ? a : b;
     expect((await call(owner, C2S.gameRequestSnapshot)).ok).toBe(true);
     await until(() => a.statuses.some((s) => s.seat === proxied && s.controlledBy === 'human'));
+  });
+
+  it('announces a disconnected human bot takeover once per transition, not on snapshots or grace expiry', async () => {
+    const { a, b } = await lobbyWithTwoHumans();
+    await call(a, C2S.roomStart);
+    await until(() => a.updates.length > 0 && b.updates.length > 0);
+    const seat = latest(b).yourSeat;
+    const token = b.welcome.sessionToken;
+
+    b.socket.disconnect();
+    await until(() => a.takeovers.length === 1);
+    expect(a.takeovers).toEqual([{ seat, name: 'Bob' }]);
+    expect(a.statuses.at(-1)).toMatchObject({ seat, connected: false, controlledBy: 'bot' });
+
+    await call(a, C2S.gameRequestSnapshot);
+    const resumed = await connect(token);
+    await until(() => resumed.updates.length > 0 && a.statuses.at(-1)?.connected === true);
+    expect(a.takeovers).toHaveLength(1);
+
+    resumed.socket.disconnect();
+    await until(() => a.takeovers.length === 2);
+    expect(a.takeovers[1]).toEqual({ seat, name: 'Bob' });
+    await new Promise((resolve) => setTimeout(resolve, 2_100));
+    expect(a.takeovers).toHaveLength(2);
+  });
+
+  it('announces an explicit game leave to the remaining player only once', async () => {
+    const { a, b } = await lobbyWithTwoHumans();
+    await call(a, C2S.roomStart);
+    await until(() => a.updates.length > 0 && b.updates.length > 0);
+    const seat = latest(b).yourSeat;
+
+    expect((await call(b, C2S.roomLeave)).ok).toBe(true);
+    await until(() => a.takeovers.length === 1);
+    expect(a.takeovers).toEqual([{ seat, name: 'Bob' }]);
+    expect(b.takeovers).toEqual([]);
+
+    b.socket.disconnect();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(a.takeovers).toHaveLength(1);
   });
 
   it('lets a disconnected player resume with the same session token', async () => {

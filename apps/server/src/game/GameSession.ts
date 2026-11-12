@@ -22,6 +22,7 @@ import type {
   GameUpdateMsg,
   OnlineSeatInfo,
   SeatStatusMsg,
+  SeatTakeoverMsg,
 } from '@dragon-rush/protocol';
 import { ProtocolError } from '../errors';
 import { timeoutAction } from './timeoutAction';
@@ -52,6 +53,7 @@ export interface GameSessionOptions {
 export interface SessionNotifier {
   update(events: GameEvent[]): void;
   seatStatus(msg: SeatStatusMsg): void;
+  seatTakeover(msg: SeatTakeoverMsg): void;
   ended(): void;
   fightStarted?(fight: {
     id: number;
@@ -210,6 +212,7 @@ export class GameSession {
   disconnect(playerId: string): void {
     const ctl = this.seats.find((s) => s.setup.playerId === playerId);
     if (!ctl || !ctl.connected) return;
+    const wasHumanControlled = !this.controlledByBot(ctl);
     ctl.connected = false;
     ctl.proxied = true;
     if (ctl.graceTimer) clearTimeout(ctl.graceTimer);
@@ -219,6 +222,8 @@ export class GameSession {
       this.notify.seatStatus(this.statusOf(ctl));
     }, this.opts.reconnectGraceMs);
     this.notify.seatStatus({ ...this.statusOf(ctl), graceMsLeft: this.opts.reconnectGraceMs });
+    if (wasHumanControlled)
+      this.notify.seatTakeover({ seat: ctl.engineSeat, name: ctl.setup.name });
     this.scheduleNext();
   }
 
