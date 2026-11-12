@@ -360,9 +360,9 @@ Python 프로세스 (사용자 트레이너 또는 python/examples/random_agent.
 | 패키지 | 책임 | 의존 |
 |---|---|---|
 | `@dragon-rush/combat` | 결정적 실시간 전투 sim(60Hz, Q8, BAM): `createFight(setup, rules, seed)`, `stepFight(state, inputs[2]) → { state, events }`, `hashFight`, `DEFAULT_COMBAT_RULES`, 직업 키트, 용 스크립트, 보드 ↔ 전투 변환(`CombatRequest` → 전투 setup, 전투 결과 → `CombatResult`) | engine (타입만) |
-| `@dragon-rush/combat-ai` | `cobs_v1` 인코더, `cact_v1` 코덱·마스크, 스크립트 봇(dummy·rusher·kiter·turtle·random), 전투 `Policy`, TS MLP 런타임·`USER_COMBAT_WEIGHT_ADAPTER`·패리티 | combat, engine (타입) |
-| `@dragon-rush/sim` (확장) | `combat-env-server`(stdio JSONL, 보드 env와 별도 프로세스), 보드 env `combat_resolver`, 전투 데이터·스탯 분포 생성 | + combat, combat-ai |
-| `python/rpgboard_env` (확장) | `CombatVecEnv` | numpy만 |
+| `@dragon-rush/combat-ai` (**구현됨**) | `cobs_v1` 인코더·미러 증강, `cact_v1` 코덱·마스크, `StateHistory`(반응 지연), 이름으로 만드는 스크립트 봇(`scripted:balanced·aggressive·cautious·idle·random·pool`), `CombatModelPolicy`·`USER_COMBAT_WEIGHT_ADAPTER`(null), `boardCombatSetup`(엔진 `CombatRequest` → 전투 setup). TS MLP 런타임·전투 패리티는 사용자 포맷 수령 후 | combat, engine |
+| `@dragon-rush/sim` (확장, **구현됨**) | `combat-env-server`(stdio JSONL, 보드 env와 별도 프로세스), `combatResolver`(보드 sim·보드 env의 `combat_resolver: 'dice' \| 'sim'`), `--log-fights`로 `stat_dist_v1` 생성 | + combat, combat-ai |
+| `python/rpgboard_env` (확장, **구현됨**) | `CombatEnv`, `CombatVecEnv` | numpy만 |
 
 - 의존: `engine` ← `combat` ← `combat-ai` ← `sim`·`server`·`web`. `engine`은 여전히 아무것도 import하지 않는다. 엔진과 전투 sim은 서로를 호출하지 않고, 셸(서버·`LocalGameClient`·env)이 `CombatRequest`로 전투를 실행한 뒤 결과를 `applyCombatResult`로 넣는다.
 - `packages/combat` lint: 엔진 순수성 규칙 + 초월함수(`Math.sin/cos/tan/atan2/exp/log/pow/sqrt/hypot/cbrt`)·`**` 금지(브라우저 엔진 간 결정성). 웹 FX 계층은 sim 이벤트를 구독만 하고 자기 RNG(xorshift)를 쓴다.
@@ -392,3 +392,4 @@ Python (사용자 트레이너) ─┬─ RPGBoardVecEnv ── stdio JSONL ─�
                           └─ CombatVecEnv   ── stdio JSONL ──▶ combat-env-server (전투: cobs_v1/cact_v1)
 ```
 - 두 env 서버는 별도 프로세스이고 각자 버전·`info`를 갖는다. 보드 env의 `outcome`·`sim` 리졸버는 고정된 outcome 파일·전투 모델을 읽기만 한다([combat-ai-spec.md §12](combat-ai-spec.md)).
+- 현재 보드 env의 `combat_resolver`는 `dice`(기본)와 `sim`(스크립트 봇끼리 `runCombat`)이다. 리졸버는 셸 쪽 함수(`createCombatResolver`)라 엔진은 전투 sim을 모른다: `COMBAT`에서 멈춘 상태를 받아 `boardCombatSetup` → `runCombat` → `applyCombatResult`로 이어 간다. 서버·`LocalGameClient`도 같은 경로로 바꿀 수 있다.

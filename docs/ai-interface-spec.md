@@ -217,7 +217,7 @@
 | `seed` | int (0..2^53−1), 생략 시 서버가 생성해 반환 | env i의 j번째 에피소드 시드 = `splitmix64(seed, i, j)`. 봇 RNG도 여기서 파생 |
 | `encoding` | `"b64"` \| `"json"`, `"b64"` | 관측 = little-endian float32 base64 / 숫자 배열(디버그용) |
 | `auto_reset` | bool, true | 종료된 env를 즉시 새 에피소드로. `false`는 `num_envs = 1`일 때만 |
-| `expect` | `{obs_version, act_version}` 선택 | 다르면 `VERSION_MISMATCH` |
+| `expect` | `{obs_version, act_version, combat_resolver}` 선택 | 다르면 `VERSION_MISMATCH` |
 | `config.mode` | `"single"` \| `"selfplay"`, `"single"` | single: 에이전트 1좌석 + 나머지 내장 봇 / selfplay: `controlled_seats`(기본 전 좌석)를 모두 외부 제어(AEC) |
 | `config.num_players` | 2~4 또는 목록(에피소드마다 균등 선택), 4 | |
 | `config.agent_seat` | 0..n-1 또는 `"random"`, `"random"` | single 전용. 셔플 후 좌석 = 턴 순서이므로 기본은 무작위 |
@@ -228,6 +228,7 @@
 | `config.rules` | `"default"` 또는 `RulesConfig` 부분 덮어쓰기, `"default"` | `validateRules` 실패 시 `BAD_CONFIG` |
 | `config.reward_shaping` | object \| null, null | §6 |
 | `config.return_events` | bool, false | 응답에 GameEvent 목록 포함(디버그·리플레이) |
+| `config.combat_resolver` | `"dice"` \| `"sim"`, `"dice"` | 결투·용 도전 해결: 보드 주사위 전투 / 실시간 전투 sim을 스크립트 봇끼리 끝까지(전투 이벤트는 `CombatStarted`·`CombatEnded`만). reset 결과에 `combat_resolver`가 붙고 `expect.combat_resolver`가 다르면 `VERSION_MISMATCH`. 정본은 [combat-ai-spec.md §12](combat-ai-spec.md) |
 
 **step** — `{"actions": [int, ...]}` (길이 = `num_envs`). 모든 행동을 먼저 검증하고 하나라도 불법이면 **어느 env도 진행하지 않고** `ILLEGAL_ACTION`(원자적). 정상이면 각 env에 행동을 적용한 뒤 다음 외부 제어 결정이 나올 때까지 봇 좌석·자동 구간을 진행한다.
 

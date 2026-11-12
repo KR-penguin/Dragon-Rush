@@ -49,6 +49,7 @@
 | [docs/architecture.md](docs/architecture.md) | 아키텍처. 패키지 경계, 엔진 설계, 웹·서버 구조, 멀티플레이 프로토콜·동기화 |
 | [python/README.md](python/README.md) | **학습 가이드**. 관측 253개·행동 47개 인덱스표, 보상, env 옵션, 기준선, 모델 전달 방법 |
 | [docs/ai-interface-spec.md](docs/ai-interface-spec.md) | AI 인터페이스 명세. 관측·행동·마스크·보상, env 서버 프로토콜, Python API, 모델 통합 계약 |
+| [docs/combat-ai-spec.md](docs/combat-ai-spec.md) | 전투 AI 명세(2차). 전투 관측 `cobs_v1`·행동 `cact_v1`·마스크·보상, combat env 서버, `CombatVecEnv`, 보드 env의 `combat_resolver` |
 | [docs/development-plan.md](docs/development-plan.md) | 개발 계획서. Phase P0~P7, 사용자 결정 사항, 기술 스택, 에셋 요청 목록, 리스크 |
 | [coding_convention.md](coding_convention.md) | 꼭 지켜야 할 코딩 규칙 8개 |
 | [AI_README.md](AI_README.md) | AI 에이전트용 워크스페이스 가이드(영어). 구조·라이브러리·아키텍처 패턴·기술 스택 |
@@ -65,7 +66,9 @@
 │  ├─ engine/              # 순수·결정적 규칙 엔진 (유일한 규칙 소스) + RulesConfig(밸런스 수치)
 │  ├─ protocol/            # C↔S 메시지 타입 + zod 스키마
 │  ├─ ai/                  # encodeObservation, action codec/mask, Policy, 봇, 모델 어댑터
-│  └─ sim/                 # 헤드리스 시뮬레이터, 밸런스 CLI, env 서버(stdio JSONL)
+│  ├─ combat/              # (2차, 진행 중) 결정적 실시간 전투 sim + DEFAULT_COMBAT_RULES
+│  ├─ combat-ai/           # (2차) 전투 관측 cobs_v1·행동 cact_v1·마스크, 스크립트 전투 봇, 전투 모델 정책
+│  └─ sim/                 # 헤드리스 시뮬레이터, 밸런스 CLI, 보드 env 서버 + 전투 env 서버(stdio JSONL)
 ├─ python/
 │  ├─ rpgboard_env/        # numpy-only Python 클라이언트 (env 서버 래핑)
 │  └─ examples/            # random_agent.py 등 사용 예제
@@ -107,10 +110,13 @@ pnpm typecheck               # 타입 검사
 pnpm build                   # 프로덕션 빌드
 pnpm start                   # 빌드 후 단일 Node 서비스 실행 (웹 정적 파일 + Socket.IO, :3001)
 pnpm sim --games 10000 --players 4 --bots heuristic   # 헤드리스 밸런스 시뮬 (CPU 코어 수만큼 병렬)
+pnpm sim --games 1000 --players 4 --combat sim        # 결투·용전을 실시간 전투 sim(스크립트 봇)으로 해결
 pnpm env-server              # 학습용 env 서버(stdio) 단독 실행. 먼저 pnpm build, 보통은 Python 클라이언트가 자동 실행
+pnpm combat-env-server       # 전투 모델 학습용 env 서버(stdio) 단독 실행. 보드 env와 별도 프로세스
 
 pip install -e python/                     # Python 학습 환경 클라이언트 설치 (선행: pnpm install && pnpm build)
 python python/examples/random_agent.py     # 무작위 에이전트 예제
+python python/examples/random_combat_agent.py   # 전투 env 무작위 에이전트 예제
 python -m pytest python/tests              # Python 클라이언트 테스트
 docker build -t dragon-rush . && docker run -p 3001:3001 dragon-rush   # 컨테이너 배포 (선택)
 ```
@@ -142,6 +148,7 @@ obs, reward, terminated, truncated, info = env.step(action)   # action: 마스�
 env.close()
 ```
 
+- **전투 모델(2차)**: 실시간 결투·용전용 모델은 보드 모델과 따로 학습한다. 관측 `cobs_v1` float32[160], 행동 `cact_v1` [이동 9, 버튼 4](또는 flat 36), 별도 env 서버(`pnpm combat-env-server`)와 `CombatVecEnv`. 보드 env는 `combat_resolver="sim"`으로 전투를 실시간 sim으로 해결할 수 있다(기본 `dice`). 자세한 내용은 [python/README.md §9](python/README.md)와 [combat-ai-spec.md](docs/combat-ai-spec.md).
 - **게임에 모델 넣기**: 가중치 파일을 `models/<name>.json`(예: `models/my-agent.json`)에 둔다. 게임은 관측 인코딩 → 순수 TS forward → 마스크 적용 → argmax/샘플링으로 행동을 고른다(critic 출력은 쓰지 않음). 업로드 기능은 없다. 어댑터가 구현되면 온라인 방의 모델 좌석과 `pnpm sim --bots model:<name>,heuristic`으로 평가할 수 있다.
 - **어댑터 구현 전에 필요한 정보**: 네트워크 구조, 활성화 함수, 행렬 배치 규칙, 입력 정규화, actor 출력이 logits인지 확률인지, critic 출력 형태, JSON 예시 파일, **패리티 샘플**(obs 5개 이상 + 행동 마스크 → numpy actor(마스크 전)/critic 출력, `models/parity/<name>.json`). 모델 메타데이터에 `obs_v1`/`act_v1` 표기를 권장한다. 상세 양식은 [ai-interface-spec.md §9](docs/ai-interface-spec.md).
 

@@ -2,7 +2,7 @@
 
 > Workspace guide for AI coding agents. Read it before touching anything in this repo.
 > **Status: implemented (P0–P7).** Two items wait on the user: the weight JSON format (P6 adapter) and real art/audio + a hosting target (P7).
-> **2nd round (Phase R1–R8, 2026-11-12) in progress:** "Ember Table" board redesign, FX/audio, and real-time 2D combat for duels and the dragon with a separate combat AI model (development-plan §5).
+> **2nd round (Phase R1–R8, 2026-11-12) in progress:** "Ember Table" board redesign, FX/audio, and real-time 2D combat for duels and the dragon with a separate combat AI model (development-plan §5). The combat AI interface and its training env (R6) are implemented; the combat sim itself is still being calibrated.
 > Language: this file is English. `docs/*`, `README.md` and `coding_convention.md` are Korean (identifiers in English).
 
 ## 1. Purpose & reading order
@@ -17,7 +17,7 @@ This file is the workspace map: structure, libraries, patterns, stack. It does n
 | Phases (P0–P7 done, 2nd round R1–R8), open decisions (D1–D16, rule questions R1–R7), risks, **asset request list (§4.2)** | `docs/development-plan.md` |
 | Board look, layout, camera, FX catalog (shake, hitstop, flashes), audio rules, accessibility settings (in progress) | `docs/art-direction.md` |
 | Real-time combat: sim constants, controls, frame data, damage, job kits, duel/dragon rules, board seam, netcode (in progress; `DEFAULT_COMBAT_RULES` wins once built) | `docs/combat-design.md` |
-| Combat AI: `cobs_v1`, `cact_v1`, masks, reward, `combat-env-server`, `CombatVecEnv`, `combat_resolver`, combat model contract (in progress) | `docs/combat-ai-spec.md` |
+| Combat AI: `cobs_v1`, `cact_v1`, masks, reward, `combat-env-server`, `CombatVecEnv`, `combat_resolver`, combat model contract (implemented; `[구현]` notes mark deviations) | `docs/combat-ai-spec.md` |
 | The 8 must-follow code rules | `coding_convention.md` |
 
 Reading order for any task: this file → `coding_convention.md` → canonical doc(s) for the area you touch → the code.
@@ -26,7 +26,8 @@ Reading order for any task: this file → `coding_convention.md` → canonical d
 ## 2. Project status
 - Done: engine (P1), AI interface + training env (P2), balance re-verified on the TS engine (P3), local web play (P4), online multiplayer (P5), model-integration plumbing (P6), deploy files (P7: Dockerfile, CI workflow).
 - Waiting on the user: `USER_WEIGHT_ADAPTER` in `packages/ai/src/model/adapters/index.ts` stays `null` until the weight JSON format and parity samples arrive (model seats show "준비 중"). Assets are placeholders (emoji/CSS) until files arrive at the paths in development-plan §4.2.
-- In progress (2nd round): `packages/combat` (deterministic 60 Hz combat sim, `DEFAULT_COMBAT_RULES`), `packages/combat-ai` (`cobs_v1`/`cact_v1` encoder, codec, masks, scripted bots, TS MLP runtime), `combat-env-server` + `CombatVecEnv`. The engine `COMBAT` phase is merged (`RulesConfig.combat.mode: 'dice' | 'external'`, `applyCombatResult`, `resolveCombatWithDice`; callers temporarily auto-resolve with dice). Check the code first. Board and combat models are separate models with separate envs.
+- Done (2nd round, R6): `packages/combat-ai` (`cobs_v1`/`cact_v1` encoder, codec, masks, mirror augmentation, scripted bots by name, `CombatModelPolicy`, `USER_COMBAT_WEIGHT_ADAPTER = null`, board → combat setup), `combat-env-server` (`rpgboard-combat-env/1`) + Python `CombatEnv`/`CombatVecEnv`, and the board `combat_resolver: 'dice' | 'sim'` (board env config, `pnpm sim --combat`). Board and combat models are separate models with separate envs.
+- In progress (2nd round): `packages/combat` (deterministic 60 Hz combat sim, `DEFAULT_COMBAT_RULES`, being calibrated on `feature/realtime-combat`). The engine `COMBAT` phase is merged (`RulesConfig.combat.mode: 'dice' | 'external'`, `applyCombatResult`, `resolveCombatWithDice`); server and web still auto-resolve with dice. Combat model seats wait on the user's combat weight format (`model:<id>` opponents, `sim:<model>`/`outcome` resolvers, combat parity). Check the code first.
 - Approved simulation-driven rules: early PvP grace (rounds 1–2, `pvpGraceRounds`), starting shield (`startingItems`), ninja move-adjust cooldown. A rest turn only blocks movement. Teleport has no per-turn limit (`teleport.perTurnLimit = null`, open question R2); thief is once per turn (R3).
 
 ## 3. Product in ~10 lines
@@ -67,9 +68,9 @@ Brief the user with a reason before adding any library that is not in this table
 │  ├─ protocol/      # @dragon-rush/protocol: C<->S message types, zod schemas, error codes, PROTOCOL_VERSION
 │  ├─ ai/            # @dragon-rush/ai: obs encoder, action codec/mask, Policy, bots, ModelPolicy, parity, adapters
 │  ├─ combat/        # (in progress) @dragon-rush/combat: deterministic real-time combat sim, DEFAULT_COMBAT_RULES
-│  ├─ combat-ai/     # (in progress) @dragon-rush/combat-ai: cobs_v1/cact_v1, masks, scripted bots, combat model runtime
-│  └─ sim/           # @dragon-rush/sim: batch runner, metrics, `pnpm sim` CLI, env server (stdio JSONL); + combat-env-server (in progress)
-├─ python/           # rpgboard_env (numpy client; + CombatVecEnv in progress), examples/random_agent.py, tests/ (pytest), pyproject.toml
+│  ├─ combat-ai/     # @dragon-rush/combat-ai: cobs_v1/cact_v1 encoder, codec, masks, scripted bots by name, combat model policy
+│  └─ sim/           # @dragon-rush/sim: batch runner, metrics, `pnpm sim` CLI, board env server + combat env server (stdio JSONL)
+├─ python/           # rpgboard_env (numpy clients: board + combat), examples/random_agent.py + random_combat_agent.py, tests/ (pytest)
 ├─ models/           # user weight JSON (models/<id>.json); parity samples in models/parity/; combat models in models/combat/ (planned)
 ├─ docs/             # game-design, architecture, ai-interface-spec, development-plan, art-direction, combat-design, combat-ai-spec
 ├─ Dockerfile, .github/workflows/ci.yml
@@ -77,14 +78,14 @@ Brief the user with a reason before adding any library that is not in this table
 ```
 - `engine/src`: `index.ts` (exports) · `reducer.ts` (dispatch + auto-apply single legal action) · `legal.ts` (`LEGAL_BY_PHASE`, `actionKey`) · `state.ts` (`createGame`, `cloneState`) · `public.ts` · flow `turn.ts movement.ts duel.ts dragon.ts items.ts` · parts `combat.ts jobs.ts economy.ts tiles.ts board.ts` · base `ctx.ts rng.ts rules/ types.ts`.
 - `ai/src`: `obs/` (layout, encode) · `codec/actions.ts` · `policy.ts` · `bots/` (randomBot, heuristic/{estimate,heuristicBot}, registry) · `model/` (modelPolicy, parity, adapters/).
-- `sim/src`: `runner.ts` (playGame, runBatch, deriveSeed) · `metrics.ts` · `cli.ts` + `simWorker.ts` (worker threads) · `modelLoader.ts` · `env/` (config zod schemas, envInstance, envServer) · `env-server.ts` (stdio entry).
+- `combat-ai/src`: `obs/` (layout `COBS_V1_LAYOUT`, encode, mirror) · `codec/actions.ts` (cact_v1, `toFighterInput`) · `mask.ts` (`combatActionMask`, `buttonReadyIn`, `isActionable`) · `runtime/history.ts` (`StateHistory`, reaction delay) · `bots/registry.ts` (`scripted:<name>`) · `model/` (types, modelPolicy, adapters/) · `board.ts` (`boardCombatSetup`).
+- `sim/src`: `runner.ts` (playGame, runBatch, deriveSeed) · `combatResolver.ts` (`dice` | `sim`) · `statDist.ts` (`stat_dist_v1`) · `metrics.ts` · `cli.ts` + `simWorker.ts` (worker threads) · `modelLoader.ts` · `env/` (config zod schemas, envInstance, envServer) · `env-server.ts` (stdio entry) · `combat-env/` (config, sampler, instance, server) · `combat-env-server.ts` (stdio entry).
 - `server/src`: `main.ts app.ts config.ts errors.ts` · `socket/` (gateway, rateLimit) · `rooms/` (Room, RoomManager) · `session/SessionStore.ts` · `game/` (GameSession, TurnTimer, timeoutAction) · `ai/modelRegistry.ts`.
 - `web/src`: `pages/`, `components/` (View, props only), `hooks/`, `store/gameStore.ts` (Zustand), `animation/eventTimeline.ts` + `eventSfx.ts`, `services/` (`gameClient.ts` port, `LocalGameClient`, `OnlineGameClient`, `onlineSession`, `audio.ts` Web Audio engine), `types/` (labels, view helpers).
 - `web/src/fx` (game feel, renderer-agnostic): `core/` pure models (trauma `camera`, hit-stop `time` clock, SoA `particles` capped at 500, `floatingText`, `flash` governor, easing, xorshift `rng`, Perlin `noise`) · `audio/` (sound catalogue + procedural Web Audio fallback) · `eventFx.ts` (GameEvent → cue list, pure) + `recipes.ts` · `runtime/` (one rAF loop outside React: `fx`, `fxTime`, `createArenaFx()` for the Canvas arena) · `board/boardResolver.ts` (anchor → screen point; replace for a new board) · `components/` (`FxLayer`, `ShakeContainer` = `.world-shake`, settings dock) · `settings/` (accessibility policy).
 - Assets: `apps/web/public/assets/{images,audio}/...` (list in development-plan §4.2); only files that exist are used. A sound file at `audio/sfx/<name>.{mp3,ogg,wav}` (variants `<name>_2` … `_5`) replaces its procedural placeholder automatically; `audio/bgm/loops.json` sets BGM loop points.
 
-**Dependency direction** (one way): `engine` ← `protocol`, `ai` ← `sim`, `server`, `web`. Engine imports nothing. Runtime only: web ↔ server via Socket.IO; Python ↔ sim via subprocess stdio.
-Planned (architecture §12): `engine` ← `combat` ← `combat-ai` ← `sim`, `server`, `web`; the combat sim also bans transcendental `Math.*` and `**` for cross-browser determinism.
+**Dependency direction** (one way): `engine` ← `protocol`, `ai` ← `sim`, `server`, `web`; `engine` ← `combat` ← `combat-ai` ← `sim` (server and web will follow). Engine imports nothing; the combat sim imports only the engine and also bans transcendental `Math.*` and `**` for cross-browser determinism. Runtime only: web ↔ server via Socket.IO; Python ↔ sim via subprocess stdio (two separate env processes).
 
 ## 6. Architecture invariants — MUST NOT break
 1. **Engine purity & determinism.** No `Math.random`, `Date`, I/O, `node:*`, `@dragon-rush/*` imports in `packages/engine` (ESLint). Same `(setup, rules, seed, actions)` → same state and events. Inputs are never mutated (`applyAction` works on a clone). Randomness only from `state.rng`.
@@ -92,8 +93,8 @@ Planned (architecture §12): `engine` ← `combat` ← `combat-ai` ← `sim`, `s
 3. **`RulesConfig` is the only place for numbers.** `DEFAULT_RULES` must equal `docs/game-design.md` (golden test `packages/engine/test/rules.test.ts`).
 4. **Server authoritative.** Clients send `Action` + `stateVersion` only; the server derives the seat from the socket. Every input (human, timer, bot, model, proxy) goes through `GameSession.submit()`. Decisions key on `pending.actor`. RNG state never leaves the server.
 5. **zod at boundaries.** Socket payloads and env-server stdin are parsed at entry. `z.infer<typeof ActionSchema>` equals the engine `Action` (compile-time check in `protocol/src/schemas.ts`). Model files: `JSON.parse` only.
-6. **Versioned specs.** `OBS_VERSION "obs_v1"`/`OBS_DIM 253`, `ACT_VERSION "act_v1"`/`ACTION_DIM 47`, `ENV_PROTOCOL "rpgboard-env/1"`, `PROTOCOL_VERSION 1`, `RulesConfig.version "rush-1"`. Layout/meaning change → version bump + spec + golden snapshot update in the same change.
-7. **Encoder, codec and mask live only in TS.** Python never re-implements them. Policies only see `PublicGameState`.
+6. **Versioned specs.** `OBS_VERSION "obs_v1"`/`OBS_DIM 253`, `ACT_VERSION "act_v1"`/`ACTION_DIM 47`, `ENV_PROTOCOL "rpgboard-env/1"`, `PROTOCOL_VERSION 1`, `RulesConfig.version "rush-1"`. Combat model: `COBS_VERSION "cobs_v1"`/`COBS_DIM 160`, `CACT_VERSION "cact_v1"`/`CACT_NVEC [9, 4]`/`CACT_FLAT_DIM 36`, `COMBAT_ENV_PROTOCOL "rpgboard-combat-env/1"`, `DEFAULT_COMBAT_RULES.version` + `hashCombatRules`. Layout/meaning change (including mask, mirror, reward or action-repeat semantics) → version bump + spec + golden snapshot update in the same change.
+7. **Encoder, codec and mask live only in TS** (`packages/ai` for the board, `packages/combat-ai` for combat). Python never re-implements them. Board policies only see `PublicGameState`; combat policies see the (delayed) `CombatState` through `encodeCombatObservation`, and training and play share `StateHistory`, the action-repeat window and the "no input while not actionable" rule.
 8. **Python client is numpy-only**; env server stdout is protocol-only, logs go to stderr.
 9. **No trainer in this repo**, and **the user owns the weight JSON format** — implement `USER_WEIGHT_ADAPTER` only from their format and verify with `checkParity`.
 
@@ -107,8 +108,9 @@ Planned (architecture §12): `engine` ← `combat` ← `combat-ai` ← `sim`, `s
 | Event log | `GameEvent` | animation queue, log, golden tests |
 | Data-driven table + handler map | tile effects (`tiles.ts`) | new tile = data |
 | Hook map (Strategy as data) | job passives (`jobs.ts` `PASSIVES`) | no job branching in `combat.ts` |
-| Strategy | `Policy` (Random/Heuristic/Model), seat control in `GameSession` | humans, bots, models, proxies share one path |
-| Adapter | `WeightAdapter`: user JSON → `PolicyModel` | format change swaps only the adapter |
+| Strategy | `Policy` (Random/Heuristic/Model), seat control in `GameSession`; `CombatPolicy` (scripted bots, `CombatModelPolicy`) | humans, bots, models, proxies share one path |
+| Adapter | `WeightAdapter`: user JSON → `PolicyModel`; `CombatWeightAdapter` → `CombatPolicyModel` | format change swaps only the adapter |
+| Shell-side resolver | `createCombatResolver('dice' \| 'sim')` settles engine `COMBAT` for sims and the board env | engine never calls the combat sim; one place to swap dice / sim / outcome |
 | Ports & Adapters | `GameClient` → `LocalGameClient` / `OnlineGameClient` | UI does not know local vs online |
 | Schema-first | `packages/protocol` (zod) | runtime validation + TS types |
 | Observer + Producer–Consumer | Zustand store + event animation queue | minimal re-renders; animation decoupled from update rate |
@@ -127,13 +129,20 @@ interface Policy { id; decide(ctx: DecisionContext): Action }   // ctx = { view,
 interface PolicyModel { meta: ModelMeta; forward(obs): Float32Array(47); value?(obs): number }
 createModelPolicy(model, { mode?: 'argmax'|'sample', temperature? }); checkParity(model, samples)
 createPolicyByName('random'|'random:uniform'|'heuristic'|'heuristic:aggro|growth|rush', random)
+// @dragon-rush/combat-ai
+encodeCombatObservation(state, side, { delay, prevMove, prevButton, mirror? }): Float32Array(160)
+combatActionMask(state, side): { move: Uint8Array(9); button: Uint8Array(4) }; flatMask(mask): Uint8Array(36); isActionable(state, side, repeat)
+toFighterInput(action, prevInput): { input: FighterInput; press }; toFlat / fromFlat; mirrorMove; mirrorCombatObservation
+createCombatBotByName('scripted:balanced|aggressive|cautious|idle|random|pool', random): CombatPolicy
+interface CombatPolicyModel { meta: CombatModelMeta; forward(obs): Float32Array(13 | 36) }; createCombatModelPolicy(model, { difficulty?, mode?, temperature? })
+boardCombatSetup(gameState): CombatSetup   // engine COMBAT request -> combat setup from board stats
 // apps/web/src/services/gameClient.ts
 interface GameClient { mode; subscribe(cb): () => void; submit(action, stateVersion): Promise<SubmitResult>; requestSnapshot(); dispose() }
 // apps/server: GameSession.submit(seat, action, stateVersion, source: 'human'|'timer'|'policy')
 ```
 - Socket.IO: C→S `room:create|join|leave|configure|configureSeat|selectJob|setReady|start`, `game:action`, `game:requestSnapshot` (each with an `Ack<T>`); S→C `session:welcome`, `room:state`, `game:update`, `game:snapshot`, `seat:status`. Handshake `auth: { protocolVersion, sessionToken? }`.
-- Env server: `{ id, cmd: info|reset|step|close, params? }` per line; details in ai-interface-spec §7.
-- Python: `RPGBoardEnv(...)`, `RPGBoardVecEnv(num_envs, ...)`; `info["action_mask"]`, `info["acting_seat"]`.
+- Env server: `{ id, cmd: info|reset|step|close, params? }` per line; details in ai-interface-spec §7 (board) and combat-ai-spec §8 (combat, actions per env as `[[move, button], …]` or flat indices).
+- Python: `RPGBoardEnv(...)`, `RPGBoardVecEnv(num_envs, ...)`; `info["action_mask"]`, `info["acting_seat"]`. `CombatEnv(...)`, `CombatVecEnv(num_envs, controlled='both'|'p0', ...)`; `info["move_mask"]`/`["button_mask"]` (or `["action_mask"]` flat), `info["actionable"]`, `info["ticks_elapsed"]`.
 
 ## 9. Commands
 | Command | Purpose |
@@ -142,18 +151,20 @@ interface GameClient { mode; subscribe(cb): () => void; submit(action, stateVers
 | `pnpm dev` | web (Vite :5173) + server (:3001); Vite proxies `/socket.io` and `/api` |
 | `pnpm test` / `pnpm lint` / `pnpm typecheck` / `pnpm build` | Vitest / ESLint / tsc / production build (web dist, server dist, sim dist) |
 | `pnpm start` | run the built single service (serves `apps/web/dist` + Socket.IO) |
-| `pnpm sim --games N --players 4[,3,2] --bots heuristic[,random,...] [--seed S] [--json]` | headless balance metrics (worker threads) |
-| `pnpm env-server` | standalone env server (`node packages/sim/dist/env-server.js`, needs `pnpm build`) |
+| `pnpm sim --games N --players 4[,3,2] --bots heuristic[,random,...] [--seed S] [--json] [--combat dice\|sim] [--combat-bot scripted:<name>] [--log-fights <file>]` | headless balance metrics (worker threads); `--combat sim` plays every fight in the real-time sim; `--log-fights` writes `stat_dist_v1` |
+| `pnpm env-server` | standalone board env server (`node packages/sim/dist/env-server.js`, needs `pnpm build`) |
+| `pnpm combat-env-server` | standalone combat env server (`node packages/sim/dist/combat-env-server.js`, needs `pnpm build`) |
 | `python -m pytest python/tests` | Python client tests (they run the TS server through `tsx`, no build needed) |
 
 - Server env: `PORT`, `HOST`, `TURN_TIMEOUT_MS`, `RECONNECT_GRACE_MS`, `BOT_ACTION_DELAY_MS`, `MODELS_DIR`, `WEB_DIST_DIR`, `ROOM_TTL_MS`, `MESSAGES_PER_SECOND`.
-- Python client: `RPGBOARD_ENV_CMD` overrides the server command, `RPGBOARD_ROOT` the repo root.
+- Python client: `RPGBOARD_ENV_CMD` / `RPGBOARD_COMBAT_ENV_CMD` override the board / combat server command, `RPGBOARD_ROOT` the repo root.
 
 ## 10. Testing requirements
 - **TDD**: failing test first; bug fixes start with a seeded repro.
 - **Seeded** tests only. Engine property tests (fast-check) deep-freeze inputs and check invariants, determinism and termination.
 - **Golden**: `engine/test/golden.test.ts` (event log), `ai/test/obs.golden.test.ts` (obs hashes), `engine/test/rules.test.ts` (numbers). Update snapshots only for intended changes (`vitest -u`), with version bumps where required.
 - **Mask ↔ legal** (`ai/test/codec.test.ts`), env contract incl. a real stdio spawn (`sim/test/env.test.ts`), balance regression (`sim/test/balance.test.ts`), server integration over real sockets (`server/test/online.test.ts`, `models.test.ts`), web services against a live server (`web/test/onlineClient.test.ts`).
+- Combat AI: `combat-ai/test/` (layout = 160, obs ranges/one-hots over all 25 matchups + dragon, mirror involution, tick-0 golden snapshot, **mask ↔ sim** by actually pressing each button, codec, model policy), `sim/test/combatEnv.test.ts` (contract, atomic `ILLEGAL_ACTION`, byte determinism, stdio spawn, 64-env throughput printout), `python/tests/test_combat.py`.
 - Parity: when the adapter lands, add a test loading `models/parity/<id>.json` into `checkParity` (tolerance in ai-interface-spec §11).
 
 ## 11. Working agreements for AI agents
@@ -178,6 +189,8 @@ interface GameClient { mode; subscribe(cb): () => void; submit(action, stateVers
 | Protocol message | `domain:verb` + zod schema in `packages/protocol`, handler in `server/src/socket/gateway.ts`, mapping in `OnlineGameClient`; bump `PROTOCOL_VERSION` only when breaking. |
 | Balance tweak | Change `DEFAULT_RULES`, bump `RulesConfig.version`, update game-design + `rules.test.ts`, re-run `pnpm sim` (game-design §15 metrics), tell the user (`rules_version`). |
 | Weight adapter | Implement `USER_WEIGHT_ADAPTER` (pure TS forward), add a parity test with the user's samples, then enable model seats in the web setup page. |
+| Combat obs/action feature | Never edit `cobs_v1`/`cact_v1` in place: new layout version (`COBS_VERSION`/`CACT_VERSION`), combat-ai-spec §4–6, golden snapshot, Python README §9; warn the user (combat model retraining). Combat rule numbers only change `combat_rules_version`/hash. |
+| Combat weight adapter | Implement `USER_COMBAT_WEIGHT_ADAPTER` from the user's format (head 9+4 or 36), add a combat parity test, then `model:<id>` opponents and the `sim:<model>` resolver. |
 
 ## 13. Glossary (KO ↔ code)
 | Korean | Code | Korean | Code |
