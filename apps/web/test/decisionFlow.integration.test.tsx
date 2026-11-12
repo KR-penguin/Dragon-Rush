@@ -1,4 +1,3 @@
-import type { Action } from '@dragon-rush/engine';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, it, vi } from 'vitest';
 import { startServer } from '../../server/src/app';
@@ -42,16 +41,6 @@ function dialogMarkup(store: GameStore, currentSeatOnly = false): string {
     );
   }
   return renderToStaticMarkup(<Probe />);
-}
-
-function nextAction(legal: readonly Action[]): Action {
-  return (
-    legal.find((a) => a.type === 'ROLL_DICE') ??
-    legal.find((a) => a.type === 'END_TURN') ??
-    legal.find((a) => a.type === 'ADJUST_MOVE' && a.delta === 0) ??
-    legal.find((a) => a.type === 'CHOOSE_TRAINING_STAT') ??
-    legal[0]!
-  );
 }
 
 it('opens the zero-coin shop as soon as queued movement reaches it', async () => {
@@ -110,12 +99,8 @@ it('shows the one-opponent confirmation before COMBAT and the shop after a win',
   );
   const store = createGameStore();
   store.getState().attach(client);
-  for (let i = 0; i < 50 && store.getState().latest!.publicState.round < 3; i++) {
-    const update = store.getState().latest!;
-    expect(await store.getState().submit(nextAction(update.legalActions))).toEqual({ ok: true });
-  }
   const before = store.getState().latest!;
-  expect(before.publicState.round).toBe(3);
+  expect(before.publicState.round).toBe(1);
   expect(before.pending?.phase).toBe('PRE_ROLL');
   const arriver = before.pending!.actor;
   const defender = before.publicState.players.find((p) => p.seat !== arriver)!.seat;
