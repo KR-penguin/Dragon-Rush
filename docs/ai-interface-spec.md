@@ -238,7 +238,7 @@
 | `config.num_players` | 2~4 또는 목록(에피소드마다 균등 선택), 4 | |
 | `config.agent_seat` | 0..n-1 또는 `"random"`, `"random"` | single 전용. 셔플 후 좌석 = 턴 순서이므로 기본은 무작위 |
 | `config.controlled_seats` | 좌석 목록 또는 `"all"`, `"all"` | selfplay 전용. 나머지 좌석은 `opponents` 봇 |
-| `config.jobs` | `"random"` 또는 좌석별 직업 id 목록, `"random"` | 중복 불가 |
+| `config.jobs` | `"random"` 또는 좌석별 직업 id 목록, `"random"` | 자동 배정은 중복 없이 뽑는다. 좌석별 목록에는 같은 직업을 여러 번 지정할 수 있다 |
 | `config.opponents` | 봇 이름 또는 좌석별 목록, `"heuristic"`(성향 좌석별 무작위) | §10 |
 | `config.max_rounds` | int \| null, 100 | |
 | `config.rules` | `"default"` 또는 `RulesConfig` 부분 덮어쓰기, `"default"` | `validateRules` 실패 시 `BAD_CONFIG` |
