@@ -75,7 +75,7 @@ function FightContainer({ fight, seats, client, onDone, onFightLive }: FightCont
   const session = bundle?.session ?? null;
   const flow = useFightFlow(session, fight, onDone);
   useEffect(() => {
-    if (!session) return;
+    if (!session || flow.phase !== 'fight') return;
     let playing = false;
     const onFrame = (frame: FightFrame) => {
       if (playing || frame.curr.tick < 1) return;
@@ -84,11 +84,9 @@ function FightContainer({ fight, seats, client, onDone, onFightLive }: FightCont
     };
     const off = session.onFrame(onFrame);
     onFrame(session.frame());
-    return () => {
-      off();
-      onFightLive(false);
-    };
-  }, [session, onFightLive]);
+    return off;
+  }, [session, flow.phase, onFightLive]);
+  useEffect(() => () => onFightLive(false), [onFightLive]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   useArenaRenderer(canvasRef, stageRef, session, fight, cards);
