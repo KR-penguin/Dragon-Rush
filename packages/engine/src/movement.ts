@@ -23,7 +23,7 @@ export function adjustMove(ctx: Ctx, delta: -1 | 0 | 1): void {
   const seat = ctx.s.current;
   const p = playerAt(ctx.s, seat);
   const steps = (ctx.s.turn.dice ?? 0) + delta;
-  if (delta !== 0) p.passive.ninjaCooldown = ctx.s.rules.passives.ninjaAdjustCooldown;
+  p.passive.ninjaCooldown = ctx.s.rules.passives.ninjaAdjustCooldown;
   emit(ctx, { type: 'MoveAdjusted', seat, delta, steps });
   moveBy(ctx, steps);
 }

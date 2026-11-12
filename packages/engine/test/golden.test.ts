@@ -15,7 +15,10 @@ import {
 function replay(mode: CombatMode): { state: GameState; events: GameEvent[] } {
   const created = createGameWithEvents(
     { seats: [{ job: 'berserker' }, { job: 'ninja' }, { job: 'archer' }] },
-    withRules({ maxRounds: 12, combat: { ...DEFAULT_RULES.combat, mode } }, DEFAULT_RULES),
+    withRules(
+      { maxRounds: 12, combat: { ...DEFAULT_RULES.combat, mode }, boardVariation: null },
+      DEFAULT_RULES,
+    ),
     20261111,
   );
   let state = created.state;

@@ -54,6 +54,29 @@ const BOARD: readonly TileDef[] = [
   tile('MYSTERY', '미지의 동굴', [{ kind: 'mystery' }]),
 ];
 
+const NEW_GOOD_TILES: readonly TileDef[] = [
+  tile('MOONWELL', '달빛 우물', [{ kind: 'hp', amount: 10 }]),
+  tile('RUNESTONE', '룬 각인석', [{ kind: 'stat', stat: 'atk', amount: 1 }]),
+  tile('SUPPLY_CARAVAN', '보급 마차', [
+    { kind: 'coins', amount: 8 },
+    { kind: 'hp', amount: 4 },
+  ]),
+  tile('FORTUNE_IDOL', '행운의 수호상', [
+    { kind: 'coins', amount: 4 },
+    { kind: 'stat', stat: 'def', amount: 1 },
+  ]),
+];
+
+const NEW_BAD_TILES: readonly TileDef[] = [
+  tile('HAUNTED_GROVE', '망령의 숲', [{ kind: 'hp', amount: -7 }]),
+  tile('TOLL_GATE', '산적 검문소', [{ kind: 'coins', amount: -8 }]),
+  tile('SINKHOLE', '깊은 싱크홀', [{ kind: 'skipTurn' }]),
+  tile('BURNING_RUINS', '불타는 폐허', [
+    { kind: 'coins', amount: -3 },
+    { kind: 'hp', amount: -4 },
+  ]),
+];
+
 const MYSTERY_DECK: readonly MysteryCardDef[] = [
   { id: 'HIDDEN_GOLD', name: '숨겨진 금화', effects: [{ kind: 'coins', amount: 12 }] },
   { id: 'GEM_VEIN', name: '보석 광맥', effects: [{ kind: 'coins', amount: 8 }] },
@@ -75,7 +98,7 @@ const MYSTERY_DECK: readonly MysteryCardDef[] = [
 ];
 
 export const DEFAULT_RULES: RulesConfig = deepFreeze({
-  version: 'rush-9',
+  version: 'rush-10',
   startingCoins: 10,
   startingItems: {},
   startBonus: { coins: 35, hp: 6 },
@@ -113,6 +136,12 @@ export const DEFAULT_RULES: RulesConfig = deepFreeze({
   },
   thiefStealAmount: 10,
   board: BOARD,
+  boardVariation: {
+    fixedTiles: [0, 6, 12, 18],
+    good: NEW_GOOD_TILES,
+    bad: NEW_BAD_TILES,
+    newPerKind: 2,
+  },
   mysteryDeck: MYSTERY_DECK,
   movement: { rollSides: 10 },
   combat: { maxExchanges: 100, dieSides: 6, mode: 'external' },
@@ -131,5 +160,11 @@ export function withRules(
   overrides: Partial<RulesConfig>,
   base: RulesConfig = DEFAULT_RULES,
 ): RulesConfig {
-  return deepFreeze({ ...base, ...overrides });
+  return deepFreeze({
+    ...base,
+    ...overrides,
+    ...(overrides.board !== undefined && overrides.boardVariation === undefined
+      ? { boardVariation: null }
+      : {}),
+  });
 }

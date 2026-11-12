@@ -49,8 +49,8 @@ describe('game setup', () => {
     expect(orders.size).toBeGreaterThan(1);
   });
 
-  it('rejects duplicate jobs and bad player counts', () => {
-    expect(() => newGame(['mage', 'mage'])).toThrow();
+  it('allows duplicate jobs while rejecting bad player counts', () => {
+    expect(newGame(['mage', 'mage']).players.map((p) => p.job)).toEqual(['mage', 'mage']);
     expect(() => newGame(['mage'])).toThrow();
   });
 });
@@ -266,7 +266,7 @@ describe('movement and tiles', () => {
     expect(landing.state.players[0]!.upgradeLevels.def).toBe(0);
   });
 
-  it('ninja move adjustment is available every other own turn and zero does not start cooldown', () => {
+  it('ninja move choice is available every other own turn, including after choosing zero', () => {
     const rules = withRules({
       board: DEFAULT_RULES.board.map((tile) => ({ ...tile, safe: true, effects: [] })),
     });
@@ -299,7 +299,12 @@ describe('movement and tiles', () => {
     s = act(s, { type: 'ROLL_DICE' }).state;
     expect(s.pending?.phase).toBe('MOVE_ADJUST');
     s = act(s, { type: 'ADJUST_MOVE', delta: 0 }).state;
-    expect(s.players[ninja]!.passive.ninjaCooldown).toBe(0);
+    expect(s.players[ninja]!.passive.ninjaCooldown).toBe(2);
+
+    s = nextNinjaTurn(s);
+    expect(s.players[ninja]!.passive.ninjaCooldown).toBe(1);
+    s = act(s, { type: 'ROLL_DICE' }).state;
+    expect(s.pending?.phase).not.toBe('MOVE_ADJUST');
 
     s = nextNinjaTurn(s);
     s = act(s, { type: 'ROLL_DICE' }).state;

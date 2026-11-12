@@ -123,8 +123,8 @@ describe('dragon script', () => {
     expect(combatResult(states.at(-1)!)?.winner).toBe('a');
   });
 
-  it('the challenger loses at 30 s and the dragon soft-enrages at 20 s', () => {
-    expect(R.timeLimit.dragonFight).toBe(30 * R.tickHz);
+  it('the challenger loses at 90 s and the dragon soft-enrages at 20 s', () => {
+    expect(R.timeLimit.dragonFight).toBe(90 * R.tickHz);
     expect(R.dragon.softEnrageTick).toBe(20 * R.tickHz);
     const wall = statFighter('swordsman', 5000, 1, 60);
     const p = play(createCombat(dragonFight(wall), 3), randomInputs(3, 6000), [], 6000);

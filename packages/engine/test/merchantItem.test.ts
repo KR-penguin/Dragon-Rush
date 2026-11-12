@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 const setup = { seats: [{ job: 'swordsman' as const }, { job: 'archer' as const }] };
 
 function visit(seed: number, tile: number, rules = DEFAULT_RULES) {
-  const state = cloneState(createGame(setup, rules, seed));
+  const state = cloneState(createGame(setup, withRules({ boardVariation: null }, rules), seed));
   state.players[0]!.items.teleport = 1;
   deepFreeze(state);
   return applyAction(state, { type: 'USE_TELEPORT', tile });

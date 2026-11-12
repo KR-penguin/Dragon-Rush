@@ -1,5 +1,6 @@
 import type { Ctx } from './ctx';
 import { createRng, shuffle } from './rng';
+import { generateBoard } from './rules/generateBoard';
 import { validateRules, validateSetup } from './rules/validateRules';
 import { beginTurn, emptyItems, freshTurn } from './turn';
 import {
@@ -22,10 +23,12 @@ export function createGameWithEvents(
 ): { state: GameState; events: GameEvent[] } {
   validateRules(rules);
   validateSetup(setup);
-  const [order, rng] = shuffle(
+  const [order, afterSeats] = shuffle(
     createRng(seed),
     setup.seats.map((_, i) => i),
   );
+  const [board, rng] = generateBoard(rules, afterSeats);
+  const gameRules = board === rules.board ? rules : { ...rules, board };
   const players: PlayerState[] = order.map((origin, seat) => {
     const job = setup.seats[origin]!.job;
     const def = rules.jobs[job];
@@ -49,7 +52,7 @@ export function createGameWithEvents(
   });
   const ctx: Ctx = {
     s: {
-      rules,
+      rules: gameRules,
       players,
       current: 0,
       round: 1,

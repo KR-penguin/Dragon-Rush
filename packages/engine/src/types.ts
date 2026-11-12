@@ -44,6 +44,14 @@ export const TILE_IDS = [
   'SPIDER_WEB',
   'WANDERING_MERCHANT',
   'STORM',
+  'MOONWELL',
+  'RUNESTONE',
+  'SUPPLY_CARAVAN',
+  'FORTUNE_IDOL',
+  'HAUNTED_GROVE',
+  'TOLL_GATE',
+  'SINKHOLE',
+  'BURNING_RUINS',
 ] as const;
 export type TileId = (typeof TILE_IDS)[number];
 
@@ -115,6 +123,12 @@ export interface RulesConfig {
   readonly items: Readonly<Record<ItemId, ItemDef>>;
   readonly thiefStealAmount: number;
   readonly board: readonly TileDef[];
+  readonly boardVariation: {
+    readonly fixedTiles: readonly number[];
+    readonly good: readonly TileDef[];
+    readonly bad: readonly TileDef[];
+    readonly newPerKind: number;
+  } | null;
   readonly mysteryDeck: readonly MysteryCardDef[];
   readonly movement: { readonly rollSides: number };
   readonly combat: {

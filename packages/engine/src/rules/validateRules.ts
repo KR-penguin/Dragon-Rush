@@ -11,6 +11,27 @@ export function validateRules(rules: RulesConfig): void {
   };
   if (rules.board.length !== BOARD_SIZE) fail(`board must have ${BOARD_SIZE} tiles`);
   if (rules.board[0]?.id !== 'START') fail('tile 0 must be START');
+  const variation = rules.boardVariation;
+  if (variation) {
+    const fixed = new Set(variation.fixedTiles);
+    if (
+      fixed.size !== variation.fixedTiles.length ||
+      !fixed.has(0) ||
+      variation.fixedTiles.some((index) => !Number.isSafeInteger(index) || index < 0 || index >= BOARD_SIZE)
+    ) fail('invalid boardVariation.fixedTiles');
+    const count = variation.newPerKind;
+    if (
+      !Number.isSafeInteger(count) ||
+      count < 1 ||
+      count > variation.good.length ||
+      count > variation.bad.length ||
+      2 * count > BOARD_SIZE - fixed.size
+    ) fail('invalid boardVariation.newPerKind');
+    const baseIds = new Set(rules.board.map((tile) => tile.id));
+    const newIds = [...variation.good, ...variation.bad].map((tile) => tile.id);
+    if (new Set(newIds).size !== newIds.length || newIds.some((id) => baseIds.has(id)))
+      fail('boardVariation tiles must have distinct new ids');
+  }
   for (const job of JOB_IDS) {
     const def = rules.jobs[job];
     if (!def || def.hp < 1 || def.atk < 0 || def.def < 0) fail(`invalid job ${job}`);
@@ -61,8 +82,6 @@ export function validateRules(rules: RulesConfig): void {
 export function validateSetup(setup: GameSetup): void {
   const n = setup.seats.length;
   if (n < 2 || n > 4) throw new RulesValidationError('game needs 2 to 4 seats');
-  const jobs = new Set(setup.seats.map((s) => s.job));
-  if (jobs.size !== n) throw new RulesValidationError('jobs must be unique');
   for (const s of setup.seats) {
     if (!JOB_IDS.includes(s.job)) throw new RulesValidationError(`unknown job ${s.job}`);
   }
