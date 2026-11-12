@@ -2,6 +2,8 @@ import {
   C2S,
   FIGHT_C2S,
   FIGHT_S2C,
+  CONFIRM_BOT_A,
+  CONFIRM_BOT_B,
   FightStartSchema,
   PROTOCOL_VERSION,
   S2C,
@@ -11,6 +13,7 @@ import {
   type GameUpdateMsg,
 } from '@dragon-rush/protocol';
 import { io, type Socket } from 'socket.io-client';
+import { GO_LEAD_MS } from '@dragon-rush/netcode';
 import { afterEach, expect, it } from 'vitest';
 import { startServer, type ServerHandle } from '../src/app';
 
@@ -39,6 +42,22 @@ const event = <T>(socket: Socket, name: string, ms = 8000): Promise<T> =>
       resolve(value);
     };
     socket.once(name, receive);
+  });
+const confirmedFlagsAt = (socket: Socket, tick: number): Promise<number> =>
+  new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      socket.off(FIGHT_S2C.confirm, receive);
+      reject(new Error(`timeout: tick ${tick} confirmation`));
+    }, 5000);
+    const receive = (raw: unknown) => {
+      const packet = decodeFightConfirm(raw);
+      if (!packet || packet.firstTick > tick || packet.firstTick + packet.ticks.length <= tick)
+        return;
+      clearTimeout(timer);
+      socket.off(FIGHT_S2C.confirm, receive);
+      resolve(packet.ticks[tick - packet.firstTick]!.flags);
+    };
+    socket.on(FIGHT_S2C.confirm, receive);
   });
 const call = (socket: Socket, name: string, payload: unknown = {}) =>
   socket.timeout(5000).emitWithAck(name, payload) as Promise<{
@@ -111,10 +130,12 @@ it('starts a server-authoritative dragon fight and confirms inputs to a fighter 
   await new Promise((resolve) => setTimeout(resolve, 1200));
   expect(server.rooms.get(code!)?.game?.publicState.pending?.phase).toBe('COMBAT');
   const go = event<{ epochServerMs: number }>(fighter, FIGHT_S2C.go);
+  const readyAt = performance.now();
   fighter.emit(FIGHT_C2S.ready, { fightId: fa.fightId, inputDelay: 0, rttMs: 10, jitterMs: 0 });
-  await go;
+  expect((await go).epochServerMs - readyAt).toBeGreaterThanOrEqual(GO_LEAD_MS - 100);
   const confirmFighter = event<unknown>(fighter, FIGHT_S2C.confirm);
   const confirmSpectator = event<unknown>(spectator, FIGHT_S2C.confirm);
+  const confirmTick17 = confirmedFlagsAt(fighter, 17);
   for (let tick = 1; tick <= 16; tick++)
     fighter.emit(
       FIGHT_C2S.input,
@@ -123,6 +144,7 @@ it('starts a server-authoritative dragon fight and confirms inputs to a fighter 
   const [cf, cs] = await Promise.all([confirmFighter, confirmSpectator]);
   expect(decodeFightConfirm(cf)?.fightId).toBe(fa.fightId);
   expect(decodeFightConfirm(cs)?.ticks.length).toBeGreaterThan(0);
+  expect((await confirmTick17) & CONFIRM_BOT_A).toBe(0);
 });
 
 it('relays a duel input only after the other fighter commits, with a third seat spectating', async () => {
@@ -181,6 +203,7 @@ it('relays a duel input only after the other fighter commits, with a third seat 
       jitterMs: 0,
     });
   await go;
+  const confirmTick2 = confirmedFlagsAt(fighters[0]!, 2);
   let relays = 0;
   fighters[0]!.on(FIGHT_S2C.relay, () => {
     relays += 1;
@@ -208,4 +231,5 @@ it('relays a duel input only after the other fighter commits, with a third seat 
   );
   await relay;
   expect(relays).toBeGreaterThan(0);
+  expect((await confirmTick2) & (CONFIRM_BOT_A | CONFIRM_BOT_B)).toBe(0);
 });

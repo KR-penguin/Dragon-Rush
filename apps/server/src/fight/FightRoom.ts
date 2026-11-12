@@ -226,8 +226,9 @@ export class FightRoom {
     if (!p || seat === null || p.fightId !== this.launch.id || this.epochMs === null || this.ended)
       return;
     const now = performance.now();
-    const wall = Math.max(0, Math.floor((now - this.epochMs) / TICK_MS));
-    this.authority.accept(seat, p, wall, now - this.epochMs);
+    const elapsed = Math.max(0, now - this.epochMs);
+    const wall = Math.floor(elapsed / TICK_MS);
+    this.authority.accept(seat, p, wall, elapsed);
     this.ack.set(
       pid,
       Math.max(this.ack.get(pid) ?? 0, Math.min(p.ackConfirmTick, this.sent.get(pid) ?? 0)),
