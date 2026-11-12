@@ -207,21 +207,22 @@ describe('pvp', () => {
     return s;
   };
 
-  it('does not fight during the grace rounds', () => {
+  it('starts a duel when two players meet in round two without shields', () => {
     const { events, state } = act(duelSetup(0, 0, 2), { type: 'USE_TELEPORT', tile: 9 });
     expect(eventsOf(events, 'CombatStarted')).toHaveLength(0);
-    expect(state.pending?.phase).not.toBe('CHOOSE_PVP_TARGET');
+    expect(eventsOf(events, 'PvpTriggered')).toHaveLength(1);
+    expect(state.pending).toEqual({ actor: 0, phase: 'CHOOSE_PVP_TARGET' });
     expect(state.players.every((p) => p.alive)).toBe(true);
   });
 
-  it('skips PvP confirmation on the safe START tile', () => {
+  it('starts a duel when two players meet on START without shields', () => {
     const s = patch(withTeleport(duelSetup(0, 0)), (d) => {
       d.players[0]!.position = 5;
       d.players[1]!.position = 0;
     });
     const { state, events } = act(s, { type: 'USE_TELEPORT', tile: 0 });
-    expect(eventsOf(events, 'PvpTriggered')).toHaveLength(0);
-    expect(state.pending?.phase).not.toBe('CHOOSE_PVP_TARGET');
+    expect(eventsOf(events, 'PvpTriggered')).toHaveLength(1);
+    expect(state.pending).toEqual({ actor: 0, phase: 'CHOOSE_PVP_TARGET' });
   });
 
   it('waits for confirmation even when there is exactly one PvP target', () => {

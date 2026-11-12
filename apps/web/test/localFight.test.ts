@@ -212,6 +212,31 @@ describe('real-time fights in local play', () => {
 });
 
 describe('bot-only fights', () => {
+  it('resolves a shared-tile bot duel with no shield used', () => {
+    const g = open({
+      seed: 11,
+      maxRounds: 25,
+      seats: [
+        { name: 'R1', job: 'berserker', kind: 'bot', botName: 'heuristic:aggro' },
+        { name: 'R2', job: 'swordsman', kind: 'bot', botName: 'heuristic:aggro' },
+      ],
+    });
+    g.sched.flush();
+    const events = g.updates.flatMap((u) => u.events);
+    const landed = events.findIndex((e) => e.type === 'PvpTriggered');
+    expect(
+      g.updates.find((u) => u.events.some((e) => e.type === 'PvpTriggered'))?.publicState.round,
+    ).toBe(2);
+    const started = events.findIndex(
+      (e, i) => i > landed && e.type === 'CombatStarted' && e.kind === 'duel',
+    );
+    expect(landed).toBeGreaterThanOrEqual(0);
+    expect(started).toBeGreaterThan(landed);
+    expect(events.slice(landed, started).some((e) => e.type === 'ShieldUsed')).toBe(false);
+    expect(events.slice(started).some((e) => e.type === 'PlayerEliminated')).toBe(true);
+    g.client.dispose();
+  });
+
   it('resolve instantly and never wait for a screen when no human plays', () => {
     const g = open({
       seed: 3,

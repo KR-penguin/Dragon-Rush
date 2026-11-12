@@ -11,6 +11,7 @@ const SPECIAL_KINDS = new Set(['shop', 'mystery', 'training', 'randomItem']);
 /** Colour family of a tile, read from its effect data (presentation only). */
 export function tileTone(def: TileDef): TileTone {
   if (def.safe) return 'safe';
+  if (def.id === 'START') return 'special';
   if (def.effects.some((e) => SPECIAL_KINDS.has(e.kind))) return 'special';
   let score = 0;
   for (const e of def.effects) {
@@ -23,7 +24,7 @@ export function tileTone(def: TileDef): TileTone {
 
 /**
  * Category gem of a tile on the board. Corner tiles are landmarks (teal gem); the rest follow
- * their effect data. Only START is a safe zone in the rules, so the legend calls the group "거점".
+ * their effect data. Corner tiles remain landmarks even when START permits PvP.
  */
 export type TileCategory = 'landmark' | 'special' | 'good' | 'bad';
 
