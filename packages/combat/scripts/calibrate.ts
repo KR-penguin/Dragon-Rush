@@ -63,9 +63,10 @@ const UPGRADES: readonly [string, Partial<Pick<FighterSetup, 'atk' | 'def' | 'ma
 const DRAGON_BUILDS: readonly [string, (j: JobId) => FighterSetup][] = [
   ['base', (j) => baseFighter(j)],
   ['A9/D8/HP70', (j) => statFighter(j, 70, 9, 8)],
+  ['A10/D9/HP72', (j) => statFighter(j, 72, 10, 9)],
+  ['A11/D10/HP80', (j) => statFighter(j, 80, 11, 10)],
   ['60 coins', (j) => boughtFighter(j, 60)],
   ['80 coins', (j) => boughtFighter(j, 80)],
-  ['100 coins', (j) => boughtFighter(j, 100)],
 ];
 
 if (want('matrix')) {
