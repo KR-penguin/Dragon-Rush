@@ -1,6 +1,6 @@
 # 아키텍처 설계서 — 드래곤 러쉬 (Dragon Rush)
 
-> 상태: **구현 완료(P0~P7)**. 이 문서는 실제 코드 구조를 설명한다. 세부 구현은 각 패키지 소스가 정본이다. **§12(2차 실시간 전투 구조)는 구현 예정(in progress)** 이다.
+> 상태: **구현 완료(P0~P7)**. 이 문서는 실제 코드 구조를 설명한다. 세부 구현은 각 패키지 소스가 정본이다. **§12의 실시간 전투·온라인 롤백 경로는 구현됨**(지연 목표와 브라우저 검증은 남음).
 > 정본 분담: 규칙·수치 → [game-design.md](game-design.md) · 관측/행동/마스크/보상/env 프로토콜 → [ai-interface-spec.md](ai-interface-spec.md) · 실시간 전투 → [combat-design.md](combat-design.md) · 전투 AI → [combat-ai-spec.md](combat-ai-spec.md) · 화면·FX·오디오 → [art-direction.md](art-direction.md) · 일정·결정 사항 → [development-plan.md](development-plan.md) · 코딩 규칙 → [coding_convention.md](../coding_convention.md)
 
 ## 1. 설계 원칙
@@ -353,38 +353,40 @@ Python 프로세스 (사용자 트레이너 또는 python/examples/random_agent.
 - 통합: 인프로세스 서버 + socket.io-client로 방 생성→시작→봇 대전→종료, 재접속·타임아웃(연속 3회 대리·해제 포함)·`STALE_VERSION` 경합. env 서버 spawn + JSONL 왕복, Python 쪽은 pytest로 경량 검증.
 - E2E(선택, Playwright): 브라우저 컨텍스트 2개로 온라인 1게임, 그리고 핫시트 1게임을 끝까지 진행.
 
-## 12. 2차: 실시간 전투 구조 (구현 예정, in progress)
-> 이름·시그니처는 예정이며 구현 코드가 정본이다. 전투 규칙·수치는 [combat-design.md](combat-design.md)(구현 후 `DEFAULT_COMBAT_RULES`), 전투 AI 계약은 [combat-ai-spec.md](combat-ai-spec.md), 화면·FX는 [art-direction.md](art-direction.md).
+## 12. 2차: 실시간 전투 구조 (구현됨)
+> 아래는 현재 연결된 코드 경로다. 전투 규칙·수치는 [combat-design.md](combat-design.md)와 `DEFAULT_COMBAT_RULES`, 온라인 넷코드의 측정 한계는 [combat-design.md §9](combat-design.md), 전투 AI 계약은 [combat-ai-spec.md](combat-ai-spec.md), 화면·FX는 [art-direction.md](art-direction.md)를 본다.
 
 ### 12.1 새 패키지와 의존 방향
 | 패키지 | 책임 | 의존 |
 |---|---|---|
-| `@dragon-rush/combat` | 결정적 실시간 전투 sim(60Hz, Q8, BAM): `createFight(setup, rules, seed)`, `stepFight(state, inputs[2]) → { state, events }`, `hashFight`, `DEFAULT_COMBAT_RULES`, 직업 키트, 용 스크립트, 보드 ↔ 전투 변환(`CombatRequest` → 전투 setup, 전투 결과 → `CombatResult`) | engine (타입만) |
+| `@dragon-rush/combat` | 결정적 60Hz 전투 sim: `createCombat(setup, seed, rules)`, `stepCombat(state, inputs)`, `hashCombatState`, `DEFAULT_COMBAT_RULES`, 직업 키트·용 스크립트·결과 | engine |
 | `@dragon-rush/combat-ai` (**구현됨**) | `cobs_v1` 인코더·미러 증강, `cact_v1` 코덱·마스크, `StateHistory`(반응 지연), 이름으로 만드는 스크립트 봇(`scripted:balanced·aggressive·cautious·idle·random·pool`), `CombatModelPolicy`·`USER_COMBAT_WEIGHT_ADAPTER`(null), `boardCombatSetup`(엔진 `CombatRequest` → 전투 setup). TS MLP 런타임·전투 패리티는 사용자 포맷 수령 후 | combat, engine |
+| `@dragon-rush/netcode` | `FightAuthority`(서버 확정), `FightClient`·`RollbackSession`(입력 예측·링·재시뮬), `SpectatorPlayback`, 시계·입력 지연·가상 TCP 시험 | combat, protocol |
 | `@dragon-rush/sim` (확장, **구현됨**) | `combat-env-server`(stdio JSONL, 보드 env와 별도 프로세스), `combatResolver`(보드 sim·보드 env의 `combat_resolver: 'dice' \| 'sim'`), `--log-fights`로 `stat_dist_v1` 생성 | + combat, combat-ai |
 | `python/rpgboard_env` (확장, **구현됨**) | `CombatEnv`, `CombatVecEnv` | numpy만 |
 
-- 의존: `engine` ← `combat` ← `combat-ai` ← `sim`·`server`·`web`. `engine`은 여전히 아무것도 import하지 않는다. 엔진과 전투 sim은 서로를 호출하지 않고, 셸(서버·`LocalGameClient`·env)이 `CombatRequest`로 전투를 실행한 뒤 결과를 `applyCombatResult`로 넣는다.
+- 의존: `engine` ← `combat` ← `combat-ai` ← `sim`·`server`·`web`; `combat`·`protocol` ← `netcode` ← `server`·`web`. `engine`은 여전히 아무것도 import하지 않는다. 엔진과 전투 sim은 서로를 호출하지 않고, 셸(서버·`LocalGameClient`·env)이 `CombatRequest`로 전투를 실행한 뒤 결과를 `applyCombatResult`로 넣는다.
 - `packages/combat` lint: 엔진 순수성 규칙 + 초월함수(`Math.sin/cos/tan/atan2/exp/log/pow/sqrt/hypot/cbrt`)·`**` 금지(브라우저 엔진 간 결정성). 웹 FX 계층은 sim 이벤트를 구독만 하고 자기 RNG(xorshift)를 쓴다.
 
-### 12.2 엔진 COMBAT phase 경계 (엔진 구현 진행 중)
+### 12.2 엔진 COMBAT phase 경계
 - `RulesConfig.combat.mode: 'dice' | 'external'`. `external`이면 전투 시작 시 `CombatStarted`를 내고 `pending = { actor: a, phase: 'COMBAT' }`, `state.combat = { kind: 'duel' | 'dragonFight', a, b }`에서 멈춘다. 이 phase의 `getLegalActions`는 `[]`.
 - 결과 입력: `applyCombatResult(state, { winner, hpA, hpB, indomitableUsedA?, indomitableUsedB?, timedOut? })`. 엔진이 검증(`InvalidCombatResultError`)하고 `CombatEnded`·탈락·전리품·승리 판정을 이어 간다. `resolveCombatWithDice(state)`는 대기 중인 전투를 주사위 규칙으로 정리한다(`dice` 리졸버·대체 경로).
-- 서버: `GameSession`이 `COMBAT`에 들어가면 턴 타이머를 멈추고 전투 방(`FightRoom`)을 연다. 전투 결과도 사람 입력과 같은 원칙으로 **단일 경로**(예: `GameSession.submitCombatResult(fightId, result)`)로만 들어오고 `stateVersion`·`fightId` 검사 후 적용한다. 로컬은 `LocalGameClient`가 브라우저 sim을 돌린 뒤 같은 엔진 함수를 호출한다.
-- 클라이언트가 `pending.phase = 'COMBAT'`을 새로 보게 되므로 `PROTOCOL_VERSION`을 2로 올린다. 보드 정책은 `COMBAT`에서 결정하지 않으므로 `obs_v1`/`act_v1`은 바뀌지 않는다.
+- 서버: `GameSession`이 `COMBAT`에 들어가면 턴 타이머를 멈추고 전투 방(`FightRoom`)을 연다. 서버가 확정한 결과는 `GameSession.submitCombatResult(fightId, result)` 한 경로로 들어오며 활성 `fightId`와 `COMBAT` phase를 검사한 뒤 적용한다. 방의 `quickCombat` 선택만 주사위 해결 경로를 쓴다. 로컬은 `LocalGameClient`가 브라우저 sim 결과를 같은 엔진 함수에 넣는다.
+- `PROTOCOL_VERSION`은 2다. 보드 정책은 `COMBAT`에서 결정하지 않으므로 `obs_v1`/`act_v1`은 바뀌지 않았다.
 
-### 12.3 실시간 전투 메시지 (`packages/protocol`, 예정)
-| 방향 | 이름 | 페이로드 | 전송 |
-|---|---|---|---|
-| S→C | `fight:start` | `{ fightId, seed, setup, startTick, seats }` | 신뢰, 방 전체. 2.8초 스플래시·준비 동안 ack 왕복으로 RTT 측정 |
-| C→S | `fight:input` | 바이너리 `{ fightId u16, tick u32, 최근 4틱 마스크 u8×4 }` ≈ 10B | 매 틱(60/s), ack 없음, `compress(false)` |
-| S→C | `fight:state` | 바이너리 스냅샷: tick, `ackTick[2]`, `inputLate[2]`, 전투원 2 × ≈ 24B, 투사체 ≤ 16 × 10B, 이벤트 (≈ 60~250B) | 두 전투원 30Hz(volatile 아님), 관전자 20Hz `volatile` |
-| S→C | `fight:end` | `{ fightId, outcome }` | 신뢰. 이어서 `applyCombatResult` 결과가 `game:update`로 나감 |
-| S→C / C→S | `fight:sync` / `fight:requestSync` | 전체 전투 상태 / `{ fightId }` | (재)입장·갭 감지 시 |
+### 12.3 온라인 롤백·전송 (`packages/netcode`, `packages/protocol`)
+| 방향 | 이름 | 페이로드·역할 |
+|---|---|---|
+| S→C / C→S / S→C | `fight:start` / `fight:ready` / `fight:go` | 설정·시드·규칙 해시·빌드 식별자·역할 / 입력 지연과 회선 측정 / 서버 틱 0 시각 |
+| C→S / S→C | `fight:input` / `fight:relay` | 평면 JSON 정수 배열의 틱별 입력 마스크 / 상대가 같은 틱을 제출한 뒤 공개되는 마스크 |
+| S→C | `fight:confirm` | 평면 JSON 정수 배열의 확정된 양측 마스크·플래그·도착 여유·품질·주기적 상태 해시, 보통 2틱마다 |
+| C↔S | `fight:ping` / `fight:pong`, `fight:ack` | 단조 시계·RTT 측정, 수신 틱 확인 |
+| S→C / C→S | `fight:control`, `fight:sync` / `fight:requestSync`, `fight:retime` | 봇 인계, 전체 상태 재동기화, 서버 시작 시각 재기준 |
+| S→C | `fight:end` / `fight:replay` | 서버 확정 결과와 최종 해시 / 모든 봇 전투 입력 리플레이 |
 
-- 서버: 모든 전투를 도는 60Hz 루프 하나(hrtime 누산기, 따라잡기 ≤ 5스텝). 입력은 좌석별 틱 큐(이미 시뮬한 틱의 늦은 입력은 폐기, 누락은 마지막 마스크 반복, 4틱 넘게 쌓이면 가장 오래된 것 폐기). 끊긴 전투원은 전투 봇 Normal이 "AI 대행"하고, 재접속하면 `fight:sync` 후 다음 틱에 돌려준다.
-- 클라이언트: 스냅샷마다 권위 상태로 되돌린 뒤 현재 틱까지 재시뮬(상대 입력은 마지막 마스크, 최대 10틱). 오차 < 24px는 6틱에 섞고 그 이상은 스냅. 서버보다 `RTT/2 + 지터 + 1틱` 앞서 달리며 `inputLate`로 ±1틱 조정. 근거는 combat-design §9.
-- 경계 검증: 신뢰 메시지는 zod, 바이너리 메시지는 길이·범위를 검사하는 디코더로 진입 시 검증한다. 좌석은 소켓에서 정하므로 남의 전투원 입력은 보낼 수 없다.
+- `apps/server/src/socket/gateway.ts`의 공유 스케줄러가 활성 `FightRoom`을 60Hz로 진행한다. `FightAuthority`는 인증 소켓에서 구한 좌석별 첫 입력만 받고, 지난 틱과 너무 먼 미래 입력을 거절한다. PvP는 commit-before-reveal과 최대 6틱 조건부 대기, PvE는 최대 15틱 대기 후 대체 입력을 사용한다. 확인된 입력·해시만 확정 스트림으로 보내고, 서버 결과만 `GameSession`에 반영한다.
+- `apps/web/src/services/fight/OnlineFightSession.ts`는 `FightClient` 또는 `SpectatorPlayback`을 렌더러에 연결한다. 전투원은 링 상태에서 잘못 예측한 틱부터 재시뮬하며, 관전자는 확정 입력만 6~15틱 뒤에서 재생한다. 렌더 위치 보정은 sim 상태를 바꾸지 않고, KO·결과는 확정 뒤 표시한다. 개발 빌드의 `NetSimPanel`은 기본 꺼짐이며 가상 지연·지터·손실을 켤 수 있다.
+- 경계 검증: 객체 메시지는 zod, 빈번한 정수 배열 메시지는 길이·범위 디코더로 검증한다. Socket.IO는 WebSocket만 사용하고 압축을 끈다. 재접속·갭·디싱크는 `fight:sync`로 복구한다. 가상 TCP 시험은 최종 상태 수렴을 보였으나 손실 구간 p95 예측 깊이는 설계 목표보다 크다([combat-design.md §9.5](combat-design.md)).
 
 ### 12.4 학습 프로세스
 ```
@@ -392,4 +394,4 @@ Python (사용자 트레이너) ─┬─ RPGBoardVecEnv ── stdio JSONL ─�
                           └─ CombatVecEnv   ── stdio JSONL ──▶ combat-env-server (전투: cobs_v1/cact_v1)
 ```
 - 두 env 서버는 별도 프로세스이고 각자 버전·`info`를 갖는다. 보드 env의 `outcome`·`sim` 리졸버는 고정된 outcome 파일·전투 모델을 읽기만 한다([combat-ai-spec.md §12](combat-ai-spec.md)).
-- 현재 보드 env의 `combat_resolver`는 `dice`(기본)와 `sim`(스크립트 봇끼리 `runCombat`)이다. 리졸버는 셸 쪽 함수(`createCombatResolver`)라 엔진은 전투 sim을 모른다: `COMBAT`에서 멈춘 상태를 받아 `boardCombatSetup` → `runCombat` → `applyCombatResult`로 이어 간다. 서버·`LocalGameClient`도 같은 경로로 바꿀 수 있다.
+- 현재 보드 env의 `combat_resolver`는 `dice`(기본)와 `sim`(스크립트 봇끼리 `runCombat`)이다. 리졸버는 셸 쪽 함수(`createCombatResolver`)라 엔진은 전투 sim을 모른다: `COMBAT`에서 멈춘 상태를 받아 `boardCombatSetup` → `runCombat` → `applyCombatResult`로 이어 간다. 서버·`LocalGameClient`도 같은 엔진 경계로 결과를 적용한다.
