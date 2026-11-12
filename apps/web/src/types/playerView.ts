@@ -32,7 +32,7 @@ export function playerBadges(state: PublicGameState, p: PlayerState): PlayerBadg
   if (hooks.indomitable && !p.passive.indomitableUsed)
     out.push({ kind: 'indomitable', label: '불굴 사용 가능' });
   if (hooks.moveAdjust && p.passive.ninjaCooldown > 0) {
-    out.push({ kind: 'ninjaCooldown', label: `닌자 쿨다운 ${p.passive.ninjaCooldown}` });
+    out.push({ kind: 'ninjaCooldown', label: `이동 보정 ${p.passive.ninjaCooldown}턴 후 재사용` });
   }
   if (hooks.effectiveAtk?.(state.rules, p.atk, p.hp, p.maxHp).rage)
     out.push({ kind: 'rage', label: '광폭화' });

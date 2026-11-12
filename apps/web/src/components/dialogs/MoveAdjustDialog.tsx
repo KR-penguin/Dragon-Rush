@@ -29,7 +29,7 @@ export function MoveAdjustDialog({
         <GameIcon name="footsteps" />
         <strong>그림자 걸음</strong>
         <span>
-          룰렛 <b className="impact">{dice ?? '?'}</b> · ±1을 쓰면 쿨다운이 걸립니다
+          룰렛 <b className="impact">{dice ?? '?'}</b> · ±1 사용 후 4번째 내 턴에 재사용
         </span>
       </header>
       <div className="move-options" onPointerLeave={() => onPreview?.(null)}>

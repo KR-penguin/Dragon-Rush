@@ -111,6 +111,7 @@ export function CornerCard({
               .map((b) => (
                 <span key={b.kind} className={`cc-badge badge-${b.kind}`} title={b.label}>
                   <GameIcon name={BADGE_ICON[b.kind]} label={b.label} />
+                  {b.kind === 'ninjaCooldown' && <small>보정 {p.passive.ninjaCooldown}턴</small>}
                 </span>
               ))}
           </span>
