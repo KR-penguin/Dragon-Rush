@@ -47,7 +47,7 @@ Reading order for any task: this file → `coding_convention.md` → canonical d
 | Runtime | Node 22 | server, sim, env server |
 | Rules engine | zero-dependency TS + own **sfc32** PRNG | copy-on-write working copy per action (no Immer) |
 | Validation | zod 4 | protocol schemas, env commands |
-| Web | React 19 + Vite 7, Zustand 5, socket.io-client 4 | board = DOM + CSS animations |
+| Web | React 19 + Vite 7, Zustand 5, socket.io-client 4, react-icons (`gi` = game-icons.net, CC BY 3.0), Fontsource (Hahmlet, Black Han Sans, Noto Sans KR, Gowun Batang) | "Ember Table" board: DOM + CSS 3D (`.world-shake > .stage > .camera > .board3d`), FX layer in `src/fx` |
 | Server | Fastify 5 (+ @fastify/static) + Socket.IO 4 | in-memory rooms, no DB, no accounts |
 | Bundling | tsup (server, sim → `dist/`), Vite (web); `tsx` runs TS directly in dev and for `pnpm sim` | |
 | Tests | Vitest 3 + fast-check 4; pytest for Python | snapshots in `test/__snapshots__/` |
