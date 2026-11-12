@@ -210,7 +210,7 @@ flowchart TD
 | `POST_MOVE` | 턴 플레이어 | `BUY_ITEM{item}` (`canBuy`일 때), `UPGRADE{stat}`, `USE_THIEF{target}`, `USE_TELEPORT{tile}`, `END_TURN` | 텔레포트를 쓰면 착지 처리 후 다시 `POST_MOVE` |
 
 - 비용이 드는 행동은 코인이 충분할 때만 할 수 있다. 이동·칸 이벤트·턴 시작·종료는 엔진이 자동으로 진행한다. 실시간 전투는 외부 셸이 진행하고 엔진이 결과를 검증해 `GameEvent`로 기록한다.
-- **합법 행동이 정확히 1개인 결정은 자동으로 적용된다**(예: 코인과 아이템이 없어 `POST_MOVE`에 `END_TURN`만 남은 경우). 단, 상대가 1명인 `CHOOSE_PVP_TARGET`은 결투 확인을 위해 자동 적용하지 않는다.
+- **합법 행동이 정확히 1개인 결정은 자동으로 적용된다**(예: 상점 밖에서 코인과 아이템이 없어 `POST_MOVE`에 `END_TURN`만 남은 경우). 단, 상대가 1명인 `CHOOSE_PVP_TARGET`은 결투 확인을 위해, 상점 방문 중인 `POST_MOVE`는 코인이 없어도 상점 표시를 위해 자동 적용하지 않는다.
 
 ## 7. 경제
 | 구분 | 출처 | 양 |

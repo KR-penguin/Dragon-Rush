@@ -111,6 +111,18 @@ describe('movement and tiles', () => {
     expect(r2.state.players[0]!.coins).toBe(15);
   });
 
+  it('waits at an unaffordable shop so the visit can be shown', () => {
+    const s = setPlayer(withTeleport(newGame(['swordsman', 'archer'], 5)), 0, { coins: 0 });
+    const landing = act(s, { type: 'USE_TELEPORT', tile: 6 });
+    expect(eventsOf(landing.events, 'TileResolved')).toEqual([
+      { type: 'TileResolved', seat: 0, tile: 6, tileId: 'SHOP' },
+    ]);
+    expect(landing.state.turn.canBuy).toBe(true);
+    expect(landing.state.pending).toEqual({ actor: 0, phase: 'POST_MOVE' });
+    expect(getLegalActions(landing.state)).toEqual([{ type: 'END_TURN' }]);
+    expect(act(landing.state, { type: 'END_TURN' }).state.current).toBe(1);
+  });
+
   it('upgrade cost escalates with level', () => {
     let s = setPlayer(newGame(['swordsman', 'archer'], 5), 0, { coins: 100 });
     const atk0 = s.players[0]!.atk;
