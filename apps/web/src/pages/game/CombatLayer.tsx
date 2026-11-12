@@ -14,6 +14,7 @@ import { useFightSession } from '../../hooks/useFightSession';
 import { useKeyboardTest } from '../../hooks/useKeyboardTest';
 import type { PendingFight, SeatInfo } from '../../services/gameClient';
 import type { FightSession } from '../../services/fight';
+import { BOT_REPLAY_SPEED } from '../../services/fight/LocalFightSession';
 import type { FightNetStats } from '@dragon-rush/netcode';
 import { netDebugEnabled } from '../../services/fight/netDebug';
 import { NetSimPanel } from './NetSimPanel';
@@ -26,12 +27,11 @@ const NO_SEATS: readonly SeatInfo[] = [];
 /**
  * The Game page's single mount point for real-time fights. Shows the fight the client is waiting
  * on once the board has caught up, and reports the result back through `GameClient.reportFight`.
- * Highlights of bot-only fights are skipped at 4× board speed; a crashed screen falls back to dice.
+ * Bot-only replays play at 4×; a crashed screen falls back to dice.
  */
 export function CombatLayer({ store }: { store: GameStore }) {
   const fight = useFightGate(store);
   const client = useStore(store, (s) => s.client);
-  const speed = useStore(store, (s) => s.speed);
   const seats = useStore(store, (s) => s.latest?.seats) ?? NO_SEATS;
   const report = useCallback(
     (id: number, outcome: CombatResult | 'dice') => {
@@ -39,12 +39,7 @@ export function CombatLayer({ store }: { store: GameStore }) {
     },
     [client],
   );
-  const fastSkip = fight !== null && fight.replay !== null && speed >= 4;
-  useEffect(() => {
-    if (fastSkip && fight?.replay) report(fight.id, fight.replay.result);
-  }, [fastSkip, fight, report]);
-
-  if (!fight || !client?.reportFight || fastSkip) return null;
+  if (!fight || !client?.reportFight) return null;
   return (
     <FightErrorBoundary key={fight.id} onError={() => report(fight.id, 'dice')}>
       <FightContainer
@@ -94,7 +89,7 @@ function FightContainer({ fight, seats, client, onDone }: FightContainerProps) {
       phase={flow.phase}
       result={flow.result}
       go={flow.go}
-      highlight={fight.replay !== null}
+      replaySpeed={fight.replay !== null ? BOT_REPLAY_SPEED : null}
       paused={pause.paused}
       pointerCapable={pointerCapable && fight.replay === null}
       canvasRef={canvasRef}

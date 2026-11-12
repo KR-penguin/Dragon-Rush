@@ -11,11 +11,10 @@ export {
   createLocalFightSession,
   createReplaySession,
   fightInfo,
-  highlightStartTick,
   layoutsFor,
   sourceFor,
   sourcesFor,
-  HIGHLIGHT,
+  BOT_REPLAY_SPEED,
 } from './LocalFightSession';
 export { LocalSimProvider, ReplayProvider, simulateFight, type FightSources } from './simProvider';
 export { KeyTracker, createKeyboardSource, gameKeysOf, type KeyLike } from './keyboardInput';

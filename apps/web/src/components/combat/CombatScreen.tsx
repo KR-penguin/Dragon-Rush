@@ -9,8 +9,8 @@ interface CombatScreenProps {
   phase: FightPhase;
   result: CombatResult | null;
   go: boolean;
-  /** Bot-only fight shown as a 4× highlight. */
-  highlight: boolean;
+  /** Null for live fights; bot-only replays show their playback speed. */
+  replaySpeed: number | null;
   paused: boolean;
   pointerCapable: boolean;
   canvasRef: RefObject<HTMLCanvasElement | null>;
@@ -34,12 +34,14 @@ export function CombatScreen(p: CombatScreenProps) {
     >
       <div className="combat-stage" ref={p.stageRef}>
         <canvas ref={p.canvasRef} className="combat-canvas" style={{ touchAction: 'none' }} />
-        {p.phase === 'intro' && <FightIntro cards={p.cards} highlight={p.highlight} />}
+        {p.phase === 'intro' && <FightIntro cards={p.cards} replaySpeed={p.replaySpeed} />}
         {p.phase === 'ready' && <FightReady cards={p.cards} />}
         {p.go && <FightGo />}
         {p.phase === 'result' && p.result && <FightResultCard cards={p.cards} result={p.result} />}
         {p.paused && <FightPaused onResume={p.onResume} />}
-        {p.highlight && p.phase === 'fight' && <div className="combat-badge">하이라이트 ×4</div>}
+        {p.replaySpeed !== null && p.phase === 'fight' && (
+          <div className="combat-badge">봇 전투 ×{p.replaySpeed}</div>
+        )}
       </div>
       <div className="combat-bar">
         {p.onSkip ? (

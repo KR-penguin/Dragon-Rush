@@ -82,7 +82,7 @@ export interface PendingFight {
   readonly seed: number;
   readonly sides: readonly [FightSide, FightSide];
   readonly botLevel: FightBotLevel;
-  /** Set for bot-only fights: show it as a skippable highlight, then report `replay.result`. */
+  /** Set for bot-only fights: show the complete accelerated replay, then report `replay.result`. */
   readonly replay: FightReplay | null;
   readonly online?: { readonly start: FightStartMsg; readonly go: FightGoMsg | null };
 }

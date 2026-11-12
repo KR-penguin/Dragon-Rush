@@ -4,7 +4,7 @@ import { DRAGON_DEATH_STOP, KO_STOP } from '../fx/core/time';
 /**
  * Presentation phases around a fight (combat-design §8.2, art-direction §10):
  * VS splash → READY with key hints → "싸워라!" (sim tick 0) → fight → KO/time-up beat →
- * result card → back to the board. Bot-only highlights skip READY and can be skipped entirely.
+ * result card → back to the board. Bot-only replays skip READY and can be skipped manually.
  */
 export type FightPhase = 'intro' | 'ready' | 'fight' | 'finish' | 'result' | 'done';
 

@@ -18,7 +18,7 @@ export interface FightBundle {
 
 /**
  * Creates the fight session for the pending fight: a live local sim with keyboard/gamepad/bot
- * inputs, or the 4× highlight of a bot-only fight. Keys are tracked on the window while mounted.
+ * inputs, or the 4× replay of a bot-only fight. Keys are tracked on the window while mounted.
  */
 export function useFightSession(
   fight: PendingFight,

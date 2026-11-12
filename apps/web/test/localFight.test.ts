@@ -30,7 +30,6 @@ it('uses the calibrated per-tick scripted bot policy in Normal local fights', ()
   );
   expect(live.result()).toEqual(headless.result);
 });
-import { HIGHLIGHT, highlightStartTick } from '../src/services/fight/LocalFightSession';
 import { LocalSimProvider, ReplayProvider, simulateFight } from '../src/services/fight/simProvider';
 import type { FightInputSource } from '../src/services/fight/types';
 import type { GameUpdate, PendingFight } from '../src/services/gameClient';
@@ -212,7 +211,7 @@ describe('real-time fights in local play', () => {
 });
 
 describe('bot-only fights', () => {
-  it('resolves a shared-tile bot duel with no shield used', () => {
+  it('resolves a shared-tile bot duel with no shield used', async () => {
     const g = open({
       seed: 0,
       maxRounds: 25,
@@ -221,7 +220,13 @@ describe('bot-only fights', () => {
         { name: 'R2', job: 'swordsman', kind: 'bot', botName: 'heuristic:aggro' },
       ],
     });
-    g.sched.flush();
+    for (let i = 0; i < 12; i++) {
+      g.sched.flush();
+      const fight = g.latest().fight;
+      if (!fight) break;
+      await g.client.reportFight(fight.id, fight.replay?.result ?? 'dice');
+      if (g.updates.some((u) => eventTypes(u).includes('PlayerEliminated'))) break;
+    }
     const events = g.updates.flatMap((u) => u.events);
     const landed = events.findIndex((e) => e.type === 'PvpTriggered');
     const started = events.findIndex(
@@ -234,7 +239,7 @@ describe('bot-only fights', () => {
     g.client.dispose();
   });
 
-  it('resolve instantly and never wait for a screen when no human plays', () => {
+  it('offers a replay screen even when no human plays', async () => {
     const g = open({
       seed: 3,
       maxRounds: 25,
@@ -244,10 +249,13 @@ describe('bot-only fights', () => {
       ],
     });
     g.sched.flush();
-    const last = g.latest();
-    expect(last.publicState.outcome).not.toBeNull();
-    expect(g.updates.every((u) => !u.fight)).toBe(true);
-    expect(g.updates.some((u) => eventTypes(u).includes('CombatEnded'))).toBe(true);
+    const pending = g.latest();
+    expect(pending.fight?.replay).toBeTruthy();
+    expect(pending.pending?.phase).toBe('COMBAT');
+    const fight = pending.fight!;
+    expect(await g.client.reportFight(fight.id, fight.replay!.result)).toEqual({ ok: true });
+    expect(g.latest().fight).toBeNull();
+    expect(eventTypes(g.latest())).toContain('CombatEnded');
   });
 
   /** Plays as the human (never challenging) until a bot-only fight is offered; null if the game ends first. */
@@ -300,16 +308,6 @@ describe('bot-only fights', () => {
     ]);
     while (!live.curr.outcome) live.step();
     expect(live.result()).toEqual(replay.result);
-    // The highlight starts at most 6 s × 4 before the end.
-    const from = highlightStartTick(replay.ticks);
-    expect(replay.ticks - from).toBeLessThanOrEqual(
-      (HIGHLIGHT.maxMs / 1000) * 60 * HIGHLIGHT.speed,
-    );
-    const tail = new ReplayProvider(f.setup, f.seed, replay.inputs, from);
-    expect(tail.curr.tick).toBe(from);
-    while (!tail.curr.outcome) tail.step();
-    expect(tail.result()).toEqual(replay.result);
-
     expect((await g.client.reportFight(f.id, replay.result)).ok).toBe(true);
     expect(g.latest().fight).toBeNull();
   });

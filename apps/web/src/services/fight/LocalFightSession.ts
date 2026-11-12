@@ -1,4 +1,3 @@
-import { COMBAT_TICK_HZ } from '@dragon-rush/combat';
 import { KEY_LAYOUTS } from '../../types/combatControls';
 import type { FightControl, FightReplay, FightSide, PendingFight } from '../gameClient';
 import { createFightBotSource } from './botInput';
@@ -79,25 +78,15 @@ export function createLocalFightSession(
   );
 }
 
-/** combat-design §8.3: bot-only fights show at most 6 s at 4×, i.e. the last 24 s of the fight. */
-export const HIGHLIGHT = { speed: 4, maxMs: 6000 } as const;
+/** Bot-only replays show the whole fight at accelerated speed. */
+export const BOT_REPLAY_SPEED = 4;
 
-export function highlightStartTick(
-  ticks: number,
-  speed: number = HIGHLIGHT.speed,
-  maxMs: number = HIGHLIGHT.maxMs,
-): number {
-  const window = Math.floor((maxMs / 1000) * COMBAT_TICK_HZ * speed);
-  return Math.max(0, ticks - window);
-}
-
-/** Highlight of an already resolved fight, re-simulated from its recorded inputs. */
+/** An already resolved fight, re-simulated from its recorded inputs. */
 export function createReplaySession(
   fight: PendingFight,
   replay: FightReplay,
   host: LoopHost = browserHost(),
 ): FightSession {
-  const from = highlightStartTick(replay.ticks);
-  const provider = new ReplayProvider(fight.setup, fight.seed, replay.inputs, from);
-  return new FightLoop(fightInfo(fight), provider, host, { speed: HIGHLIGHT.speed });
+  const provider = new ReplayProvider(fight.setup, fight.seed, replay.inputs);
+  return new FightLoop(fightInfo(fight), provider, host, { speed: BOT_REPLAY_SPEED });
 }
