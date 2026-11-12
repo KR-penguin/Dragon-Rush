@@ -17,7 +17,9 @@ export function createModelPolicy(model: PolicyModel, opts: ModelPolicyOptions =
   const temperature = opts.temperature ?? 1;
   const fallback = createHeuristicBot('growth');
   if (model.meta.obsDim !== OBS_DIM || model.meta.actionDim !== ACTION_DIM) {
-    throw new RangeError(`model dims ${model.meta.obsDim}/${model.meta.actionDim} != ${OBS_DIM}/${ACTION_DIM}`);
+    throw new RangeError(
+      `model dims ${model.meta.obsDim}/${model.meta.actionDim} != ${OBS_DIM}/${ACTION_DIM}`,
+    );
   }
   return {
     id: `model:${model.meta.id}`,
@@ -30,7 +32,8 @@ export function createModelPolicy(model: PolicyModel, opts: ModelPolicyOptions =
       for (let i = 0; valid && i < ACTION_DIM; i++) {
         const raw = out[i]!;
         if (Number.isNaN(raw)) valid = false;
-        else if (mask[i]) logits[i] = model.meta.output === 'probs' ? Math.log(Math.max(raw, 1e-12)) : raw;
+        else if (mask[i])
+          logits[i] = model.meta.output === 'probs' ? Math.log(Math.max(raw, 1e-12)) : raw;
       }
       if (!valid || !logits.some((x) => Number.isFinite(x))) {
         opts.onFallback?.('invalid model output');
@@ -41,7 +44,9 @@ export function createModelPolicy(model: PolicyModel, opts: ModelPolicyOptions =
         for (let i = 1; i < ACTION_DIM; i++) if (logits[i]! > logits[index]!) index = i;
       } else {
         const max = Math.max(...logits);
-        const weights = Array.from(logits, (l) => (Number.isFinite(l) ? Math.exp((l - max) / temperature) : 0));
+        const weights = Array.from(logits, (l) =>
+          Number.isFinite(l) ? Math.exp((l - max) / temperature) : 0,
+        );
         const total = weights.reduce((a, b) => a + b, 0);
         let r = ctx.random() * total;
         index = weights.findIndex((w) => (r -= w) < 0);

@@ -17,7 +17,15 @@ interface ModalProps {
 }
 
 /** Dialogs are table props (scroll, stall, anvil); the skin comes from `className`. */
-export function Modal({ title, children, footer, onClose, className = '', icon, kicker }: ModalProps) {
+export function Modal({
+  title,
+  children,
+  footer,
+  onClose,
+  className = '',
+  icon,
+  kicker,
+}: ModalProps) {
   return (
     <div
       className="modal-backdrop"
@@ -38,7 +46,12 @@ export function Modal({ title, children, footer, onClose, className = '', icon, 
             <h2>{title}</h2>
           </div>
           {onClose && (
-            <button type="button" className="icon-btn modal-close" onClick={onClose} aria-label="닫기">
+            <button
+              type="button"
+              className="icon-btn modal-close"
+              onClick={onClose}
+              aria-label="닫기"
+            >
               <GameIcon name="close" />
             </button>
           )}

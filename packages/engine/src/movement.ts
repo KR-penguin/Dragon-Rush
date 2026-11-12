@@ -38,7 +38,14 @@ function moveBy(ctx: Ctx, steps: number): void {
     const bonus = ctx.s.rules.startBonus;
     p.coins += bonus.coins;
     p.hp = Math.min(p.maxHp, p.hp + bonus.hp);
-    emit(ctx, { type: 'StartBonus', seat, coins: bonus.coins, hp: bonus.hp, coinsAfter: p.coins, hpAfter: p.hp });
+    emit(ctx, {
+      type: 'StartBonus',
+      seat,
+      coins: bonus.coins,
+      hp: bonus.hp,
+      coinsAfter: p.coins,
+      hpAfter: p.hp,
+    });
   }
   p.position = to;
   land(ctx, seat);

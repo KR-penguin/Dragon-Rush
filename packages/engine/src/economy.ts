@@ -1,6 +1,10 @@
 import type { PlayerState, RulesConfig, UpgradeStat } from './types';
 
-export const upgradeCost = (rules: RulesConfig, p: Pick<PlayerState, 'upgradeLevels'>, stat: UpgradeStat): number => {
+export const upgradeCost = (
+  rules: RulesConfig,
+  p: Pick<PlayerState, 'upgradeLevels'>,
+  stat: UpgradeStat,
+): number => {
   const up = rules.upgrades[stat];
   return up.baseCost + p.upgradeLevels[stat] * up.costStep;
 };

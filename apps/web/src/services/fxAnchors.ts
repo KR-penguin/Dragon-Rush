@@ -12,7 +12,9 @@ import {
  */
 export function getFxAnchor(
   anchor: FxAnchor,
-  root: Pick<ParentNode, 'querySelector'> | null = typeof document === 'undefined' ? null : document,
+  root: Pick<ParentNode, 'querySelector'> | null = typeof document === 'undefined'
+    ? null
+    : document,
 ): ScreenAnchor | null {
   const el = root?.querySelector(`[${FX_ANCHOR_ATTR}="${fxAnchorKey(anchor)}"]`);
   if (!el) return null;

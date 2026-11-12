@@ -26,7 +26,9 @@ describe('obs_v1', () => {
   });
 
   it('keeps values in [0, 2] with valid one-hots on reachable states', () => {
-    const oneHots = OBS_V1_LAYOUT.filter((f) => /(job|pos|phase|turnPlayer|dice|numPlayers|pvpOpponent)$/.test(f.name));
+    const oneHots = OBS_V1_LAYOUT.filter((f) =>
+      /(job|pos|phase|turnPlayer|dice|numPlayers|pvpOpponent)$/.test(f.name),
+    );
     for (const n of [2, 4]) {
       for (const s of walk(n, 7)) {
         if (!s.pending) continue;

@@ -52,7 +52,13 @@ export function resolveCombat(
   const events: GameEvent[] = [];
   const first = pickFirst(f.a, f.b, opts.defaultFirst);
   const attacksMade = { a: 0, b: 0 };
-  events.push({ type: 'CombatStarted', kind: opts.kind, a: f.a.ref, b: f.b.ref, first: f[first].ref });
+  events.push({
+    type: 'CombatStarted',
+    kind: opts.kind,
+    a: f.a.ref,
+    b: f.b.ref,
+    first: f[first].ref,
+  });
 
   let side = first;
   const maxAttacks = rules.combat.maxExchanges * 2;
@@ -63,7 +69,9 @@ export function resolveCombat(
     const isDragon = att.ref === 'dragon';
     const breath = isDragon && attacksMade[side] % rules.dragon.breathEvery === 0;
     const hooks = att.job ? PASSIVES[att.job] : {};
-    const eff = hooks.effectiveAtk ? hooks.effectiveAtk(rules, att.atk, att.hp, att.maxHp) : { atk: att.atk, rage: false };
+    const eff = hooks.effectiveAtk
+      ? hooks.effectiveAtk(rules, att.atk, att.hp, att.maxHp)
+      : { atk: att.atk, rage: false };
     let defEff = def.def;
     if (breath) defEff = 0;
     else if (hooks.pierce) defEff = hooks.pierce(rules, def.def);
@@ -83,7 +91,8 @@ export function resolveCombat(
     if (def.hp - damage <= 0 && damage > 0 && def.indomitableAvailable) {
       def.hp = 1;
       def.indomitableAvailable = false;
-      if (typeof def.ref === 'number') events.push({ type: 'PassiveTriggered', seat: def.ref, passive: 'indomitable' });
+      if (typeof def.ref === 'number')
+        events.push({ type: 'PassiveTriggered', seat: def.ref, passive: 'indomitable' });
     } else {
       def.hp -= damage;
     }
@@ -102,7 +111,13 @@ export function resolveCombat(
     });
     if (def.hp <= 0) {
       const winner = side;
-      events.push({ type: 'CombatEnded', kind: opts.kind, winner: att.ref, loser: def.ref, capReached: false });
+      events.push({
+        type: 'CombatEnded',
+        kind: opts.kind,
+        winner: att.ref,
+        loser: def.ref,
+        capReached: false,
+      });
       return { a: f.a, b: f.b, winner, capReached: false, events };
     }
     side = other(side);
@@ -115,6 +130,12 @@ export function resolveCombat(
     const rb = f.b.hp / f.b.maxHp;
     winner = ra > rb ? 'a' : rb > ra ? 'b' : opts.capTieWinner;
   }
-  events.push({ type: 'CombatEnded', kind: opts.kind, winner: f[winner].ref, loser: f[other(winner)].ref, capReached: true });
+  events.push({
+    type: 'CombatEnded',
+    kind: opts.kind,
+    winner: f[winner].ref,
+    loser: f[other(winner)].ref,
+    capReached: true,
+  });
   return { a: f.a, b: f.b, winner, capReached: true, events };
 }

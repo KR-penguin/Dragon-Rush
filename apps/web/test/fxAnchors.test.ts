@@ -52,7 +52,12 @@ describe('fx anchors', () => {
   });
 
   it('resolves a tagged tile or seat card to its screen centre', () => {
-    expect(getFxAnchor({ kind: 'tile', id: 7 }, root)).toEqual({ x: 150, y: 75, width: 100, height: 50 });
+    expect(getFxAnchor({ kind: 'tile', id: 7 }, root)).toEqual({
+      x: 150,
+      y: 75,
+      width: 100,
+      height: 50,
+    });
     expect(getFxAnchor({ kind: 'seat', id: 1 }, root)).toMatchObject({ x: 380, y: 40 });
     expect(getFxAnchor({ kind: 'tile', id: 99 }, root)).toBeNull();
     expect(getFxAnchor({ kind: 'tile', id: 7 }, null)).toBeNull();

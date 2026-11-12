@@ -80,7 +80,8 @@ export function effectChip(e: EffectSpec): EffectChip {
   }
 }
 
-export const effectChips = (effects: readonly EffectSpec[]): EffectChip[] => effects.map(effectChip);
+export const effectChips = (effects: readonly EffectSpec[]): EffectChip[] =>
+  effects.map(effectChip);
 
 /** "+3", "−5" with a real minus sign; empty for effects without a number. */
 export function signed(n: number | null): string {
@@ -99,6 +100,10 @@ export function effectSummary(effects: readonly EffectSpec[]): string {
 /** Corner landmark art (billboarded standee) by tile id; other ids have none. */
 export type LandmarkKind = 'gate' | 'tent' | 'inn';
 
-const LANDMARKS: Partial<Record<TileId, LandmarkKind>> = { START: 'gate', SHOP: 'tent', INN: 'inn' };
+const LANDMARKS: Partial<Record<TileId, LandmarkKind>> = {
+  START: 'gate',
+  SHOP: 'tent',
+  INN: 'inn',
+};
 
 export const landmarkOf = (id: TileId): LandmarkKind | null => LANDMARKS[id] ?? null;

@@ -37,7 +37,8 @@ const style = flag('style', 'balanced') as BotStyle;
 const reactionArg = flag('reaction', 'pooled');
 if (!['5', '10', '16', 'pooled'].includes(reactionArg))
   throw new Error('--reaction must be 5, 10, 16, or pooled');
-const reaction: Task['reaction'] = reactionArg === 'pooled' ? 'pooled' : Number(reactionArg) as 5 | 10 | 16;
+const reaction: Task['reaction'] =
+  reactionArg === 'pooled' ? 'pooled' : (Number(reactionArg) as 5 | 10 | 16);
 const pct = (x: number): string => `${(100 * x).toFixed(0)}%`;
 const wilson = (wins: number, n: number): string => {
   const z2 = 3.841459;

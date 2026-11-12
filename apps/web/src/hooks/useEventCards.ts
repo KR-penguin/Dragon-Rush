@@ -52,7 +52,10 @@ function flyerFor(
 }
 
 /** Event cards rising from tiles and effect chips flying to the owner's corner card (§1.8). */
-export function useEventCards(store: GameStore, reduced: boolean): { cards: LiveCard[]; flyers: Flyer[] } {
+export function useEventCards(
+  store: GameStore,
+  reduced: boolean,
+): { cards: LiveCard[]; flyers: Flyer[] } {
   const [cards, setCards] = useState<LiveCard[]>([]);
   const [flyers, setFlyers] = useState<Flyer[]>([]);
 
@@ -78,7 +81,12 @@ export function useEventCards(store: GameStore, reduced: boolean): { cards: Live
       setCards((cs) => {
         const last = cs.at(-1);
         // A mystery card turns over the cave card that is already waiting face down.
-        if (face.kind === 'mystery' && last && last.face.kind === 'cave' && last.face.seat === face.seat) {
+        if (
+          face.kind === 'mystery' &&
+          last &&
+          last.face.kind === 'cave' &&
+          last.face.seat === face.seat
+        ) {
           expireCard(last.key, lifeMs);
           return [
             {
@@ -99,7 +107,8 @@ export function useEventCards(store: GameStore, reduced: boolean): { cards: Live
     const fly = (seat: SeatId, e: Extract<GameEvent, { type: 'EffectApplied' }>, speed: number) => {
       const f = flyerFor(e);
       if (!f || typeof window === 'undefined') return;
-      const to = getFxAnchor({ kind: f.target, id: seat }) ?? getFxAnchor({ kind: 'seat', id: seat });
+      const to =
+        getFxAnchor({ kind: f.target, id: seat }) ?? getFxAnchor({ kind: 'seat', id: seat });
       if (!to) return;
       const from = {
         x: window.innerWidth * CARD_SCREEN_POS.x,

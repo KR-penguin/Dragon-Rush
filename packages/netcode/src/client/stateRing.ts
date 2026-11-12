@@ -17,7 +17,13 @@ const MASK = STATE_RING - 1;
 export class StateRing {
   private readonly slots: (TickSlot | null)[] = new Array<TickSlot | null>(STATE_RING).fill(null);
 
-  set(tick: number, state: CombatState, used0: number, used1: number, events: readonly CombatEvent[]): TickSlot {
+  set(
+    tick: number,
+    state: CombatState,
+    used0: number,
+    used1: number,
+    events: readonly CombatEvent[],
+  ): TickSlot {
     const i = tick & MASK;
     const slot = this.slots[i];
     if (slot) {

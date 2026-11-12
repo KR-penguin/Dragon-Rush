@@ -31,8 +31,15 @@ export function posesOf(s: CombatState): Map<string, Pose> {
     m.set(key, { x: f.x / Q, y: f.y / Q, cat: fighterCat(f), hit: f.phase === 'active' });
   fighter('a', s.a);
   if (s.b) fighter('b', s.b);
-  if (s.dragon) m.set('dragon', { x: s.dragon.x / Q, y: s.dragon.y / Q, cat: s.dragon.stage, hit: s.dragon.stage === 'active' });
-  for (const p of s.projectiles) m.set(`p${p.id}`, { x: p.x / Q, y: p.y / Q, cat: 'p', hit: false });
+  if (s.dragon)
+    m.set('dragon', {
+      x: s.dragon.x / Q,
+      y: s.dragon.y / Q,
+      cat: s.dragon.stage,
+      hit: s.dragon.stage === 'active',
+    });
+  for (const p of s.projectiles)
+    m.set(`p${p.id}`, { x: p.x / Q, y: p.y / Q, cat: 'p', hit: false });
   return m;
 }
 

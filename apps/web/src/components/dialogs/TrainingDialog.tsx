@@ -14,7 +14,12 @@ interface TrainingDialogProps {
 /** Training ground: stat cards laid on an anvil; striking one upgrades it for free. */
 export function TrainingDialog({ options, locked, onChoose }: TrainingDialogProps) {
   return (
-    <Modal className="modal-anvil" icon="training" kicker="교관이 한 가지를 가르쳐 준다" title="수련장">
+    <Modal
+      className="modal-anvil"
+      icon="training"
+      kicker="교관이 한 가지를 가르쳐 준다"
+      title="수련장"
+    >
       <p className="anvil-note">원하는 스탯 1단계를 무료로 강화합니다.</p>
       <div className="anvil-stage">
         <div className="anvil-cards">

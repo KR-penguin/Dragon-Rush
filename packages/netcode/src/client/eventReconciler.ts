@@ -17,7 +17,8 @@ export interface PresentCommand {
   readonly previousId?: string;
 }
 
-const ownerOfEntity = (entity: number): string => ['a', 'b', 'dragon', '?'][(entity % 256) >> 6] ?? '?';
+const ownerOfEntity = (entity: number): string =>
+  ['a', 'b', 'dragon', '?'][(entity % 256) >> 6] ?? '?';
 
 /** Tick-free identity of an event: type + actor + move/kind + target (entity ids and ticks stripped). */
 export function eventSignature(e: CombatEvent): string {
@@ -75,7 +76,14 @@ export class EventReconciler {
   private readonly table = new Map<number, Entry[]>();
   private orphans: (Entry & { tick: number })[] | null = null;
   private out: PresentCommand[] = [];
-  readonly stats: ReconcilerStats = { plays: 0, lates: 0, rebinds: 0, vanishes: 0, confirms: 0, phantomKos: 0 };
+  readonly stats: ReconcilerStats = {
+    plays: 0,
+    lates: 0,
+    rebinds: 0,
+    vanishes: 0,
+    confirms: 0,
+    phantomKos: 0,
+  };
 
   /** Ticks >= from are about to be re-simulated: their presented events become candidates for matching. */
   beginResim(from: number): void {

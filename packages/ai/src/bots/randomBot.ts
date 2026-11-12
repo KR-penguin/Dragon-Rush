@@ -1,7 +1,8 @@
 import type { Action } from '@dragon-rush/engine';
 import type { DecisionContext, Policy } from '../policy';
 
-const pick = <T>(xs: readonly T[], random: () => number): T => xs[Math.floor(random() * xs.length)] as T;
+const pick = <T>(xs: readonly T[], random: () => number): T =>
+  xs[Math.floor(random() * xs.length)] as T;
 
 /** Picks an action type uniformly (dragon heavily down-weighted), then its argument uniformly. */
 export function createRandomBot(opts: { dragonWeight?: number; uniform?: boolean } = {}): Policy {

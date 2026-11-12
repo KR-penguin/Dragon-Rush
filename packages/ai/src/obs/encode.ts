@@ -31,9 +31,12 @@ class Writer {
   }
 }
 
-const rageActive = (p: PlayerState) => PASSIVES[p.job].effectiveAtk !== undefined && 2 * p.hp <= p.maxHp;
-const indomitableReady = (p: PlayerState) => PASSIVES[p.job].indomitable === true && !p.passive.indomitableUsed;
-const ninjaCd = (p: PlayerState) => (PASSIVES[p.job].moveAdjust ? n(p.passive.ninjaCooldown, S.CD_S) : 0);
+const rageActive = (p: PlayerState) =>
+  PASSIVES[p.job].effectiveAtk !== undefined && 2 * p.hp <= p.maxHp;
+const indomitableReady = (p: PlayerState) =>
+  PASSIVES[p.job].indomitable === true && !p.passive.indomitableUsed;
+const ninjaCd = (p: PlayerState) =>
+  PASSIVES[p.job].moveAdjust ? n(p.passive.ninjaCooldown, S.CD_S) : 0;
 
 function writeSelf(w: Writer, view: PublicGameState, p: PlayerState): void {
   w.oneHot(JOB_IDS.indexOf(p.job), 5);

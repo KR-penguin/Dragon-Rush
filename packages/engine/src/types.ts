@@ -104,14 +104,26 @@ export interface RulesConfig {
     readonly berserkerRageDen: number;
   };
   readonly upgrades: Readonly<
-    Record<UpgradeStat, { readonly baseCost: number; readonly costStep: number; readonly amount: number }>
+    Record<
+      UpgradeStat,
+      { readonly baseCost: number; readonly costStep: number; readonly amount: number }
+    >
   >;
   readonly items: Readonly<Record<ItemId, ItemDef>>;
   readonly thiefStealAmount: number;
   readonly board: readonly TileDef[];
   readonly mysteryDeck: readonly MysteryCardDef[];
-  readonly combat: { readonly maxExchanges: number; readonly dieSides: number; readonly mode: CombatMode };
-  readonly dragon: { readonly hp: number; readonly atk: number; readonly def: number; readonly breathEvery: number };
+  readonly combat: {
+    readonly maxExchanges: number;
+    readonly dieSides: number;
+    readonly mode: CombatMode;
+  };
+  readonly dragon: {
+    readonly hp: number;
+    readonly atk: number;
+    readonly def: number;
+    readonly breathEvery: number;
+  };
 }
 
 export interface PassiveState {
@@ -239,8 +251,22 @@ export type GameEvent =
   | { type: 'TurnSkipped'; seat: SeatId }
   | { type: 'DiceRolled'; seat: SeatId; value: number }
   | { type: 'MoveAdjusted'; seat: SeatId; delta: -1 | 0 | 1; steps: number }
-  | { type: 'Moved'; seat: SeatId; from: number; to: number; steps: number; via: 'dice' | 'teleport' }
-  | { type: 'StartBonus'; seat: SeatId; coins: number; hp: number; coinsAfter: number; hpAfter: number }
+  | {
+      type: 'Moved';
+      seat: SeatId;
+      from: number;
+      to: number;
+      steps: number;
+      via: 'dice' | 'teleport';
+    }
+  | {
+      type: 'StartBonus';
+      seat: SeatId;
+      coins: number;
+      hp: number;
+      coinsAfter: number;
+      hpAfter: number;
+    }
   | { type: 'TileResolved'; seat: SeatId; tile: number; tileId: TileId }
   | { type: 'MysteryCardDrawn'; seat: SeatId; cardId: string }
   | {
@@ -268,7 +294,13 @@ export type GameEvent =
   | { type: 'PvpTriggered'; arriver: SeatId; candidates: SeatId[] }
   | { type: 'PvpTargetChosen'; arriver: SeatId; target: SeatId }
   | { type: 'ShieldUsed'; seat: SeatId; against: SeatId }
-  | { type: 'CombatStarted'; kind: CombatKind; a: CombatantRef; b: CombatantRef; first: CombatantRef }
+  | {
+      type: 'CombatStarted';
+      kind: CombatKind;
+      a: CombatantRef;
+      b: CombatantRef;
+      first: CombatantRef;
+    }
   | {
       type: 'CombatHit';
       kind: CombatKind;
@@ -283,9 +315,21 @@ export type GameEvent =
       hpAfter: number;
     }
   | { type: 'PassiveTriggered'; seat: SeatId; passive: PassiveId }
-  | { type: 'CombatEnded'; kind: CombatKind; winner: CombatantRef; loser: CombatantRef; capReached: boolean }
+  | {
+      type: 'CombatEnded';
+      kind: CombatKind;
+      winner: CombatantRef;
+      loser: CombatantRef;
+      capReached: boolean;
+    }
   | { type: 'PlayerEliminated'; seat: SeatId; by: CombatantRef; round: number }
-  | { type: 'LootTransferred'; from: SeatId; to: SeatId; coins: number; items: Record<ItemId, number> }
+  | {
+      type: 'LootTransferred';
+      from: SeatId;
+      to: SeatId;
+      coins: number;
+      items: Record<ItemId, number>;
+    }
   | { type: 'TurnEnded'; seat: SeatId }
   | { type: 'GameEnded'; outcome: GameOutcome };
 

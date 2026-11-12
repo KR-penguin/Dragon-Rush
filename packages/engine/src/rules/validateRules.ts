@@ -25,12 +25,15 @@ export function validateRules(rules: RulesConfig): void {
   }
   if (rules.mysteryDeck.length === 0) fail('mystery deck must not be empty');
   for (const card of rules.mysteryDeck) {
-    if (card.effects.some((e) => e.kind === 'training' || e.kind === 'shop' || e.kind === 'mystery')) {
+    if (
+      card.effects.some((e) => e.kind === 'training' || e.kind === 'shop' || e.kind === 'mystery')
+    ) {
       fail(`mystery card ${card.id} must only have automatic effects`);
     }
   }
   if (rules.combat.maxExchanges < 1 || rules.combat.dieSides < 1) fail('invalid combat config');
-  if (rules.combat.mode !== 'dice' && rules.combat.mode !== 'external') fail('combat.mode must be dice or external');
+  if (rules.combat.mode !== 'dice' && rules.combat.mode !== 'external')
+    fail('combat.mode must be dice or external');
   if (rules.dragon.hp < 1 || rules.dragon.breathEvery < 1) fail('invalid dragon config');
   if (rules.maxRounds !== null && rules.maxRounds < 1) fail('maxRounds must be null or >= 1');
   if (rules.pvpGraceRounds < 0) fail('pvpGraceRounds must be >= 0');

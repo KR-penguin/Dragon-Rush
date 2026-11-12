@@ -25,7 +25,11 @@ export const JOB_PASSIVE: Record<JobId, string> = {
   berserker: '광폭화: HP 절반 이하일 때 공격력 ×1.3',
 };
 
-export const ITEM_LABEL: Record<ItemId, string> = { teleport: '텔레포트', shield: '방어막', thief: '도둑' };
+export const ITEM_LABEL: Record<ItemId, string> = {
+  teleport: '텔레포트',
+  shield: '방어막',
+  thief: '도둑',
+};
 /** @deprecated Emoji placeholders; use `components/icons/GameIcon`. */
 export const ITEM_ICON: Record<ItemId, string> = { teleport: '🌀', shield: '🛡️', thief: '🦝' };
 export const ITEM_DESC: Record<ItemId, string> = {
@@ -34,7 +38,11 @@ export const ITEM_DESC: Record<ItemId, string> = {
   thief: '상대 1명의 코인 최대 10개를 훔침 (일회용, 턴당 1회)',
 };
 
-export const STAT_LABEL: Record<UpgradeStat | 'atk' | 'def', string> = { atk: '공격력', def: '방어력', maxHp: '최대 HP' };
+export const STAT_LABEL: Record<UpgradeStat | 'atk' | 'def', string> = {
+  atk: '공격력',
+  def: '방어력',
+  maxHp: '최대 HP',
+};
 /** @deprecated Emoji placeholders; use `components/icons/GameIcon`. */
 export const STAT_ICON: Record<UpgradeStat, string> = { atk: '⚔️', def: '🛡️', maxHp: '❤️' };
 
@@ -124,7 +132,8 @@ export const SEAT_CRESTS: readonly CrestShape[] = ['shield', 'diamond', 'leaf', 
 export const seatCrest = (seat: number): CrestShape => SEAT_CRESTS[seat % SEAT_CRESTS.length]!;
 
 /** Amber needs ink text; the other seat colours take white text at 18 px bold and up. */
-export const seatInk = (seat: number): string => (seat % SEAT_COLORS.length === 3 ? '#2B1D14' : '#FFF7EA');
+export const seatInk = (seat: number): string =>
+  seat % SEAT_COLORS.length === 3 ? '#2B1D14' : '#FFF7EA';
 
 /** One-line flavour for event cards and tooltips (Gowun Batang). */
 export const TILE_FLAVOR: Record<TileId, string> = {
@@ -181,7 +190,8 @@ export const BOT_LABEL: Record<string, string> = {
   'random:uniform': '완전 무작위',
 };
 
-export const botLabel = (name: string | undefined): string => (name ? (BOT_LABEL[name] ?? name) : '봇');
+export const botLabel = (name: string | undefined): string =>
+  name ? (BOT_LABEL[name] ?? name) : '봇';
 
 export const DRAGON_NAME = '용';
 /** @deprecated Emoji placeholder; use `components/icons/GameIcon`. */

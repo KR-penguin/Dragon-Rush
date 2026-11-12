@@ -3,7 +3,8 @@ import type { RngState } from './types';
 const TWO_POW_32 = 0x1_0000_0000;
 
 export function createRng(seed: number): RngState {
-  if (!Number.isSafeInteger(seed) || seed < 0) throw new RangeError('seed must be a safe non-negative integer');
+  if (!Number.isSafeInteger(seed) || seed < 0)
+    throw new RangeError('seed must be a safe non-negative integer');
   const lo = seed >>> 0;
   const hi = Math.floor(seed / TWO_POW_32) >>> 0;
   let state: RngState = { a: 0x9e3779b9 ^ lo, b: 0x243f6a88 ^ hi, c: 0xb7e15162 ^ lo, d: 1 };

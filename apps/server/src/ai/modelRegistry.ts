@@ -15,7 +15,11 @@ export interface ModelRegistry {
  * Loads allow-listed model JSON files from `dir` (top level only) through the given adapter.
  * Without an adapter (user weight format not received yet) no model is registered.
  */
-export function loadModelRegistry(dir: string, adapter: WeightAdapter | null, log: (msg: string) => void = () => {}): ModelRegistry {
+export function loadModelRegistry(
+  dir: string,
+  adapter: WeightAdapter | null,
+  log: (msg: string) => void = () => {},
+): ModelRegistry {
   const models = new Map<string, PolicyModel>();
   if (adapter && existsSync(dir)) {
     for (const file of readdirSync(dir)) {
@@ -26,7 +30,10 @@ export function loadModelRegistry(dir: string, adapter: WeightAdapter | null, lo
         const id = file.replace(/\.json$/, '');
         const model = adapter(JSON.parse(readFileSync(path, 'utf8')) as unknown, id);
         const { obsVersion, actVersion } = model.meta;
-        if ((obsVersion && obsVersion !== OBS_VERSION) || (actVersion && actVersion !== ACT_VERSION)) {
+        if (
+          (obsVersion && obsVersion !== OBS_VERSION) ||
+          (actVersion && actVersion !== ACT_VERSION)
+        ) {
           throw new Error(`version mismatch ${obsVersion}/${actVersion}`);
         }
         models.set(id, model);
@@ -36,7 +43,12 @@ export function loadModelRegistry(dir: string, adapter: WeightAdapter | null, lo
     }
   }
   return {
-    list: () => [...models.values()].map((m) => ({ id: m.meta.id, obsVersion: m.meta.obsVersion, actVersion: m.meta.actVersion })),
+    list: () =>
+      [...models.values()].map((m) => ({
+        id: m.meta.id,
+        obsVersion: m.meta.obsVersion,
+        actVersion: m.meta.actVersion,
+      })),
     get: (id) => models.get(id) ?? null,
   };
 }

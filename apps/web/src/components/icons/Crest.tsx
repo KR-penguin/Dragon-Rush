@@ -16,7 +16,13 @@ interface CrestProps {
 export function Crest({ shape, className = '' }: CrestProps) {
   return (
     <svg className={`crest crest-${shape} ${className}`} viewBox="0 0 24 24" aria-hidden="true">
-      <path d={PATHS[shape]} fill="currentColor" stroke="#1a1210" strokeWidth="1.4" strokeLinejoin="round" />
+      <path
+        d={PATHS[shape]}
+        fill="currentColor"
+        stroke="#1a1210"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }

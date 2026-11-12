@@ -5,7 +5,9 @@ import { effectChips, tileCategory, type EffectChip, type TileCategory } from '.
 
 /** Tiles that open their own prop (shop stall, training anvil) or do nothing skip the card. */
 export function showsEventCard(def: TileDef): boolean {
-  return def.effects.length > 0 && !def.effects.some((e) => e.kind === 'shop' || e.kind === 'training');
+  return (
+    def.effects.length > 0 && !def.effects.some((e) => e.kind === 'shop' || e.kind === 'training')
+  );
 }
 
 export type EventCardKind = 'tile' | 'cave' | 'mystery' | 'start';

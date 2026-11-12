@@ -1,4 +1,11 @@
-import { BOARD_SIZE, ITEM_IDS, UPGRADE_STATS, type Action, type PublicGameState, type SeatId } from '@dragon-rush/engine';
+import {
+  BOARD_SIZE,
+  ITEM_IDS,
+  UPGRADE_STATS,
+  type Action,
+  type PublicGameState,
+  type SeatId,
+} from '@dragon-rush/engine';
 
 export const ACT_VERSION = 'act_v1';
 export const ACTION_DIM = 47;
@@ -73,7 +80,8 @@ export function encodeAction(view: PublicGameState, seat: SeatId, action: Action
 
 export function decodeAction(view: PublicGameState, seat: SeatId, index: number): Action {
   const n = view.players.length;
-  if (!Number.isInteger(index) || index < 0 || index >= ACTION_DIM) throw new ActionCodecError(`bad index ${index}`);
+  if (!Number.isInteger(index) || index < 0 || index >= ACTION_DIM)
+    throw new ActionCodecError(`bad index ${index}`);
   if (index === IDX.ROLL_DICE) return { type: 'ROLL_DICE' };
   if (index === IDX.END_TURN) return { type: 'END_TURN' };
   if (index === IDX.CHALLENGE_DRAGON) return { type: 'CHALLENGE_DRAGON' };
@@ -81,18 +89,28 @@ export function decodeAction(view: PublicGameState, seat: SeatId, index: number)
   if (index < IDX.TELEPORT) return { type: 'BUY_ITEM', item: ITEM_IDS[index - IDX.BUY]! };
   if (index < IDX.THIEF) return { type: 'USE_TELEPORT', tile: index - IDX.TELEPORT };
   if (index < IDX.ADJUST) return { type: 'USE_THIEF', target: abs(seat, index - IDX.THIEF + 1, n) };
-  if (index < IDX.SHIELD) return { type: 'ADJUST_MOVE', delta: (index - IDX.ADJUST - 1) as -1 | 0 | 1 };
+  if (index < IDX.SHIELD)
+    return { type: 'ADJUST_MOVE', delta: (index - IDX.ADJUST - 1) as -1 | 0 | 1 };
   if (index < IDX.PVP_TARGET) return { type: 'SHIELD_DECISION', use: index === IDX.SHIELD + 1 };
-  if (index < IDX.TRAIN) return { type: 'CHOOSE_PVP_TARGET', target: abs(seat, index - IDX.PVP_TARGET + 1, n) };
+  if (index < IDX.TRAIN)
+    return { type: 'CHOOSE_PVP_TARGET', target: abs(seat, index - IDX.PVP_TARGET + 1, n) };
   return { type: 'CHOOSE_TRAINING_STAT', stat: UPGRADE_STATS[index - IDX.TRAIN]! };
 }
 
-export function maskFromLegal(view: PublicGameState, seat: SeatId, legal: readonly Action[]): Uint8Array {
+export function maskFromLegal(
+  view: PublicGameState,
+  seat: SeatId,
+  legal: readonly Action[],
+): Uint8Array {
   const mask = new Uint8Array(ACTION_DIM);
   for (const a of legal) mask[encodeAction(view, seat, a)] = 1;
   return mask;
 }
 
-export function legalIndices(view: PublicGameState, seat: SeatId, legal: readonly Action[]): number[] {
+export function legalIndices(
+  view: PublicGameState,
+  seat: SeatId,
+  legal: readonly Action[],
+): number[] {
   return legal.map((a) => encodeAction(view, seat, a)).sort((x, y) => x - y);
 }

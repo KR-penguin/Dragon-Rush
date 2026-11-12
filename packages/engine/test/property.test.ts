@@ -16,7 +16,8 @@ import {
 import { deepFreeze, newGame } from './helpers';
 
 const COMBAT_MODES: readonly CombatMode[] = ['dice', 'external'];
-const rulesFor = (mode: CombatMode) => withRules({ maxRounds: 25, combat: { ...DEFAULT_RULES.combat, mode } });
+const rulesFor = (mode: CombatMode) =>
+  withRules({ maxRounds: 25, combat: { ...DEFAULT_RULES.combat, mode } });
 
 /** `null` in a trace stands for settling a pending fight with the dice resolver. */
 type Step = Action | null;
@@ -108,7 +109,8 @@ describe.each(COMBAT_MODES)('engine properties (combat mode %s)', (mode) => {
         const jobs = jobsFor(n, jobSeed);
         const a = play(jobs, seed, picks, mode);
         let s = newGame(jobs, seed, rulesFor(mode));
-        for (const taken of a.trace) s = taken ? applyAction(s, taken).state : resolveCombatWithDice(s).state;
+        for (const taken of a.trace)
+          s = taken ? applyAction(s, taken).state : resolveCombatWithDice(s).state;
         expect(s).toEqual(a.final);
       }),
       { numRuns: 20 },

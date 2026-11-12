@@ -1,7 +1,13 @@
 import { DEFAULT_RULES, type GameEvent } from '@dragon-rush/engine';
 import { describe, expect, it } from 'vitest';
 import { planeToCamera, tileCenter } from '../src/types/boardGeometry';
-import { cameraBeat, poseToward, poseTransform, REST_POSE, type CameraContext } from '../src/types/camera';
+import {
+  cameraBeat,
+  poseToward,
+  poseTransform,
+  REST_POSE,
+  type CameraContext,
+} from '../src/types/camera';
 
 const ctx = (positions: Record<number, number | null>): CameraContext => ({
   tiltDeg: 38,
@@ -50,7 +56,13 @@ describe('camera beats', () => {
     const d = cameraBeat(duel, ctx({ 2: 9 }))!;
     expect(d).toMatchObject({ ms: 400 });
     expect(d.pose.zoom).toBe(1.15);
-    const dragon: GameEvent = { type: 'CombatStarted', kind: 'dragonFight', a: 2, b: 'dragon', first: 2 };
+    const dragon: GameEvent = {
+      type: 'CombatStarted',
+      kind: 'dragonFight',
+      a: 2,
+      b: 'dragon',
+      first: 2,
+    };
     expect(cameraBeat(dragon, ctx({}))!.pose.zoom).toBe(1.15);
   });
 
@@ -59,7 +71,10 @@ describe('camera beats', () => {
     expect(
       cameraBeat({ type: 'Moved', seat: 0, from: 0, to: 4, steps: 4, via: 'dice' }, ctx({})),
     ).toBeNull();
-    expect(cameraBeat({ type: 'TurnEnded', seat: 0 }, ctx({}))).toMatchObject({ pose: REST_POSE, ms: 600 });
+    expect(cameraBeat({ type: 'TurnEnded', seat: 0 }, ctx({}))).toMatchObject({
+      pose: REST_POSE,
+      ms: 600,
+    });
     const end = cameraBeat({ type: 'GameEnded', outcome: { kind: 'dragon', winner: 0 } }, ctx({}))!;
     expect(end.ms).toBe(800);
     expect(end.pose.zoom).toBeLessThan(1);

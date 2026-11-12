@@ -40,8 +40,13 @@ export function RoomHeader({
                 <span key={i}>{ch}</span>
               ))}
             </div>
-            <button type="button" className="btn btn-primary lobby-plaque-copy" onClick={onCopyCode}>
-              <GameIcon name={codeCopied ? 'ready' : 'copy'} /> {codeCopied ? '복사됨' : '코드 복사'}
+            <button
+              type="button"
+              className="btn btn-primary lobby-plaque-copy"
+              onClick={onCopyCode}
+            >
+              <GameIcon name={codeCopied ? 'ready' : 'copy'} />{' '}
+              {codeCopied ? '복사됨' : '코드 복사'}
             </button>
           </div>
         </div>

@@ -86,7 +86,8 @@ const isInt = (v: unknown, min: number, max: number): v is number =>
   typeof v === 'number' && Number.isInteger(v) && v >= min && v <= max;
 const isFiniteNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 
-export const qualityOf = (q: number, seat: 0 | 1): SeatQuality => ((q >> (seat * 2)) & 3) as SeatQuality;
+export const qualityOf = (q: number, seat: 0 | 1): SeatQuality =>
+  ((q >> (seat * 2)) & 3) as SeatQuality;
 export const packQuality = (a: SeatQuality, b: SeatQuality): number => a | (b << 2);
 
 export function encodeFightInput(p: FightInputPacket): number[] {
@@ -96,7 +97,11 @@ export function encodeFightInput(p: FightInputPacket): number[] {
 export function decodeFightInput(raw: unknown): FightInputPacket | null {
   if (!Array.isArray(raw) || raw.length < 4 || raw.length > 3 + MAX_INPUT_MASKS) return null;
   const [fightId, newestTick, ackConfirmTick] = raw as unknown[];
-  if (!isInt(fightId, 0, U32_MAX) || !isInt(newestTick, I32_MIN, I32_MAX) || !isInt(ackConfirmTick, I32_MIN, I32_MAX)) {
+  if (
+    !isInt(fightId, 0, U32_MAX) ||
+    !isInt(newestTick, I32_MIN, I32_MAX) ||
+    !isInt(ackConfirmTick, I32_MIN, I32_MAX)
+  ) {
     return null;
   }
   const masks: number[] = [];
@@ -115,7 +120,8 @@ export function encodeFightRelay(p: FightRelayPacket): number[] {
 export function decodeFightRelay(raw: unknown): FightRelayPacket | null {
   if (!Array.isArray(raw) || raw.length < 4 || raw.length > 3 + MAX_RELAY_MASKS) return null;
   const [fightId, seat, newestTick] = raw as unknown[];
-  if (!isInt(fightId, 0, U32_MAX) || !isInt(seat, 0, 1) || !isInt(newestTick, I32_MIN, I32_MAX)) return null;
+  if (!isInt(fightId, 0, U32_MAX) || !isInt(seat, 0, 1) || !isInt(newestTick, I32_MIN, I32_MAX))
+    return null;
   const masks: number[] = [];
   for (let i = 3; i < raw.length; i++) {
     const m: unknown = raw[i];
@@ -175,12 +181,22 @@ export function decodeFightPing(raw: unknown): FightPingPacket | null {
   return { pingId, clientMs };
 }
 
-export const encodeFightPong = (p: FightPongPacket): number[] => [p.pingId, p.clientMs, p.serverRecvMs, p.serverSendMs];
+export const encodeFightPong = (p: FightPongPacket): number[] => [
+  p.pingId,
+  p.clientMs,
+  p.serverRecvMs,
+  p.serverSendMs,
+];
 
 export function decodeFightPong(raw: unknown): FightPongPacket | null {
   if (!Array.isArray(raw) || raw.length !== 4) return null;
   const [pingId, clientMs, serverRecvMs, serverSendMs] = raw as unknown[];
-  if (!isInt(pingId, 0, 0xffff) || !isFiniteNum(clientMs) || !isFiniteNum(serverRecvMs) || !isFiniteNum(serverSendMs)) {
+  if (
+    !isInt(pingId, 0, 0xffff) ||
+    !isFiniteNum(clientMs) ||
+    !isFiniteNum(serverRecvMs) ||
+    !isFiniteNum(serverSendMs)
+  ) {
     return null;
   }
   return { pingId, clientMs, serverRecvMs, serverSendMs };

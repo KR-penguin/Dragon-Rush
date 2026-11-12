@@ -12,7 +12,8 @@ export interface FightSeatInfo {
   readonly controller: FightController;
 }
 
-export type FightRole = { readonly role: 'fighter'; readonly seat: 0 | 1 } | { readonly role: 'spectator' };
+export type FightRole =
+  { readonly role: 'fighter'; readonly seat: 0 | 1 } | { readonly role: 'spectator' };
 
 /** S -> room (and to any socket that joins while the fight is active). */
 export interface FightStartMsg {
@@ -55,7 +56,8 @@ export interface FightSyncSeat {
   readonly controller: FightController;
 }
 
-export type FightSyncReason = 'join' | 'gap' | 'desync' | 'stall' | 'backlog' | 'overflow' | 'degraded';
+export type FightSyncReason =
+  'join' | 'gap' | 'desync' | 'stall' | 'backlog' | 'overflow' | 'degraded';
 
 export interface FightSyncMsg {
   readonly fightId: number;
@@ -68,7 +70,11 @@ export interface FightSyncMsg {
   /** Future controller changes already decided by the server (fromTick > tick). */
   readonly controls: readonly FightControlMsg[];
   /** Buffered (unstepped) masks the recipient may see: contiguous runs, oldest first. */
-  readonly pending: readonly { readonly seat: 0 | 1; readonly firstTick: number; readonly masks: readonly number[] }[];
+  readonly pending: readonly {
+    readonly seat: 0 | 1;
+    readonly firstTick: number;
+    readonly masks: readonly number[];
+  }[];
 }
 
 export interface FightRetimeMsg {

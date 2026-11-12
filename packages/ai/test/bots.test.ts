@@ -1,4 +1,10 @@
-import { actionKey, applyAction, getLegalActions, toPublicState, type GameState } from '@dragon-rush/engine';
+import {
+  actionKey,
+  applyAction,
+  getLegalActions,
+  toPublicState,
+  type GameState,
+} from '@dragon-rush/engine';
 import { describe, expect, it } from 'vitest';
 import {
   ACTION_DIM,
@@ -25,19 +31,32 @@ function playOut(s0: GameState, policies: Policy[], seed: number): GameState {
   return s;
 }
 
-const meta = (id: string) => ({ id, obsVersion: 'obs_v1', actVersion: 'act_v1', output: 'logits' as const, obsDim: OBS_DIM, actionDim: ACTION_DIM });
+const meta = (id: string) => ({
+  id,
+  obsVersion: 'obs_v1',
+  actVersion: 'act_v1',
+  output: 'logits' as const,
+  obsDim: OBS_DIM,
+  actionDim: ACTION_DIM,
+});
 
 describe('built-in bots', () => {
   it('heuristic bots of every style finish games with legal actions', () => {
     for (let seed = 1; seed <= 4; seed++) {
-      const policies = [0, 1, 2, 3].map((i) => createHeuristicBot(HEURISTIC_STYLES[(i + seed) % 3]!));
+      const policies = [0, 1, 2, 3].map((i) =>
+        createHeuristicBot(HEURISTIC_STYLES[(i + seed) % 3]!),
+      );
       const end = playOut(newGame(4, seed, 100), policies, seed);
       expect(end.outcome).not.toBeNull();
     }
   });
 
   it('random bots finish games', () => {
-    const end = playOut(newGame(3, 9, 40), [createRandomBot(), createRandomBot({ uniform: true }), createRandomBot()], 9);
+    const end = playOut(
+      newGame(3, 9, 40),
+      [createRandomBot(), createRandomBot({ uniform: true }), createRandomBot()],
+      9,
+    );
     expect(end.outcome).not.toBeNull();
   });
 
@@ -47,7 +66,12 @@ describe('built-in bots', () => {
     scores[1] = 100;
     const policy = createModelPolicy({ meta: meta('dummy'), forward: () => scores });
     const s = newGame(2, 1);
-    const action = policy.decide({ view: toPublicState(s), seat: 0, legal: getLegalActions(s), random: () => 0.5 });
+    const action = policy.decide({
+      view: toPublicState(s),
+      seat: 0,
+      legal: getLegalActions(s),
+      random: () => 0.5,
+    });
     expect(action).toEqual({ type: 'CHALLENGE_DRAGON' });
   });
 

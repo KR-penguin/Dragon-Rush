@@ -24,7 +24,8 @@ export interface Metrics {
   policyWinRate: Record<string, number>;
 }
 
-const quantile = (sorted: number[], q: number) => sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))] ?? 0;
+const quantile = (sorted: number[], q: number) =>
+  sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))] ?? 0;
 
 export function summarize(records: GameRecord[]): Metrics {
   const g = records.length;
@@ -71,15 +72,21 @@ export function summarize(records: GameRecord[]): Metrics {
     jobWinRate,
     earlyEliminationShare: early / seats,
     dragonSuccessRate: attempts ? wins / attempts : 0,
-    avgDragonWinRound: dragonWinRounds.length ? dragonWinRounds.reduce((a, b) => a + b, 0) / dragonWinRounds.length : null,
+    avgDragonWinRound: dragonWinRounds.length
+      ? dragonWinRounds.reduce((a, b) => a + b, 0) / dragonWinRounds.length
+      : null,
     pvpPerGame: records.reduce((a, r) => a + r.pvpFights, 0) / g,
     shieldCancelsPerGame: records.reduce((a, r) => a + r.shieldCancels, 0) / g,
-    purchasesPerGame: Object.fromEntries(ITEM_IDS.map((i) => [i, records.reduce((a, r) => a + r.purchases[i], 0) / g])),
+    purchasesPerGame: Object.fromEntries(
+      ITEM_IDS.map((i) => [i, records.reduce((a, r) => a + r.purchases[i], 0) / g]),
+    ),
     netCoinsPerTurn: coins / turns,
     avgBoardTurns: turns / g,
     avgCombatSeconds: combatSeconds / g,
     estimatedMinutes10s: (turns * 10 + combatSeconds) / g / 60,
-    policyWinRate: Object.fromEntries(Object.keys(policyGames).map((p) => [p, (policyWins[p] ?? 0) / policyGames[p]!])),
+    policyWinRate: Object.fromEntries(
+      Object.keys(policyGames).map((p) => [p, (policyWins[p] ?? 0) / policyGames[p]!]),
+    ),
   };
 }
 
@@ -102,7 +109,9 @@ export function formatMetrics(m: Metrics): string {
     `| 턴당 순 코인 | ${num(m.netCoinsPerTurn)} |`,
     `| 판당 보드 턴 / 실측 전투 시간 | ${num(m.avgBoardTurns, 1)} / ${num(m.avgCombatSeconds, 1)}초 |`,
     `| 예상 판 시간 (보드 턴당 10초) | ${num(m.estimatedMinutes10s, 1)}분 |`,
-    `| 정책별 승률 | ${Object.entries(m.policyWinRate).map(([p, w]) => `${p} ${pct(w)}`).join(', ')} |`,
+    `| 정책별 승률 | ${Object.entries(m.policyWinRate)
+      .map(([p, w]) => `${p} ${pct(w)}`)
+      .join(', ')} |`,
   ];
   return lines.join('\n');
 }

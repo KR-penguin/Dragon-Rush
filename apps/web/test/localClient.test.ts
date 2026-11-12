@@ -44,7 +44,8 @@ describe('LocalGameClient', () => {
       if (!u.pending) break;
       expect(u.pending.actor).toBe(human);
       expect(u.legalActions.length).toBeGreaterThanOrEqual(2);
-      const action = u.legalActions.find((a) => a.type !== 'CHALLENGE_DRAGON') ?? u.legalActions[0]!;
+      const action =
+        u.legalActions.find((a) => a.type !== 'CHALLENGE_DRAGON') ?? u.legalActions[0]!;
       const r = await client.submit(action, u.version);
       expect(r.ok).toBe(true);
     }
@@ -67,7 +68,10 @@ describe('LocalGameClient', () => {
     client.subscribe((u) => (latest = u));
     expect(latest.controllableSeats).toHaveLength(2);
     expect((await client.submit({ type: 'END_TURN' }, latest.version)).ok).toBe(false);
-    expect(await client.submit({ type: 'ROLL_DICE' }, latest.version + 5)).toEqual({ ok: false, code: 'STALE_VERSION' });
+    expect(await client.submit({ type: 'ROLL_DICE' }, latest.version + 5)).toEqual({
+      ok: false,
+      code: 'STALE_VERSION',
+    });
     expect((await client.submit({ type: 'ROLL_DICE' }, latest.version)).ok).toBe(true);
   });
 });
@@ -76,7 +80,13 @@ describe('game store animation queue', () => {
   it('queues events, animates them into the display and snaps at the end', async () => {
     const store = createGameStore();
     const client = new LocalGameClient(
-      { seed: 5, seats: [{ name: 'A', job: 'archer', kind: 'human' }, { name: 'B', job: 'mage', kind: 'human' }] },
+      {
+        seed: 5,
+        seats: [
+          { name: 'A', job: 'archer', kind: 'human' },
+          { name: 'B', job: 'mage', kind: 'human' },
+        ],
+      },
       manualScheduler().schedule,
     );
     store.getState().attach(client);

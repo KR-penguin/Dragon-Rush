@@ -73,9 +73,11 @@ describe('projection and fit', () => {
 
   it('foreshortens the far edge and widens the near edge at 40 degrees', () => {
     const o = { tiltDeg: 40 };
-    const farW = projectPlanePoint({ x: PLANE_SIZE, y: 0 }, o).x - projectPlanePoint({ x: 0, y: 0 }, o).x;
+    const farW =
+      projectPlanePoint({ x: PLANE_SIZE, y: 0 }, o).x - projectPlanePoint({ x: 0, y: 0 }, o).x;
     const nearW =
-      projectPlanePoint({ x: PLANE_SIZE, y: PLANE_SIZE }, o).x - projectPlanePoint({ x: 0, y: PLANE_SIZE }, o).x;
+      projectPlanePoint({ x: PLANE_SIZE, y: PLANE_SIZE }, o).x -
+      projectPlanePoint({ x: 0, y: PLANE_SIZE }, o).x;
     expect(farW).toBeCloseTo(805, 0);
     expect(nearW).toBeCloseTo(1189, 0);
   });
