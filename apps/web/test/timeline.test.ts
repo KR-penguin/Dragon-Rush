@@ -37,7 +37,7 @@ describe('event timeline', () => {
         () => '검사',
         () => 'BANDIT',
       ),
-    ).toBe('검사 코인 부족으로 HP -4');
+    ).toBe('검사: 코인이 부족해 HP 4를 대신 잃었습니다');
   });
   it('keeps the rise, reveal, and fade while shortening the readable hold by 300 ms', () => {
     expect(EVENT_CARD_RISE_MS).toBe(200);

@@ -1,5 +1,6 @@
 import type { GameEvent, RulesConfig, SeatId, TileDef } from '@dragon-rush/engine';
 import { cardIconName, TILE_ICON_NAME, type IconName } from './icons';
+import { coinShortfallMessage } from './eventNotices';
 import { cardFlavor, cardLabel, TILE_FLAVOR, TILE_LABEL } from './labels';
 import { effectChips, tileCategory, type EffectChip, type TileCategory } from './tileView';
 
@@ -22,13 +23,26 @@ export interface EventCardFace {
   readonly icon: IconName;
   readonly flavor: string;
   readonly chips: readonly EffectChip[];
+  /** Explains a penalty based on the applied result, not the tile's listed effect. */
+  readonly notice?: string;
   readonly tone: TileCategory | 'mystery';
+}
+
+function coinShortfallNotice(seat: SeatId, following: readonly GameEvent[]): string | undefined {
+  for (const event of following) {
+    if (event.type !== 'EffectApplied' || event.seat !== seat) break;
+    if (event.effect === 'hp' && event.cause === 'coinShortfall' && event.delta < 0) {
+      return coinShortfallMessage(Math.abs(event.delta));
+    }
+  }
+  return undefined;
 }
 
 /** Card for an event as it is shown, or null. A cave card is face down until its mystery card. */
 export function eventCardFor(
   e: GameEvent,
   rules: Pick<RulesConfig, 'board' | 'mysteryDeck'>,
+  following: readonly GameEvent[] = [],
 ): EventCardFace | null {
   switch (e.type) {
     case 'TileResolved': {
@@ -43,6 +57,7 @@ export function eventCardFor(
         icon: TILE_ICON_NAME[def.id],
         flavor: TILE_FLAVOR[def.id],
         chips: cave ? [] : effectChips(def.effects),
+        notice: cave ? undefined : coinShortfallNotice(e.seat, following),
         tone: tileCategory(def, e.tile),
       };
     }
@@ -56,6 +71,7 @@ export function eventCardFor(
         icon: cardIconName(e.cardId),
         flavor: cardFlavor(e.cardId),
         chips: def ? effectChips(def.effects) : [],
+        notice: coinShortfallNotice(e.seat, following),
         tone: 'mystery',
       };
     }
