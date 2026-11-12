@@ -5,8 +5,8 @@ import { CombatScreen } from '../../components/combat/CombatScreen';
 import { ControlsPanel } from '../../components/combat/ControlsPanel';
 import { FightErrorBoundary } from '../../components/combat/FightErrorBoundary';
 import { useArenaRenderer } from '../../hooks/useArenaRenderer';
+import { useCombatPointerAttack } from '../../hooks/useCombatPointerAttack';
 import { useEscape } from '../../hooks/useEscape';
-import { useFightBgm } from '../../hooks/useFightBgm';
 import { useFightFlow } from '../../hooks/useFightFlow';
 import { useFightGate } from '../../hooks/useFightGate';
 import { useFightPause } from '../../hooks/useFightPause';
@@ -72,13 +72,20 @@ function FightContainer({ fight, seats, client, onDone }: FightContainerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   useArenaRenderer(canvasRef, stageRef, session, fight, cards);
-  useFightBgm(fight.setup.kind);
 
   const [helpOpen, setHelpOpen] = useState(false);
   const [testing, setTesting] = useState(false);
   const pressed = useKeyboardTest(helpOpen && testing);
   const live = fight.replay === null && flow.phase === 'fight';
   const pause = useFightPause(session, live, helpOpen);
+  const pointerCapable = fight.sides.some(
+    (side) => side.control === 'keyboard-p1' || side.control === 'keyboard-solo',
+  );
+  useCombatPointerAttack(
+    canvasRef,
+    bundle?.tracker ?? null,
+    live && pointerCapable && !pause.paused && !helpOpen,
+  );
   useEscape(flow.skip !== null && !helpOpen, () => flow.skip?.());
 
   return (
@@ -89,6 +96,7 @@ function FightContainer({ fight, seats, client, onDone }: FightContainerProps) {
       go={flow.go}
       highlight={fight.replay !== null}
       paused={pause.paused}
+      pointerCapable={pointerCapable && fight.replay === null}
       canvasRef={canvasRef}
       stageRef={stageRef}
       onSkip={flow.skip}

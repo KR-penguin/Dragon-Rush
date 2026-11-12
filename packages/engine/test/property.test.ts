@@ -61,7 +61,15 @@ const checkInvariants = (s: GameState) => {
     expect(s.pending.actor).toBe(s.combat?.a);
   } else {
     expect(s.combat).toBeNull();
-    if (s.pending) expect(getLegalActions(s).length).toBeGreaterThanOrEqual(2);
+    if (s.pending?.phase === 'CHOOSE_PVP_TARGET' && s.pvp?.candidates.length === 1) {
+      expect(getLegalActions(s)).toEqual([
+        { type: 'CHOOSE_PVP_TARGET', target: s.pvp.candidates[0] },
+      ]);
+    } else if (s.pending?.phase === 'POST_MOVE' && s.turn.canBuy) {
+      expect(getLegalActions(s)).toContainEqual({ type: 'END_TURN' });
+    } else if (s.pending) {
+      expect(getLegalActions(s).length).toBeGreaterThanOrEqual(2);
+    }
   }
 };
 

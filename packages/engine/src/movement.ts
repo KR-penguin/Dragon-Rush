@@ -1,6 +1,6 @@
 import { advance, passesStart } from './board';
 import { emit, playerAt, roll, type Ctx } from './ctx';
-import { opponentsOnTile, startPvp } from './duel';
+import { opponentsOnTile } from './duel';
 import { PASSIVES } from './jobs';
 import { resolveTile } from './tiles';
 import type { SeatId } from './types';
@@ -70,12 +70,8 @@ function land(ctx: Ctx, seat: SeatId): void {
   const pvpOpen = tile !== undefined && !tile.safe && ctx.s.round > ctx.s.rules.pvpGraceRounds;
   if (pvpOpen) {
     const others = opponentsOnTile(ctx, seat);
-    if (others.length > 0) emit(ctx, { type: 'PvpTriggered', arriver: seat, candidates: others });
-    if (others.length === 1) {
-      startPvp(ctx, seat, others[0] as SeatId);
-      return;
-    }
-    if (others.length > 1) {
+    if (others.length > 0) {
+      emit(ctx, { type: 'PvpTriggered', arriver: seat, candidates: others });
       ctx.s.pvp = { arriver: seat, candidates: others, target: null, stage: null };
       ctx.s.pending = { actor: seat, phase: 'CHOOSE_PVP_TARGET' };
       return;

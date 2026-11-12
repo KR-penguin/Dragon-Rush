@@ -17,14 +17,14 @@ import {
 } from '../fx/audio/soundCatalog';
 import { dbToGain, semitonesToRate } from '../fx/core/easing';
 import { createFxRng } from '../fx/core/rng';
-import { bgmPath, type BgmName } from '../types/assetPaths';
+import { BGM_FILE, bgmPath, type BgmName } from '../types/assetPaths';
 import { assetUrl, hasAsset } from './assets';
 import { readStorage, writeStorage } from './storage';
 
 /**
  * Audio engine: one AudioContext (latencyHint interactive) created and resumed on the first user
  * gesture; sfx/ui/music/ambience buses → master → DynamicsCompressor. Sound files under
- * public/assets/audio override the procedural placeholders automatically.
+ * public/assets/audio provide BGM and override procedural SFX placeholders.
  */
 const MUTE_KEY = 'dragon-rush:muted';
 const volumeKey = (bus: AudioBus) => `dragon-rush:volume:${bus}`;
@@ -165,11 +165,15 @@ export function unlockAudio(): void {
   const g = createGraph();
   if (!g) {
     disarmUnlock();
-    bgmElementRetry();
+    if (bgm?.kind === 'element') bgm.el.play().catch(armUnlock);
+    else syncBgm(true);
     return;
   }
   if (g.ctx.state === 'running') {
     disarmUnlock();
+    preloadSounds();
+    syncBgm(bgm?.kind === 'element');
+    notify();
     return;
   }
   g.ctx
@@ -386,6 +390,7 @@ let wantedBgm: BgmName | null = null;
 let playingBgm: BgmName | null = null;
 let bgm: BgmPlayer | null = null;
 let loopPoints: Promise<Record<string, LoopPoints>> | null = null;
+let bgmRequest = 0;
 
 function loadLoopPoints(): Promise<Record<string, LoopPoints>> {
   if (!loopPoints) {
@@ -417,45 +422,47 @@ function stopBgm(): void {
   setTimeout(() => cur.gain.disconnect(), 700);
 }
 
+function startBgmBuffer(g: Graph, buf: AudioBuffer, lp?: LoopPoints): void {
+  const src = g.ctx.createBufferSource();
+  src.buffer = buf;
+  src.loop = true;
+  if (lp && lp.loopEnd <= buf.duration) {
+    src.loopStart = lp.loopStart;
+    src.loopEnd = lp.loopEnd;
+  }
+  const gain = g.ctx.createGain();
+  const t = g.ctx.currentTime;
+  gain.gain.setValueAtTime(0, t);
+  gain.gain.setTargetAtTime(1, t, 0.15);
+  src.connect(gain).connect(g.buses.music);
+  src.start(t);
+  bgm = { kind: 'buffer', src, gain };
+}
+
 function syncBgm(force = false): void {
-  const target = !muted && wantedBgm && hasAsset(bgmPath(wantedBgm)) ? wantedBgm : null;
+  const target = muted ? null : wantedBgm;
   if (target === playingBgm && !force) return;
+  const request = ++bgmRequest;
   stopBgm();
   if (!target) return;
-  playingBgm = target;
   const g = graph;
   if (g && g.ctx.state === 'running') {
+    playingBgm = target;
+    if (!hasAsset(bgmPath(target))) return;
     void Promise.all([loadBuffer(bgmPath(target)), loadLoopPoints()]).then(([buf, loops]) => {
-      if (!buf || playingBgm !== target || bgm) return;
-      const src = g.ctx.createBufferSource();
-      src.buffer = buf;
-      src.loop = true;
-      const lp = loops[target];
-      if (lp && lp.loopEnd <= buf.duration) {
-        src.loopStart = lp.loopStart;
-        src.loopEnd = lp.loopEnd;
-      }
-      const gain = g.ctx.createGain();
-      const t = g.ctx.currentTime;
-      gain.gain.setValueAtTime(0, t);
-      gain.gain.setTargetAtTime(1, t, 0.15);
-      src.connect(gain).connect(g.buses.music);
-      src.start(t);
-      bgm = { kind: 'buffer', src, gain };
+      if (request !== bgmRequest || playingBgm !== target || !buf) return;
+      startBgmBuffer(g, buf, loops[BGM_FILE]);
     });
     return;
   }
-  if (typeof Audio === 'undefined') return;
-  // Before the first gesture (or without Web Audio) a plain element keeps music working.
+  if (!graphUnavailable || !hasAsset(bgmPath(target)) || typeof Audio === 'undefined') return;
+  // Browsers without Web Audio use a plain element after the unlock gesture.
   const el = new Audio(assetUrl(bgmPath(target)));
   el.loop = true;
   el.volume = volumes.master * volumes.music;
   el.play().catch(armUnlock);
+  playingBgm = target;
   bgm = { kind: 'element', el };
-}
-
-function bgmElementRetry(): void {
-  if (bgm?.kind === 'element') bgm.el.play().catch(() => undefined);
 }
 
 export function playBgm(name: BgmName | null): void {

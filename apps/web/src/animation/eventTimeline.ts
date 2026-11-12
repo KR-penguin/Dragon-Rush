@@ -6,13 +6,17 @@ import { DICE_ROLL_MS, diceMoveMs } from '../types/motion';
 
 export type NameOf = (seat: SeatId) => string;
 
-/** Base durations (ms) at 1x speed. Kept short: the server timer does not wait for animations. */
+export const EVENT_CARD_RISE_MS = 200;
+export const EVENT_CARD_FLIP_MS = 180;
+export const EVENT_CARD_HOLD_MS = 3000;
+export const EVENT_CARD_FADE_MS = 250;
+export const EVENT_CARD_MS =
+  EVENT_CARD_RISE_MS + EVENT_CARD_FLIP_MS + EVENT_CARD_HOLD_MS + EVENT_CARD_FADE_MS;
+
+/** Base durations (ms) at 1x speed; the server timer does not wait for animations. */
 const DURATION: Partial<Record<GameEvent['type'], number>> = {
   DiceRolled: DICE_ROLL_MS,
   Moved: 450,
-  StartBonus: 350,
-  TileResolved: 250,
-  MysteryCardDrawn: 600,
   EffectApplied: 250,
   CombatStarted: 650,
   CombatHit: 260,
@@ -28,6 +32,13 @@ const DURATION: Partial<Record<GameEvent['type'], number>> = {
 export function eventDuration(e: GameEvent): number {
   // 160 ms per step; the hops shorten inside it (160 ms, x0.9, min 120 ms) and leave a landing beat.
   if (e.type === 'Moved' && e.via === 'dice') return diceMoveMs(e.steps);
+  if (e.type === 'StartBonus' || e.type === 'MysteryCardDrawn') return EVENT_CARD_MS;
+  if (e.type === 'TileResolved') {
+    if (e.tileId === 'MYSTERY') return 600;
+    return e.tileId === 'START' || e.tileId === 'SHOP' || e.tileId === 'TRAINING'
+      ? 250
+      : EVENT_CARD_MS;
+  }
   return DURATION[e.type] ?? 0;
 }
 

@@ -11,6 +11,7 @@ import { groupActions } from '../src/types/actionGroups';
 import {
   activeDialog,
   canAct,
+  landingDecisionReached,
   needsHandoff,
   shopVisitKey,
   type DecisionSource,
@@ -91,6 +92,38 @@ describe('decision gating', () => {
     expect(
       canAct(update({ publicState: { ...s, outcome: { kind: 'draw', winner: null } } }), false),
     ).toBe(false);
+  });
+
+  it('opens landing decisions as soon as the pawn reaches the tile', () => {
+    const start = base();
+    const landed = {
+      ...start,
+      players: start.players.map((p) => (p.seat === 0 ? { ...p, position: 6 } : p)),
+    };
+    const shop = update({
+      pending: { actor: 0, phase: 'POST_MOVE' },
+      publicState: { ...landed, turn: { ...landed.turn, canBuy: true } },
+      legalActions: [{ type: 'END_TURN' }],
+    });
+    expect(landingDecisionReached(shop, start)).toBe(false);
+    expect(landingDecisionReached(shop, landed)).toBe(true);
+    expect(
+      landingDecisionReached(
+        { ...shop, publicState: { ...landed, turn: { ...landed.turn, canBuy: false } } },
+        landed,
+      ),
+    ).toBe(false);
+    expect(
+      landingDecisionReached(
+        { ...shop, pending: { actor: 0, phase: 'CHOOSE_PVP_TARGET' } },
+        landed,
+      ),
+    ).toBe(true);
+    expect(
+      landingDecisionReached({ ...shop, pending: { actor: 0, phase: 'PRE_ROLL' } }, landed),
+    ).toBe(false);
+    expect(landingDecisionReached(shop, { ...landed, current: 1 })).toBe(false);
+    expect(landingDecisionReached(shop, null)).toBe(false);
   });
 
   it('asks for a hand-off only when another local human takes over', () => {

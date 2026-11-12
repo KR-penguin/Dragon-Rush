@@ -51,9 +51,11 @@ function dispatch(ctx: Ctx, action: Action): void {
 
 const MAX_AUTO_STEPS = 10_000;
 
-/** Applies decisions that have exactly one legal action, so players only ever see real choices. */
+/** Applies single-action decisions except confirmations that must remain visible. */
 function autoAdvance(ctx: Ctx): { state: GameState; events: GameEvent[] } {
   for (let i = 0; i < MAX_AUTO_STEPS; i++) {
+    if (ctx.s.pending?.phase === 'CHOOSE_PVP_TARGET') break;
+    if (ctx.s.pending?.phase === 'POST_MOVE' && ctx.s.turn.canBuy) break;
     const legal = getLegalActions(ctx.s);
     if (legal.length !== 1) break;
     dispatch(ctx, legal[0] as Action);

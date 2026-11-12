@@ -10,6 +10,7 @@ import {
   type SeatKindChoice,
 } from '../../types/setupForm';
 import { JobCard } from './JobCard';
+import { BOT_STYLE_HELP } from './botStyleHelp';
 
 interface SeatEditorProps {
   index: number;
@@ -62,6 +63,7 @@ export function SeatEditor({ index, seat, taken, jobs, scale, onChange }: SeatEd
             <span>봇 스타일</span>
             <select
               value={seat.bot}
+              aria-describedby={`${id}-bot-help`}
               onChange={(e) => {
                 if (isBot(e.target.value)) onChange({ bot: e.target.value });
               }}
@@ -75,6 +77,11 @@ export function SeatEditor({ index, seat, taken, jobs, scale, onChange }: SeatEd
           </label>
         )}
       </div>
+      {seat.kind === 'bot' && (
+        <p id={`${id}-bot-help`} className="setup-bot-help" aria-live="polite">
+          {BOT_STYLE_HELP[seat.bot]}
+        </p>
+      )}
       <div className="job-picker" role="radiogroup" aria-label="직업">
         {JOB_IDS.map((job) => {
           const isTaken = taken.has(job);

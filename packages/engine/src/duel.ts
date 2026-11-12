@@ -77,6 +77,24 @@ export const settleDuel: SettleCombat = (ctx, request, winner) => {
   const winnerSeat = winner === 'a' ? arriver : target;
   const loserSeat = winner === 'a' ? target : arriver;
   eliminate(ctx, loserSeat, winnerSeat, winnerSeat);
+  const winnerPlayer = playerAt(ctx.s, winnerSeat);
+  winnerPlayer.coins += ctx.s.rules.pvpWinBonusCoins;
+  emit(ctx, {
+    type: 'EffectApplied',
+    seat: winnerSeat,
+    effect: 'coins',
+    delta: ctx.s.rules.pvpWinBonusCoins,
+    after: winnerPlayer.coins,
+  });
+  const hpBefore = winnerPlayer.hp;
+  winnerPlayer.hp = winnerPlayer.maxHp;
+  emit(ctx, {
+    type: 'EffectApplied',
+    seat: winnerSeat,
+    effect: 'hp',
+    delta: winnerPlayer.hp - hpBefore,
+    after: winnerPlayer.hp,
+  });
   if (checkLastSurvivor(ctx)) return;
   if (loserSeat === arriver) endTurn(ctx);
   else resolveTile(ctx, arriver);

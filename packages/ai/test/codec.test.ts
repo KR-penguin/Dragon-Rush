@@ -1,14 +1,15 @@
-import { actionKey, getLegalActions } from '@dragon-rush/engine';
+import { actionKey, applyAction, getLegalActions } from '@dragon-rush/engine';
 import { describe, expect, it } from 'vitest';
 import {
   ACTION_DIM,
   ACTION_NAMES,
+  createHeuristicBot,
   decodeAction,
   encodeAction,
   legalIndices,
   maskFromLegal,
 } from '../src/index';
-import { view, walk } from './helpers';
+import { newGame, view, walk } from './helpers';
 
 describe('act_v1 codec', () => {
   it('has 47 named actions', () => {
@@ -29,7 +30,11 @@ describe('act_v1 codec', () => {
           const legal = getLegalActions(s);
           const mask = maskFromLegal(v, seat, legal);
           expect(mask.reduce((a, b) => a + b, 0)).toBe(legal.length);
-          expect(legal.length).toBeGreaterThanOrEqual(2);
+          if (s.pending.phase === 'CHOOSE_PVP_TARGET' && s.pvp?.candidates.length === 1)
+            expect(legal).toEqual([{ type: 'CHOOSE_PVP_TARGET', target: s.pvp.candidates[0] }]);
+          else if (s.pending.phase === 'POST_MOVE' && s.turn.canBuy && legal.length === 1)
+            expect(legal).toEqual([{ type: 'END_TURN' }]);
+          else expect(legal.length).toBeGreaterThanOrEqual(2);
           for (const a of legal) {
             const i = encodeAction(v, seat, a);
             expect(actionKey(decodeAction(v, seat, i))).toBe(actionKey(a));
@@ -38,5 +43,23 @@ describe('act_v1 codec', () => {
         }
       }
     }
+  });
+
+  it('keeps the one-target confirmation legal for the codec and heuristic bot', () => {
+    const s = newGame(2, 8);
+    s.round = 3;
+    s.players[0]!.items.teleport = 1;
+    s.players[1]!.position = 9;
+    const landing = applyAction(s, { type: 'USE_TELEPORT', tile: 9 }).state;
+    const v = view(landing);
+    const legal = getLegalActions(landing);
+    expect(legal).toEqual([{ type: 'CHOOSE_PVP_TARGET', target: 1 }]);
+    const index = encodeAction(v, 0, legal[0]!);
+    expect(decodeAction(v, 0, index)).toEqual(legal[0]);
+    expect(legalIndices(v, 0, legal)).toEqual([index]);
+    expect(maskFromLegal(v, 0, legal)[index]).toBe(1);
+    expect(createHeuristicBot().decide({ view: v, seat: 0, legal, random: () => 0.5 })).toEqual(
+      legal[0],
+    );
   });
 });

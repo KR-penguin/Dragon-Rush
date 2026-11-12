@@ -54,5 +54,8 @@ describe('combat decision dialogs', () => {
       const visibleText = html.replace(/<[^>]*>/g, '');
       expect(visibleText).not.toMatch(/승률|확률|예측|몬테카를로|\d+%/);
     }
+    const duel = renderToStaticMarkup(dialogs[1]);
+    expect(duel).toContain('결투 발생');
+    expect(duel).toContain('결투 시작');
   });
 });

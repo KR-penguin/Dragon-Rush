@@ -41,20 +41,20 @@
 
 아래 표는 `packages/ai`의 `OBS_V1_LAYOUT`(env `info.obs_layout`으로도 제공)과 1:1로 대응한다.
 
-**정규화 상수** (`OBS_V1_SCALES`, 최종 밸런스 수치에서 유도. 바꾸면 버전 증가)
+**정규화 상수** (`OBS_V1_SCALES`, 초기 `final` 밸런스에서 동결. 바꾸면 버전 증가)
 
-| 상수 | 값 | 근거 (config `final`) |
+| 상수 | 값 | 동결 당시 근거 (config `final`; 현재 `rush-3`는 아래 별도 설명) |
 |---|---|---|
 | `HP_S` | 120 | 용 HP 115, 기본 HP 30~56, HP 강화 +6/레벨 |
 | `ATK_S`, `DEF_S` | 20 | 기본 ATK 4~6 / DEF 5~6, 용 10/6, 점증 비용(3+lvl, 2+lvl) |
 | `COIN_S` | 50 | 시작 5, 출발 보너스 +10, 턴당 순 수입 ≈2.45, 도둑 7, 가격 5~6, 강화비 |
 | `LVL_S` | 10 | 스탯별 강화 레벨 |
-| `ITEM_S` | 3 | 시작 방어막 1, 무료 획득 ≈1/판, 구매 ≈0.45/판(종류별) |
-| `ROUND_S` | 100 | 학습 env `maxRounds` 기본 100 (`rush-2` 4인 실측 p95 = 15; 스케일은 `obs_v1` 호환을 위해 유지) |
+| `ITEM_S` | 3 | 초기 `final`의 시작 방어막 1과 아이템 수량을 기준으로 동결. 현재 `rush-3` 시작 아이템은 0 |
+| `ROUND_S` | 100 | 학습 env `maxRounds` 기본 100 (`rush-3` 현재 모델 사용 4인 실측 p95 = 9; 스케일은 `obs_v1` 호환을 위해 유지) |
 | `GRACE_S` / `CD_S` / `TP_S` | 3 / 2 / 2 | `obs_v1` 고정 스케일. 현재 보호는 2라운드, 닌자 쿨다운은 4이며 2 초과 관측값은 클리핑된다 / 이번 턴 텔레포트 사용 수 |
 | `DIST_S` | 23 | 링(24칸)에서 최대 전진 거리 |
 
-> 규칙 `rush-2`(2026-11-12)에서 밸런스 수치가 바뀌었지만 `obs_v1`의 레이아웃과 스케일은 그대로다. 용 HP는 88(관측값 0.73), 기본 HP는 34~53, 초반 보호는 2라운드라 `g.graceLeft` 시작 값이 0.67이다. 코인 흐름(시작 10, 출발 보너스 +35, 턴당 순 수입 ≈5.56, 도둑 10)라 코인 특징이 평균적으로 커지고, 100코인 이상은 클리핑된다. 게임 길이 p95는 15라운드다.
+> 현재 규칙 `rush-3`에서도 `obs_v1`의 레이아웃과 스케일은 그대로다. 용 HP는 88(관측값 0.73), 기본 HP는 34~53, 초반 보호는 2라운드라 `g.graceLeft` 시작 값이 0.67이다. 코인 흐름(시작 10, 출발 보너스 +35, 도둑 10) 때문에 100코인 이상은 클리핑된다. 내장 결과 모델을 사용하는 4인 휴리스틱 실제 전투 8,000판의 턴당 순 코인은 약 5.17, 게임 길이 p95는 9라운드였다(§10). 분포 수집 시점의 모델 미적용 수치는 각각 6.90과 14라운드다.
 
 ### 3.1 자기 블록 — offset 0, 길이 51
 
@@ -204,7 +204,7 @@
 ```json
 {"id":1,"cmd":"info"}
 {"id":1,"ok":true,"result":{"protocol":"rpgboard-env/1","obs_version":"obs_v1","act_version":"act_v1",
- "obs_dim":253,"action_dim":47,"rules_version":"rush-2","action_names":["ROLL_DICE","END_TURN","CHALLENGE_DRAGON","..."],
+ "obs_dim":253,"action_dim":47,"rules_version":"rush-3","action_names":["ROLL_DICE","END_TURN","CHALLENGE_DRAGON","..."],
  "obs_layout":[{"name":"self.job","offset":0,"length":5},{"name":"self.pos","offset":5,"length":24},"..."],
  "bots":["random","random:uniform","heuristic","heuristic:aggro","heuristic:growth","heuristic:rush"]}}
 ```
@@ -381,7 +381,7 @@ createModelPolicy(model: PolicyModel, opts?: { mode?: 'argmax' | 'sample'; tempe
 | growth | 0.6 / 0.4 | 0.25 | 0.80 | 1 | 7 | 0.45 | 6 | 4 |
 | rush | 1.0 / 0 | 0.17 | 0.85 | 0 | 7 | 0.5 | 6 | 99 |
 
-- 기준선 지표(`rush-2`, 실제 전투): 4인 휴리스틱 8,000판 중앙 8/p95 11라운드, 용 처치 종료 61.3%, 직업 승률 22.1~29.1%. 중앙 9~11 목표는 미달했고 3인·2인 길이와 공정성 한계는 game-design §15에 기록한다. 온라인 대리 플레이는 `heuristic:growth`.
+- 현재 `rush-3` 기준선(실제 전투, 내장 결과 모델을 사용하는 보드 봇): 4인 휴리스틱 8,000판 중앙 6/p95 9라운드, 용 처치 종료 46.8%, 직업 승률 18.8~34.8%, 3라운드 안 탈락 22.6%. 분포 수집 시점의 모델 미적용 실측과 이전 `rush-2` 기록은 game-design §15에 둔다. 온라인 대리 플레이는 `heuristic:growth`.
 
 ## 11. 계약 검증 (Vitest, Python은 pytest)
 

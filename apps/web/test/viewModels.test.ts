@@ -75,7 +75,7 @@ describe('decision view models', () => {
     const s = game();
     const rows = shopRows(s, 0, ['thief']);
     expect(rows.map((r) => r.item)).toEqual(['teleport', 'shield', 'thief']);
-    expect(rows.find((r) => r.item === 'shield')!.owned).toBe(DEFAULT_RULES.startingItems.shield);
+    expect(rows.find((r) => r.item === 'shield')!.owned).toBe(0);
     expect(rows.find((r) => r.item === 'teleport')!.price).toBe(DEFAULT_RULES.items.teleport.price);
     expect(rows.filter((r) => r.buyable).map((r) => r.item)).toEqual(['thief']);
   });
@@ -83,7 +83,7 @@ describe('decision view models', () => {
   it('summarises opponents for choice dialogs', () => {
     const s = game();
     const [a] = opponentSummaries(s, [1]);
-    expect(a).toMatchObject({ seat: 1, coins: DEFAULT_RULES.startingCoins, shields: 1 });
+    expect(a).toMatchObject({ seat: 1, coins: DEFAULT_RULES.startingCoins, shields: 0 });
   });
 });
 

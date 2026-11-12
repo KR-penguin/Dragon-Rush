@@ -25,7 +25,7 @@ const withJobs = (d: GameState, jobs: JobId[]): void => {
 };
 
 /** Seat 0 teleports onto seat 1 (alone on `tile`) in round 4 with no shields, so a duel starts. */
-function duelScenario(
+function duelLanding(
   jobs: JobId[],
   opts: { tile?: number; rules?: GameState['rules']; edit?: (d: GameState) => void } = {},
 ) {
@@ -41,6 +41,19 @@ function duelScenario(
   return { before, ...act(before, { type: 'USE_TELEPORT', tile }) };
 }
 
+function duelScenario(
+  jobs: JobId[],
+  opts: { tile?: number; rules?: GameState['rules']; edit?: (d: GameState) => void } = {},
+) {
+  const landing = duelLanding(jobs, opts);
+  const confirmed = act(landing.state, { type: 'CHOOSE_PVP_TARGET', target: 1 });
+  return {
+    before: landing.before,
+    state: confirmed.state,
+    events: [...landing.events, ...confirmed.events],
+  };
+}
+
 const dragonScenario = (jobs: JobId[], rules = EXTERNAL_RULES) =>
   act(
     patch(newGame(jobs, 5, rules), (d) => withJobs(d, jobs)),
@@ -50,6 +63,13 @@ const dragonScenario = (jobs: JobId[], rules = EXTERNAL_RULES) =>
 const withoutRules = (s: GameState) => ({ ...s, rules: null });
 
 describe('external combat: request', () => {
+  it('keeps the one-target confirmation pending until submitted', () => {
+    const { state, events } = duelLanding(['mage', 'archer', 'swordsman']);
+    expect(state.pending).toEqual({ actor: 0, phase: 'CHOOSE_PVP_TARGET' });
+    expect(state.combat).toBeNull();
+    expect(getLegalActions(state)).toEqual([{ type: 'CHOOSE_PVP_TARGET', target: 1 }]);
+    expect(eventsOf(events, 'CombatStarted')).toHaveLength(0);
+  });
   it('stops at COMBAT after shield decisions with no board decisions and no dice consumed', () => {
     const { before, state, events } = duelScenario(['mage', 'archer', 'swordsman']);
     expect(events.at(-1)).toEqual({ type: 'CombatStarted', kind: 'duel', a: 0, b: 1, first: 1 });
@@ -127,13 +147,15 @@ describe('external combat: applyCombatResult for duels', () => {
         items: { teleport: 0, shield: 0, thief: 2 },
       },
       { type: 'PlayerEliminated', seat: 1, by: 0, round: 4 },
-      { type: 'TileResolved', seat: 0, tile: 9, tileId: 'TREASURE' },
+      { type: 'EffectApplied', seat: 0, effect: 'coins', delta: 30, after: 45 },
     ]);
-    const treasure = DEFAULT_RULES.board[9]!.effects.find((e) => e.kind === 'coins');
-    const treasureCoins = treasure && treasure.kind === 'coins' ? treasure.amount : 0;
+    expect(r.events.slice(4, 6)).toEqual([
+      { type: 'EffectApplied', seat: 0, effect: 'hp', delta: 33, after: 40 },
+      { type: 'TileResolved', seat: 0, tile: 9, tileId: 'HERB' },
+    ]);
     expect(r.state.players[0]).toMatchObject({
-      hp: 7,
-      coins: 9 + 6 + treasureCoins,
+      hp: 40,
+      coins: 9 + 6 + 30,
       items: { teleport: 0, shield: 0, thief: 2 },
     });
     expect(r.state.players[1]).toMatchObject({ alive: false, hp: 0, coins: 0 });
@@ -158,7 +180,11 @@ describe('external combat: applyCombatResult for duels', () => {
     ]);
     expect(eventsOf(r.events, 'TileResolved')).toHaveLength(0);
     expect(eventsOf(r.events, 'TurnEnded')).toEqual([{ type: 'TurnEnded', seat: 0 }]);
-    expect(r.state.players[1]).toMatchObject({ hp: 12, coins: 13 + 4 });
+    expect(eventsOf(r.events, 'EffectApplied')).toEqual([
+      { type: 'EffectApplied', seat: 1, effect: 'coins', delta: 30, after: 47 },
+      { type: 'EffectApplied', seat: 1, effect: 'hp', delta: 35, after: 47 },
+    ]);
+    expect(r.state.players[1]).toMatchObject({ hp: 47, coins: 13 + 4 + 30 });
     expect(r.state.current).toBe(1);
     expect(r.state.pending).toEqual({ actor: 1, phase: 'PRE_ROLL' });
   });
@@ -181,7 +207,7 @@ describe('external combat: applyCombatResult for duels', () => {
     expect(r.state.combat).toBeNull();
   });
 
-  it('auto-applies a single legal decision after the fight like applyAction does', () => {
+  it('keeps POST_MOVE when the PvP bonus makes upgrades available', () => {
     const { state } = duelScenario(['mage', 'berserker', 'swordsman'], {
       tile: 4,
       edit: (d) => {
@@ -190,8 +216,30 @@ describe('external combat: applyCombatResult for duels', () => {
       },
     });
     const r = applyCombatResult(state, { winner: 'a', hpA: 10, hpB: 0 });
-    expect(eventsOf(r.events, 'TurnEnded')).toEqual([{ type: 'TurnEnded', seat: 0 }]);
-    expect(r.state.pending).toEqual({ actor: 2, phase: 'PRE_ROLL' });
+    expect(eventsOf(r.events, 'TurnEnded')).toHaveLength(0);
+    expect(r.state.pending).toEqual({ actor: 0, phase: 'POST_MOVE' });
+    expect(getLegalActions(r.state)).toContainEqual({ type: 'UPGRADE', stat: 'atk' });
+  });
+
+  it('resolves the shop after an arriving duel winner before offering purchases', () => {
+    const landing = duelLanding(['mage', 'berserker', 'swordsman'], {
+      tile: 6,
+      edit: (d) => {
+        d.players[0]!.coins = 0;
+        d.players[1]!.coins = 0;
+      },
+    });
+    expect(landing.state.pending?.phase).toBe('CHOOSE_PVP_TARGET');
+    expect(eventsOf(landing.events, 'TileResolved')).toHaveLength(0);
+    const confirmed = act(landing.state, { type: 'CHOOSE_PVP_TARGET', target: 1 });
+    expect(confirmed.state.pending?.phase).toBe('COMBAT');
+    const settled = applyCombatResult(confirmed.state, { winner: 'a', hpA: 1, hpB: 0 });
+    expect(eventsOf(settled.events, 'TileResolved')).toEqual([
+      { type: 'TileResolved', seat: 0, tile: 6, tileId: 'SHOP' },
+    ]);
+    expect(settled.state.turn.canBuy).toBe(true);
+    expect(settled.state.pending).toEqual({ actor: 0, phase: 'POST_MOVE' });
+    expect(getLegalActions(settled.state)).toContainEqual({ type: 'BUY_ITEM', item: 'shield' });
   });
 
   it('marks capReached when the fight timed out', () => {
@@ -238,6 +286,8 @@ describe('external combat: dragon results', () => {
       { type: 'GameEnded', outcome: { kind: 'dragon', winner: 0 } },
     ]);
     expect(r.state.players[0]!.hp).toBe(3);
+    expect(r.state.players[0]!.coins).toBe(10);
+    expect(eventsOf(r.events, 'EffectApplied')).toHaveLength(0);
     expect(r.state.pending).toBeNull();
     expect(r.state.combat).toBeNull();
   });

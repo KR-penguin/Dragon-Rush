@@ -23,9 +23,10 @@ export type SfxName = (typeof SFX_NAMES)[number];
 
 export const BGM_NAMES = ['lobby', 'board', 'dragon_battle'] as const;
 export type BgmName = (typeof BGM_NAMES)[number];
+export const BGM_FILE = 'dragon_foothills.mp3';
 
 export const sfxPath = (name: SfxName): string => `audio/sfx/${name}.mp3`;
-export const bgmPath = (name: BgmName): string => `audio/bgm/${name}.mp3`;
+export const bgmPath: (name: BgmName) => string = () => `audio/bgm/${BGM_FILE}`;
 
 /** Normalizes manifest entries (OS separators, leading slashes) and drops dotfiles. */
 export function normalizeManifest(files: readonly string[]): Set<string> {

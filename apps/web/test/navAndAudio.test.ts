@@ -1,10 +1,18 @@
 import type { GameEvent } from '@dragon-rush/engine';
+import { statSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { sfxForEvent } from '../src/animation/eventSfx';
 import { LocalGameClient } from '../src/services/LocalGameClient';
 import type { GameClient, GameUpdate, SubmitResult } from '../src/services/gameClient';
 import { createNavStore } from '../src/store/navStore';
-import { bgmPath, normalizeManifest, sfxPath, tileImagePath } from '../src/types/assetPaths';
+import {
+  BGM_NAMES,
+  bgmPath,
+  normalizeManifest,
+  sfxPath,
+  tileImagePath,
+} from '../src/types/assetPaths';
 
 /** Minimal client that records its lifecycle. */
 function fakeClient() {
@@ -126,7 +134,13 @@ describe('asset paths', () => {
   it('builds the agreed file names', () => {
     expect(tileImagePath('POISON_SWAMP')).toBe('images/tiles/poison_swamp.png');
     expect(sfxPath('dice_roll')).toBe('audio/sfx/dice_roll.mp3');
-    expect(bgmPath('dragon_battle')).toBe('audio/bgm/dragon_battle.mp3');
+    for (const scene of BGM_NAMES) {
+      const path = bgmPath(scene);
+      expect(path).toBe('audio/bgm/dragon_foothills.mp3');
+      expect(
+        statSync(fileURLToPath(new URL(`../public/assets/${path}`, import.meta.url))).size,
+      ).toBeGreaterThan(2_000_000);
+    }
   });
 
   it('normalizes manifest entries and skips dotfiles', () => {

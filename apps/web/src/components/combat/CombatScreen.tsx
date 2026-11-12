@@ -12,6 +12,7 @@ interface CombatScreenProps {
   /** Bot-only fight shown as a 4× highlight. */
   highlight: boolean;
   paused: boolean;
+  pointerCapable: boolean;
   canvasRef: RefObject<HTMLCanvasElement | null>;
   stageRef: RefObject<HTMLDivElement | null>;
   onSkip: (() => void) | null;
@@ -32,7 +33,7 @@ export function CombatScreen(p: CombatScreenProps) {
       aria-label="전투"
     >
       <div className="combat-stage" ref={p.stageRef}>
-        <canvas ref={p.canvasRef} className="combat-canvas" />
+        <canvas ref={p.canvasRef} className="combat-canvas" style={{ touchAction: 'none' }} />
         {p.phase === 'intro' && <FightIntro cards={p.cards} highlight={p.highlight} />}
         {p.phase === 'ready' && <FightReady cards={p.cards} />}
         {p.go && <FightGo />}
@@ -46,7 +47,9 @@ export function CombatScreen(p: CombatScreenProps) {
             건너뛰기 ⏭
           </button>
         ) : (
-          <span className="combat-hint">Esc 일시 정지</span>
+          <span className="combat-hint">
+            {p.pointerCapable ? '경기장 왼쪽 클릭·터치 공격 · Esc 일시 정지' : 'Esc 일시 정지'}
+          </span>
         )}
         <button type="button" className="btn btn-ghost" onClick={p.onOpenControls}>
           🎮 조작법

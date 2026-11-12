@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import calibration from '../src/outcome/model.calibration.json';
 import { createGame, DEFAULT_RULES, getLegalActions, toPublicState } from '@dragon-rush/engine';
 import {
   emptyOutcomeModel,
@@ -23,11 +24,16 @@ const setup = {
 const damage = { sNum: 8, sDen: 5, k: 10, min: 1, dragonDamageTakenScale: 0.17, mageDefDivisor: 2 };
 
 describe('outcome_v1 contract', () => {
-  it('loads the shipped rush-2 artifact and rejects invalid or mismatched models', () => {
+  it('loads the shipped rush-3 artifact and rejects invalid or mismatched models', () => {
     const model = bundledOutcomeModel(DEFAULT_RULES.version, 'combat-2');
-    expect(model?.id).toBe('outcome-v1-rush2');
+    expect(model?.id).toBe('outcome-v1-rush3');
     expect(model?.training.holdout_samples).toBe(40000);
+    expect(model?.training.stat_dist_games).toBe(8000);
+    expect(calibration.count).toBe(model?.training.holdout_samples);
+    expect(calibration.passes).toBe(true);
+    expect(calibration.maxError).toBeLessThanOrEqual(0.03);
     expect(bundledOutcomeModel('rush-1', 'combat-2')).toBeNull();
+    expect(bundledOutcomeModel('rush-2', 'combat-2')).toBeNull();
     expect(bundledOutcomeModel(DEFAULT_RULES.version, 'combat-3')).toBeNull();
     expect(
       bundledOutcomeModel(DEFAULT_RULES.version, 'combat-2', { version: 'broken' }),

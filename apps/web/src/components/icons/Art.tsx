@@ -5,10 +5,11 @@ import {
   jobImagePath,
   tileImagePath,
 } from '../../types/assetPaths';
-import { ITEM_ICON_NAME, JOB_ICON_NAME, TILE_ICON_NAME } from '../../types/icons';
+import { ITEM_ICON_NAME, TILE_ICON_NAME } from '../../types/icons';
 import { ITEM_LABEL, JOB_LABEL, TILE_LABEL } from '../../types/labels';
 import { AssetImage } from '../common/AssetImage';
 import { GameIcon } from './GameIcon';
+import { JobPortrait } from './JobPortrait';
 
 // Painted art under public/assets wins; the game-icons SVG is the fallback.
 
@@ -17,7 +18,7 @@ export function JobArt({ job, className = '' }: { job: JobId; className?: string
     <AssetImage
       className={className}
       path={jobImagePath(job)}
-      fallback={<GameIcon name={JOB_ICON_NAME[job]} />}
+      fallback={<JobPortrait job={job} />}
       alt={JOB_LABEL[job]}
     />
   );

@@ -29,7 +29,7 @@ describe('game setup', () => {
     for (const p of s.players) {
       expect(p.position).toBe(0);
       expect(p.coins).toBe(10);
-      expect(p.items).toEqual({ teleport: 0, shield: 1, thief: 0 });
+      expect(p.items).toEqual({ teleport: 0, shield: 0, thief: 0 });
       expect(p.hp).toBe(p.maxHp);
     }
     expect(s.round).toBe(1);
@@ -66,11 +66,21 @@ describe('movement and tiles', () => {
   it('teleport has no start bonus and triggers the destination tile', () => {
     let s = withTeleport(newGame(['swordsman', 'archer'], 5));
     s = setPlayer(s, 0, { position: 20 });
-    const { state, events } = act(s, { type: 'USE_TELEPORT', tile: 9 });
+    const { state, events } = act(s, { type: 'USE_TELEPORT', tile: 3 });
     expect(eventsOf(events, 'StartBonus')).toHaveLength(0);
-    expect(state.players[0]!.position).toBe(9);
+    expect(state.players[0]!.position).toBe(3);
     expect(state.players[0]!.coins).toBe(10 + 12);
     expect(state.players[0]!.items.teleport).toBe(0);
+  });
+
+  it('moves the herb heal to tile 9', () => {
+    const s = withTeleport(setPlayer(newGame(['swordsman', 'archer'], 5), 0, { hp: 2 }));
+    const { state, events } = act(s, { type: 'USE_TELEPORT', tile: 9 });
+    expect(eventsOf(events, 'TileResolved')).toEqual([
+      { type: 'TileResolved', seat: 0, tile: 9, tileId: 'HERB' },
+    ]);
+    expect(state.players[0]!.hp).toBe(10);
+    expect(state.players[0]!.coins).toBe(10);
   });
 
   it('event damage never drops hp below 1 and coins below 0', () => {
@@ -99,6 +109,18 @@ describe('movement and tiles', () => {
     const r2 = act(r1.state, { type: 'BUY_ITEM', item: 'thief' });
     expect(r2.state.players[0]!.items.thief).toBe(1);
     expect(r2.state.players[0]!.coins).toBe(15);
+  });
+
+  it('waits at an unaffordable shop so the visit can be shown', () => {
+    const s = setPlayer(withTeleport(newGame(['swordsman', 'archer'], 5)), 0, { coins: 0 });
+    const landing = act(s, { type: 'USE_TELEPORT', tile: 6 });
+    expect(eventsOf(landing.events, 'TileResolved')).toEqual([
+      { type: 'TileResolved', seat: 0, tile: 6, tileId: 'SHOP' },
+    ]);
+    expect(landing.state.turn.canBuy).toBe(true);
+    expect(landing.state.pending).toEqual({ actor: 0, phase: 'POST_MOVE' });
+    expect(getLegalActions(landing.state)).toEqual([{ type: 'END_TURN' }]);
+    expect(act(landing.state, { type: 'END_TURN' }).state.current).toBe(1);
   });
 
   it('upgrade cost escalates with level', () => {
@@ -146,11 +168,41 @@ describe('pvp', () => {
   it('does not fight during the grace rounds', () => {
     const { events, state } = act(duelSetup(0, 0, 2), { type: 'USE_TELEPORT', tile: 9 });
     expect(eventsOf(events, 'CombatStarted')).toHaveLength(0);
+    expect(state.pending?.phase).not.toBe('CHOOSE_PVP_TARGET');
     expect(state.players.every((p) => p.alive)).toBe(true);
   });
 
+  it('skips PvP confirmation on the safe START tile', () => {
+    const s = patch(withTeleport(duelSetup(0, 0)), (d) => {
+      d.players[0]!.position = 5;
+      d.players[1]!.position = 0;
+    });
+    const { state, events } = act(s, { type: 'USE_TELEPORT', tile: 0 });
+    expect(eventsOf(events, 'PvpTriggered')).toHaveLength(0);
+    expect(state.pending?.phase).not.toBe('CHOOSE_PVP_TARGET');
+  });
+
+  it('waits for confirmation even when there is exactly one PvP target', () => {
+    const landing = act(duelSetup(0, 0, 3), { type: 'USE_TELEPORT', tile: 9 });
+    expect(landing.state.pending).toEqual({ actor: 0, phase: 'CHOOSE_PVP_TARGET' });
+    expect(landing.state.pvp).toEqual({
+      arriver: 0,
+      candidates: [1],
+      target: null,
+      stage: null,
+    });
+    expect(getLegalActions(landing.state)).toEqual([{ type: 'CHOOSE_PVP_TARGET', target: 1 }]);
+    expect(eventsOf(landing.events, 'CombatStarted')).toHaveLength(0);
+    const confirmed = act(landing.state, { type: 'CHOOSE_PVP_TARGET', target: 1 });
+    expect(eventsOf(confirmed.events, 'PvpTargetChosen')).toEqual([
+      { type: 'PvpTargetChosen', arriver: 0, target: 1 },
+    ]);
+    expect(eventsOf(confirmed.events, 'CombatStarted')).toHaveLength(1);
+  });
+
   it('asks the arriver first, then the defender, for shields', () => {
-    const r1 = act(duelSetup(1, 1), { type: 'USE_TELEPORT', tile: 9 });
+    const landing = act(duelSetup(1, 1), { type: 'USE_TELEPORT', tile: 9 });
+    const r1 = act(landing.state, { type: 'CHOOSE_PVP_TARGET', target: 1 });
     expect(r1.state.pending).toEqual({ actor: 0, phase: 'SHIELD_DECISION' });
     const r2 = act(r1.state, { type: 'SHIELD_DECISION', use: false });
     expect(r2.state.pending).toEqual({ actor: 1, phase: 'SHIELD_DECISION' });
@@ -160,23 +212,33 @@ describe('pvp', () => {
     ]);
     expect(r3.state.players[1]!.items.shield).toBe(0);
     expect(r3.state.players.every((p) => p.alive)).toBe(true);
-    expect(r3.state.players[0]!.coins).toBe(10 + 12);
+    expect(r3.state.players[0]!.hp).toBe(r3.state.players[0]!.maxHp);
   });
 
-  it('resolves a duel: loser eliminated, winner takes half coins and all items', () => {
+  it('resolves a dice duel with loot, bonus coins, and full HP for the winner', () => {
     let s = duelSetup(0, 0);
     s = patch(s, (d) => {
       d.players[1]!.coins = 13;
       d.players[1]!.items.thief = 2;
       d.players[0]!.coins = 9;
     });
-    const { state, events } = act(s, { type: 'USE_TELEPORT', tile: 9 });
+    const landing = act(s, { type: 'USE_TELEPORT', tile: 9 });
+    const { state, events } = act(landing.state, { type: 'CHOOSE_PVP_TARGET', target: 1 });
     const eliminated = eventsOf(events, 'PlayerEliminated');
     expect(eliminated).toHaveLength(1);
     expect(state.outcome?.kind).toBe('lastSurvivor');
     const loot = eventsOf(events, 'LootTransferred')[0]!;
     const loserCoins = loot.from === 1 ? 13 : 9;
     expect(loot.coins).toBe(Math.floor(loserCoins / 2));
+    const winner = state.players[loot.to]!;
+    expect(winner.hp).toBe(winner.maxHp);
+    expect(eventsOf(events, 'EffectApplied')).toContainEqual({
+      type: 'EffectApplied',
+      seat: loot.to,
+      effect: 'coins',
+      delta: 30,
+      after: winner.coins,
+    });
     expect(state.pending).toBeNull();
   });
 

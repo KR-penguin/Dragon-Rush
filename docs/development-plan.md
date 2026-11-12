@@ -1,6 +1,6 @@
 # 개발 계획서 — 드래곤 러쉬 (Dragon Rush)
 
-> 상태: **1차 P0~P7 구현 완료 (2026-11-11)**, **2차 개발 진행 중 (2026-11-12, §5)**. 사용자 자료 대기: D4·D13(보드·전투 모델 가중치 포맷), D8·D12(에셋), D9(배포 대상). D14는 Normal 기본값을 적용했고 D16의 outcome 적합 도구와 `rush-2` 내장 결과 모델을 구현했다.
+> 상태: **1차 P0~P7 구현 완료 (2026-11-11)**, **2차 개발 진행 중 (2026-11-12, §5)**. 사용자 자료 대기: D4·D13(보드·전투 모델 가중치 포맷), D8·D12(추가 이미지·효과음), D9(배포 대상). 제공받은 MP3를 BGM으로 사용한다. D14는 Normal 기본값을 적용했고 D16의 outcome 적합 도구와 `rush-3` 내장 결과 모델을 구현했다.
 > 정본 분담: 규칙·수치 → [game-design.md](game-design.md) · 구조·프로토콜 → [architecture.md](architecture.md) · 보드 AI 계약 → [ai-interface-spec.md](ai-interface-spec.md) · 실시간 전투 → [combat-design.md](combat-design.md) · 전투 AI 계약 → [combat-ai-spec.md](combat-ai-spec.md) · 화면·연출·효과·오디오 → [art-direction.md](art-direction.md) · 코딩 규칙 → [coding_convention.md](../coding_convention.md) · 워크스페이스 안내 → [README.md](../README.md), [AI_README.md](../AI_README.md)
 
 ## 1. 전체 전략
@@ -18,7 +18,7 @@
 | # | 항목 | 기본안 (답이 없을 때) | 필요 시점 | 영향 |
 |---|---|---|---|---|
 | D1 | 원격 저장소(GitHub 등) 사용 여부 | 로컬 git만 사용. 원격이 생기면 CI 워크플로(이미 준비됨)를 켠다. `prompt.md`는 커밋하지 않는다 | P0 | PR 리뷰·CI |
-| D2 | 규칙 열린 질문 R1~R7 (§2.1, 기획서 §16) | 기획서 §16 기본안. R1·R5a·R5b 승인(2026-11-11), R7 결정, R2·R3·R4는 기본안 | P1 전 | 엔진 분기, 수치, 관측 |
+| D2 | 규칙 열린 질문 R1~R7 (§2.1, 기획서 §16) | 기획서 §16 기본안. R1·R5b 승인(2026-11-11), R5a 시작 방어막은 `rush-3`에서 사용자 요청으로 제거, R7 결정, R2·R3·R4는 기본안 | P1 전 | 엔진 분기, 수치, 관측 |
 | D3 | ★ `obs_v1`/`act_v1` 동결 검토 | ai-interface-spec 그대로 동결. 이후 변경은 새 버전으로만 | P2 종료 (완료) | 바뀌면 재학습 |
 | D4 | 보드 가중치 JSON 포맷 + 통합 정보 + 패리티 샘플 (§2.2) | 받기 전까지 model 좌석은 "준비 중" | 언제든 (빠를수록 좋음) | 어댑터·패리티 테스트 |
 | D5 | 재접속 유예 만료 후 처리 | 좌석을 HeuristicBot으로 영구 전환, 토큰은 관전용으로 강등 | P5 (적용됨) | 복귀 가능 여부 |
@@ -32,8 +32,8 @@
 ### 2.1 규칙 열린 질문 R1~R7 (상세는 기획서 §16, R6은 §15. 2차 Phase R1~R8과는 별개 번호)
 - **R1 초반 PvP 보호** (승인): 같은 칸이어도 싸우지 않는 초반 라운드. `rush-1`에서 3 → 2라운드(`pvpGraceRounds = 2`).
 - **R2 텔레포트 턴당 제한**: 기본 무제한(`perTurnLimit = null`). **R3 도둑**: 일회용·턴당 1회(`rush-1`에서 최대 10코인).
-- **R4 목표 게임 길이·용 처치 비중**: `rush-2` 실제 전투 4인 8,000판 중앙 8/p95 11라운드, 용 처치 종료 61.3%다. 중앙 9~11 목표는 미달했고 p95·용 비중은 통과했다. 보드 턴당 10초 가정 평균 5.19분, 14초 가정 6.90분이며 실제 사람 선택 시간은 아직 계측하지 않았다(기획서 §15).
-- **R5 밸런스 구조 변경** (승인): 시작 방어막 1개, 닌자 ±1 보정 후 4턴 쿨다운(`ninjaCooldown`은 `obs_v1`에 포함).
+- **R4 목표 게임 길이·용 처치 비중**: 현재 `rush-3` 실제 전투 4인 8,000판 중앙 6/p95 9라운드, 용 처치 종료 46.8%다. 중앙 9~11 목표는 미달했다. 보드 턴당 10초 가정 평균 4.15분이며 실제 사람 선택 시간은 아직 계측하지 않았다(기획서 §15).
+- **R5 밸런스 구조 변경**: 시작 방어막 지급은 `rush-3`에서 제거했다(2026-11-12 사용자 요청). 닌자 ±1 보정 후 4턴 쿨다운은 유지한다(`ninjaCooldown`은 `obs_v1`에 포함).
 - **R6 밸런스 미달 수용**: 2·3인 아이템 구매 편중 등. 기본안 수용. **R7 쉬는 턴** (결정): 이동만 막는다.
 
 ### 2.2 모델 통합에 필요한 정보 (D4 보드, D13 전투)
@@ -155,13 +155,14 @@
 - 이전 이름 대응은 `apps/web/src/fx/audio/soundCatalog.ts`의 `soundFileCandidates()` 별칭으로 구현했다(2026-11-12). 파일을 `public/assets/` 아래 표의 경로에 놓으면 자동으로 절차 효과음을 대체한다. 예: `dice_roll` → `board/dice_land_01`, `move_step` → `board/pawn_hop_01`, `attack_hit` → `combat/hit_light_01`, `coin` → `board/coin_gain_01`, `upgrade` → `board/stat_up`, `item_use` → `board/item_use`, `shield` → `board/item_shield`, `dragon_breath` → `dragon/breath_loop`, `victory`·`defeat` → `bgm/stinger_victory`·`stinger_defeat`.
 
 **음악 8개 + 환경음 3개**
+현재 로비·보드·PvP 결투·용전은 제공받은 `audio/bgm/dragon_foothills.mp3` 한 파일(44.1 kHz 스테레오, 약 100.5초)을 공용 BGM으로 사용한다. 아래 장면별 음악은 향후 개별 곡을 받을 때의 선택적 교체 목록이다. 현재 공용 MP3는 첫 입력 이후 재생되고 장면 전환 때 다시 시작한다.
 | 용도 | 경로·파일명 | 길이·규격 | 우선 |
 |---|---|---|---|
 | 보드 진행 루프 (따뜻한 선술집 판타지, 현악·가벼운 타악) | `audio/bgm/board.mp3` | 2~3분 이음매 없는 루프, 90~100 BPM | P0 |
 | PvP 결투 루프 (몰아치는 타악·금관) | `audio/bgm/duel.mp3` | 60~90초 루프, 140~160 BPM | P0 |
 | 용전 루프 (기존 이름) | `audio/bgm/dragon_battle.mp3` | 90~120초 루프 | P0 |
 | 게임 승리 / 패배·탈락 스팅어 (이전 `victory`/`defeat`) | `audio/bgm/stinger_victory.mp3` / `stinger_defeat.mp3` | 4~8초 / 3~5초 | P0 |
-| 루프 지점 (루프 파일마다) | `audio/bgm/loops.json` — `{ "board.mp3": { "loopStart": 초, "loopEnd": 초 } }` | JSON | P0 |
+| 루프 지점 (선택) | `audio/bgm/loops.json` — `{ "dragon_foothills.mp3": { "loopStart": 초, "loopEnd": 초 } }` | JSON; 제공받은 파일은 현재 전체 길이를 반복 | P0 |
 | 타이틀·로비 루프 (기존 이름) / 다른 플레이어 탈락 스팅어 | `audio/bgm/lobby.mp3` / `stinger_elimination.mp3` | 1.5~2.5분 루프 / 2~3초 | P1 |
 | 용전 3페이즈 강화 스템 (박자 맞춤) | `audio/bgm/dragon_battle_p3.mp3` | `dragon_battle`과 같은 길이·템포 | P2 |
 | 보드 실내 환경음 (벽난로, 먼 바람) | `audio/ambience/hall_fire.mp3` | 30~60초 루프 | P1 |

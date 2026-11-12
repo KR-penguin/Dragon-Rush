@@ -76,7 +76,7 @@ export function GamePage({ session, onExit, onRestart }: GamePageProps) {
   useAnimationQueue(store);
   const view = useGameView(store);
   const { latest, display, animating } = view;
-  const ui = useDecisionUi(store, latest, animating);
+  const ui = useDecisionUi(store, latest, display, animating);
   const combat = useCombatView(store);
   const eliminations = useEliminations(store);
   // Effects and their sounds (hop ticks included) follow the animation queue via the FX layer.
@@ -105,7 +105,7 @@ export function GamePage({ session, onExit, onRestart }: GamePageProps) {
   const [legend, setLegend] = useState<TileCategory | null>(null);
   const [hover, setHover] = useState<TileHover | null>(null);
   const [preview, setPreview] = useState<number | null>(null);
-  useBgm(combat?.kind === 'dragonFight' ? 'dragon_battle' : 'board');
+  useBgm(combat ? 'dragon_battle' : 'board');
 
   const escapable =
     ui.teleportPicking || ui.dialog === 'thief' || ui.dialog === 'dragon' || ui.dialog === 'shop';
