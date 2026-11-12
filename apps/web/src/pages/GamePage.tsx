@@ -109,7 +109,7 @@ export function GamePage({ session, onExit, onRestart }: GamePageProps) {
     gameBgm(
       latest?.publicState.outcome ?? null,
       animating,
-      combat !== null,
+      combat !== null || latest?.fight != null,
       latest?.controllableSeats ?? [],
     ),
   );

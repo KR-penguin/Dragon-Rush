@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const BGM_PATH = 'audio/bgm/dragon_foothills.mp3';
+const MENU_PATH = 'audio/bgm/menu.mp3';
+const BATTLE_PATH = 'audio/bgm/battle.mp3';
 
 vi.mock('../src/services/assets', () => ({
-  hasAsset: (path: string) => path === BGM_PATH || path.startsWith('audio/bgm/result_'),
+  hasAsset: (path: string) =>
+    path === MENU_PATH || path === BATTLE_PATH || path.startsWith('audio/bgm/result_'),
   assetUrl: (path: string) => `/assets/${path}`,
 }));
 vi.mock('../src/services/storage', () => ({
@@ -13,6 +15,7 @@ vi.mock('../src/services/storage', () => ({
 
 interface FakeNode {
   readonly connections: FakeNode[];
+  disconnected: boolean;
   connect(dest: FakeNode): FakeNode;
   disconnect(): void;
 }
@@ -20,11 +23,14 @@ interface FakeNode {
 function node(): FakeNode {
   return {
     connections: [],
+    disconnected: false,
     connect(dest) {
       this.connections.push(dest);
       return dest;
     },
-    disconnect() {},
+    disconnect() {
+      this.disconnected = true;
+    },
   };
 }
 
@@ -154,7 +160,7 @@ describe('file BGM through the audio bus', () => {
       vi.fn(async (url: string) => ({
         ok: true,
         arrayBuffer: () =>
-          url.endsWith(BGM_PATH)
+          url.endsWith(MENU_PATH)
             ? new Promise<ArrayBuffer>((resolve) => {
                 releaseBoard = () => resolve(new ArrayBuffer(8));
               })
@@ -173,7 +179,35 @@ describe('file BGM through the audio bus', () => {
     expect(fetch).toHaveBeenCalledWith('/assets/audio/bgm/result_defeat.mp3');
   });
 
-  it('starts on unlock, shares one decoded file, restarts for scenes, and follows volume and mute', async () => {
+  it('keeps menu playing while battle decodes, then cross-fades', async () => {
+    let releaseBattle: (() => void) | undefined;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => ({
+        ok: true,
+        arrayBuffer: () =>
+          url.endsWith(BATTLE_PATH)
+            ? new Promise<ArrayBuffer>((resolve) => {
+                releaseBattle = () => resolve(new ArrayBuffer(8));
+              })
+            : Promise.resolve(new ArrayBuffer(8)),
+      })),
+    );
+    const audio = await import('../src/services/audio');
+    audio.playBgm('board');
+    audio.unlockAudio();
+    await vi.waitFor(() => expect(sources).toHaveLength(1));
+
+    audio.playBgm('dragon_battle');
+    await vi.waitFor(() => expect(releaseBattle).toBeDefined());
+    expect(sources[0]!.stopped).toBe(false);
+    releaseBattle!();
+    await vi.waitFor(() => expect(sources).toHaveLength(2));
+    expect(sources[0]!.stopped).toBe(true);
+    expect(sources[1]!.startAt).toBeLessThan(sources[0]!.stopAt);
+  });
+
+  it('starts on unlock, shares menu for lobby and board, and fades into battle', async () => {
     const audio = await import('../src/services/audio');
     audio.playBgm('lobby');
     expect(sources).toHaveLength(0);
@@ -195,23 +229,26 @@ describe('file BGM through the audio bus', () => {
     expect(master.gain.targets.at(-1)).toBe(0.8);
 
     audio.playBgm('board');
+    expect(sources).toHaveLength(1);
+    expect(sources[0]!.stopped).toBe(false);
+    audio.playBgm('dragon_battle');
     await vi.waitFor(() => expect(sources).toHaveLength(2));
     expect(sources[0]!.stopped).toBe(true);
+    expect(sources[1]!.startAt).toBeLessThan(sources[0]!.stopAt);
     expect(sources[1]!.buffer).toBe(fileBuffer);
-    audio.playBgm('dragon_battle');
-    await vi.waitFor(() => expect(sources).toHaveLength(3));
-    expect(sources[1]!.stopped).toBe(true);
-    expect(sources[2]!.buffer).toBe(fileBuffer);
-    expect(decodeCount).toBe(1);
-    expect(fetch).toHaveBeenCalledTimes(1);
-    expect(fetch).toHaveBeenCalledWith(`/assets/${BGM_PATH}`);
+    await vi.waitFor(() => expect(sources[0]!.disconnected).toBe(true), { timeout: 2000 });
+    expect(sources[0]!.connections[0]!.disconnected).toBe(true);
+    expect(decodeCount).toBe(2);
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(fetch).toHaveBeenCalledWith(`/assets/${MENU_PATH}`);
+    expect(fetch).toHaveBeenCalledWith(`/assets/${BATTLE_PATH}`);
 
     audio.setMuted(true);
-    expect(sources[2]!.stopped).toBe(true);
+    expect(sources[1]!.stopped).toBe(true);
     audio.setMuted(false);
-    await vi.waitFor(() => expect(sources).toHaveLength(4));
+    await vi.waitFor(() => expect(sources).toHaveLength(3));
     audio.playBgm(null);
-    expect(sources[3]!.stopped).toBe(true);
+    expect(sources[2]!.stopped).toBe(true);
   });
 
   it('does not synthesize music when a listed file cannot be decoded', async () => {
@@ -242,20 +279,20 @@ describe('file BGM through the audio bus', () => {
     expect(elements).toHaveLength(0);
     audio.unlockAudio();
     expect(elements).toHaveLength(1);
-    expect(elements[0]!.src).toBe(`/assets/${BGM_PATH}`);
+    expect(elements[0]!.src).toBe(`/assets/${MENU_PATH}`);
     expect(elements[0]!.loop).toBe(true);
     audio.unlockAudio();
     expect(elements).toHaveLength(1);
     audio.playBgm('board');
+    expect(elements).toHaveLength(1);
+    expect(elements[0]!.pause).not.toHaveBeenCalled();
+    audio.playBgm('result_draw');
     expect(elements).toHaveLength(2);
     expect(elements[0]!.pause).toHaveBeenCalledOnce();
-    audio.playBgm('result_draw');
-    expect(elements).toHaveLength(3);
-    expect(elements[1]!.pause).toHaveBeenCalledOnce();
-    expect(elements[2]!.src).toBe('/assets/audio/bgm/result_draw.mp3');
+    expect(elements[1]!.src).toBe('/assets/audio/bgm/result_draw.mp3');
     audio.setVolume('music', 0.3);
-    expect(elements[2]!.volume).toBe(0.3);
+    expect(elements[1]!.volume).toBe(0.3);
     audio.setMuted(true);
-    expect(elements[2]!.pause).toHaveBeenCalledOnce();
+    expect(elements[1]!.pause).toHaveBeenCalledOnce();
   });
 });

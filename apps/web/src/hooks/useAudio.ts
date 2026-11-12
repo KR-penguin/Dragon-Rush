@@ -14,6 +14,7 @@ export function useBgm(name: BgmName | null | undefined): void {
   useEffect(() => {
     if (name !== undefined) playBgm(name);
   }, [name]);
+  useEffect(() => () => playBgm(null), []);
 }
 
 /** Voices each event as the animation queue shows it. */

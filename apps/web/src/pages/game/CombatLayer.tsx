@@ -27,7 +27,7 @@ const NO_SEATS: readonly SeatInfo[] = [];
 /**
  * The Game page's single mount point for real-time fights. Shows the fight the client is waiting
  * on once the board has caught up, and reports the result back through `GameClient.reportFight`.
- * Bot-only replays play at 4×; a crashed screen falls back to dice.
+ * Bot-only replays play at 1×; a crashed screen falls back to dice.
  */
 export function CombatLayer({ store }: { store: GameStore }) {
   const fight = useFightGate(store);

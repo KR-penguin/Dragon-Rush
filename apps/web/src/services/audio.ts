@@ -383,8 +383,13 @@ function armUnlockIfLocked(): void {
 // --- Music --------------------------------------------------------------------------------
 
 type BgmPlayer =
-  | { readonly kind: 'buffer'; readonly src: AudioBufferSourceNode; readonly gain: GainNode }
-  | { readonly kind: 'element'; readonly el: HTMLAudioElement };
+  | {
+      readonly kind: 'buffer';
+      readonly file: string;
+      readonly src: AudioBufferSourceNode;
+      readonly gain: GainNode;
+    }
+  | { readonly kind: 'element'; readonly file: string; readonly el: HTMLAudioElement };
 
 let wantedBgm: BgmName | null = null;
 let playingBgm: BgmName | null = null;
@@ -420,11 +425,23 @@ function stopBgm(forResult = false): number {
   cur.gain.gain.setTargetAtTime(0, t, forResult ? 0.01 : 0.1);
   const stopAt = t + (forResult ? 0.06 : 0.5);
   cur.src.stop(stopAt);
-  setTimeout(() => cur.gain.disconnect(), forResult ? 100 : 700);
-  return stopAt;
+  setTimeout(
+    () => {
+      cur.src.disconnect();
+      cur.gain.disconnect();
+    },
+    forResult ? 100 : 700,
+  );
+  return forResult ? stopAt : t;
 }
 
-function startBgmBuffer(g: Graph, buf: AudioBuffer, startAt: number, lp?: LoopPoints): void {
+function startBgmBuffer(
+  g: Graph,
+  file: string,
+  buf: AudioBuffer,
+  startAt: number,
+  lp?: LoopPoints,
+): void {
   const src = g.ctx.createBufferSource();
   src.buffer = buf;
   src.loop = true;
@@ -438,25 +455,43 @@ function startBgmBuffer(g: Graph, buf: AudioBuffer, startAt: number, lp?: LoopPo
   gain.gain.setTargetAtTime(1, t, 0.15);
   src.connect(gain).connect(g.buses.music);
   src.start(t);
-  bgm = { kind: 'buffer', src, gain };
+  bgm = { kind: 'buffer', file, src, gain };
 }
 
 function syncBgm(force = false): void {
   const target = muted ? null : wantedBgm;
   if (target === playingBgm && !force) return;
+  if (!force && target && playingBgm && bgmFile(target) === bgmFile(playingBgm)) {
+    playingBgm = target;
+    return;
+  }
+  if (!force && target && bgm?.file === bgmFile(target)) {
+    ++bgmRequest;
+    playingBgm = target;
+    return;
+  }
   const request = ++bgmRequest;
-  const startAt = stopBgm(target?.startsWith('result_') ?? false);
-  if (!target) return;
+  if (!target) {
+    stopBgm();
+    return;
+  }
   const g = graph;
   if (g && g.ctx.state === 'running') {
     playingBgm = target;
-    if (!hasAsset(bgmPath(target))) return;
+    if (!hasAsset(bgmPath(target))) {
+      stopBgm();
+      playingBgm = target;
+      return;
+    }
     void Promise.all([loadBuffer(bgmPath(target)), loadLoopPoints()]).then(([buf, loops]) => {
-      if (request !== bgmRequest || playingBgm !== target || !buf) return;
-      startBgmBuffer(g, buf, startAt, loops[bgmFile(target)]);
+      if (request !== bgmRequest || !playingBgm || bgmFile(playingBgm) !== bgmFile(target)) return;
+      const startAt = stopBgm(target.startsWith('result_'));
+      playingBgm = target;
+      if (buf) startBgmBuffer(g, bgmFile(target), buf, startAt, loops[bgmFile(target)]);
     });
     return;
   }
+  stopBgm();
   if (!graphUnavailable || !hasAsset(bgmPath(target)) || typeof Audio === 'undefined') return;
   // Browsers without Web Audio use a plain element after the unlock gesture.
   const el = new Audio(assetUrl(bgmPath(target)));
@@ -464,7 +499,7 @@ function syncBgm(force = false): void {
   el.volume = volumes.master * volumes.music;
   el.play().catch(armUnlock);
   playingBgm = target;
-  bgm = { kind: 'element', el };
+  bgm = { kind: 'element', file: bgmFile(target), el };
 }
 
 export function playBgm(name: BgmName | null): void {

@@ -78,8 +78,8 @@ export function createLocalFightSession(
   );
 }
 
-/** Bot-only replays show the whole fight at accelerated speed. */
-export const BOT_REPLAY_SPEED = 4;
+/** Bot-only replays keep the same clock as live fights. */
+export const BOT_REPLAY_SPEED = 1;
 
 /** An already resolved fight, re-simulated from its recorded inputs. */
 export function createReplaySession(

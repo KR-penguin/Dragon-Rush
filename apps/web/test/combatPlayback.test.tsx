@@ -66,18 +66,18 @@ describe('combat playback', () => {
   it('shows bot-only combat even when the board speed is 4×', () => {
     const html = screen(botFight);
     expect(html).toContain('aria-label="전투"');
-    expect(html).toContain('봇 전투 ×4');
+    expect(html).toContain('봇 전투 ×1');
     expect(html).toContain('건너뛰기');
   });
 
   it('shows a human fight without accelerated replay controls', () => {
     const html = screen(humanFight);
     expect(html).toContain('aria-label="전투"');
-    expect(html).not.toContain('봇 전투 ×4');
+    expect(html).not.toContain('봇 전투 ×1');
     expect(html).not.toContain('건너뛰기');
   });
 
-  it('runs the whole bot replay at 4× while a human fight stays at 1×', () => {
+  it('runs the whole bot replay at 1× even when the board is set to 4×', () => {
     const replay = createReplaySession(botFight, botFight.replay!, host);
     const live = createLocalFightSession(
       humanFight,
@@ -95,7 +95,7 @@ describe('combat playback', () => {
     live.tick(0);
     replay.tick(STEP);
     live.tick(STEP);
-    expect(replay.frame().curr.tick).toBe(4);
+    expect(replay.frame().curr.tick).toBe(1);
     expect(live.frame().curr.tick).toBe(1);
     replay.dispose();
     live.dispose();

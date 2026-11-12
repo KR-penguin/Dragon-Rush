@@ -32,11 +32,10 @@ export const BGM_NAMES = [
   'result_draw',
 ] as const;
 export type BgmName = (typeof BGM_NAMES)[number];
-export const BGM_FILE = 'dragon_foothills.mp3';
 const BGM_FILES: Readonly<Record<BgmName, string>> = {
-  lobby: BGM_FILE,
-  board: BGM_FILE,
-  dragon_battle: BGM_FILE,
+  lobby: 'menu.mp3',
+  board: 'menu.mp3',
+  dragon_battle: 'battle.mp3',
   result_victory: 'result_victory.mp3',
   result_defeat: 'result_defeat.mp3',
   result_draw: 'result_draw.mp3',

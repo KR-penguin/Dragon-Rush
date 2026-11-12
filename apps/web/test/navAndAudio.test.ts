@@ -137,7 +137,7 @@ describe('asset paths', () => {
     expect(sfxPath('dice_roll')).toBe('audio/sfx/dice_roll.mp3');
     for (const scene of BGM_NAMES.slice(0, 3)) {
       const path = bgmPath(scene);
-      expect(path).toBe('audio/bgm/dragon_foothills.mp3');
+      expect(path).toBe(scene === 'dragon_battle' ? 'audio/bgm/battle.mp3' : 'audio/bgm/menu.mp3');
       expect(
         statSync(fileURLToPath(new URL(`../public/assets/${path}`, import.meta.url))).size,
       ).toBeGreaterThan(2_000_000);

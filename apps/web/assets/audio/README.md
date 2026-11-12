@@ -1,4 +1,11 @@
-# Dragon Rush result music
+# Dragon Rush music
+
+`menu.mp3` and `battle.mp3` in `apps/web/public/assets/audio/bgm/` were
+provided by the project owner. The menu track plays on the home, lobby, and
+board screens; the battle track plays during live PvP, PvE, and dragon fights.
+Their licensing terms were not supplied here.
+
+## Result music
 
 `result_victory.mp3`, `result_defeat.mp3`, and `result_draw.mp3` in
 `apps/web/public/assets/audio/bgm/` are original music made for Dragon Rush on
