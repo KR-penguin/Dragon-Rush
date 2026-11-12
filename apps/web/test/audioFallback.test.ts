@@ -62,6 +62,35 @@ describe('sound source selection', () => {
       expect(SOUND_SPEC[name].maxVoices).toBeLessThanOrEqual(VOICE_RULES.maxVoices);
     }
   });
+
+  it('finds the requested folder layout and numbered sound files', () => {
+    expect(
+      selectSoundSource(
+        'dash',
+        manifest('audio/sfx/combat/dash_01.mp3', 'audio/sfx/combat/dash_02.ogg'),
+      ),
+    ).toEqual({
+      kind: 'file',
+      paths: ['audio/sfx/combat/dash_01.mp3', 'audio/sfx/combat/dash_02.ogg'],
+    });
+    expect(selectSoundSource('coin', manifest('audio/sfx/board/coin_gain_01.wav'))).toEqual({
+      kind: 'file',
+      paths: ['audio/sfx/board/coin_gain_01.wav'],
+    });
+    expect(selectSoundSource('victory', manifest('audio/bgm/stinger_victory.mp3'))).toEqual({
+      kind: 'file',
+      paths: ['audio/bgm/stinger_victory.mp3'],
+    });
+    expect(
+      selectSoundSource('breath_charge', manifest('audio/sfx/dragon/breath_charge.ogg')),
+    ).toEqual({
+      kind: 'file',
+      paths: ['audio/sfx/dragon/breath_charge.ogg'],
+    });
+    expect(soundFileCandidates('breath_charge', 2)).not.toContain(
+      'audio/sfx/dragon/breath_charge.ogg',
+    );
+  });
 });
 
 describe('voice variation and limits', () => {
