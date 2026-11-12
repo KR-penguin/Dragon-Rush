@@ -25,7 +25,7 @@ export function landingDecisionReached(
   const pending = update?.pending;
   if (!pending || !display) return false;
   const landingPhase =
-    pending.phase === 'POST_MOVE' ||
+    (pending.phase === 'POST_MOVE' && update.publicState.turn.canBuy) ||
     pending.phase === 'CHOOSE_PVP_TARGET' ||
     pending.phase === 'SHIELD_DECISION' ||
     pending.phase === 'TRAINING_CHOICE';

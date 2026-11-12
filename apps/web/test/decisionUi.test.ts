@@ -102,11 +102,17 @@ describe('decision gating', () => {
     };
     const shop = update({
       pending: { actor: 0, phase: 'POST_MOVE' },
-      publicState: landed,
+      publicState: { ...landed, turn: { ...landed.turn, canBuy: true } },
       legalActions: [{ type: 'END_TURN' }],
     });
     expect(landingDecisionReached(shop, start)).toBe(false);
     expect(landingDecisionReached(shop, landed)).toBe(true);
+    expect(
+      landingDecisionReached(
+        { ...shop, publicState: { ...landed, turn: { ...landed.turn, canBuy: false } } },
+        landed,
+      ),
+    ).toBe(false);
     expect(
       landingDecisionReached(
         { ...shop, pending: { actor: 0, phase: 'CHOOSE_PVP_TARGET' } },
