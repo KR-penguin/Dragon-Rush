@@ -1,3 +1,4 @@
+import { applyAction } from '@dragon-rush/engine';
 import { describe, expect, it } from 'vitest';
 import { encodeObservation, OBS_DIM, OBS_V1_LAYOUT } from '../src/index';
 import { newGame, view, walk } from './helpers';
@@ -43,16 +44,24 @@ describe('obs_v1', () => {
     }
   });
 
+  it('encodes a pending COMBAT (not a board decision) as an all-zero phase one-hot', () => {
+    const s = applyAction(newGame(2, 1, 30, 'external'), { type: 'CHALLENGE_DRAGON' }).state;
+    expect(s.pending?.phase).toBe('COMBAT');
+    const f = field('g.phase');
+    const obs = encodeObservation(view(s), s.pending!.actor);
+    expect([...obs.slice(f.offset, f.offset + f.length)]).toEqual([0, 0, 0, 0, 0, 0]);
+  });
+
   it('encodes the starting position from seat 0', () => {
     const s = newGame(2, 1);
     const obs = encodeObservation(view(s), 0);
     expect(obs[field('self.pos').offset]).toBe(1);
-    expect(obs[field('self.coins').offset]).toBeCloseTo(5 / 50);
+    expect(obs[field('self.coins').offset]).toBeCloseTo(10 / 50);
     expect(obs[field('opp1.present').offset]).toBe(1);
     expect(obs[field('opp2.present').offset]).toBe(0);
     expect(obs[field('g.phase').offset]).toBe(1);
     expect(obs[field('g.turnPlayer').offset]).toBe(1);
     expect(obs[field('g.numPlayers').offset]).toBe(1);
-    expect(obs[field('g.graceLeft').offset]).toBe(1);
+    expect(obs[field('g.graceLeft').offset]).toBeCloseTo(2 / 3);
   });
 });

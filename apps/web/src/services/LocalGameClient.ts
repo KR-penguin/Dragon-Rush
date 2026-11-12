@@ -4,6 +4,7 @@ import {
   DEFAULT_RULES,
   getLegalActions,
   isLegalAction,
+  resolveCombatWithDice,
   toPublicState,
   withRules,
   type Action,
@@ -35,6 +36,20 @@ const defaultScheduler: Scheduler = (fn, ms) => {
   const id = setTimeout(fn, ms);
   return () => clearTimeout(id);
 };
+
+/**
+ * TEMPORARY resolver until real-time combat (@dragon-rush/combat) lands: settles a pending COMBAT
+ * with the dice rules inside the same update, so the UI behaves exactly like the old 'dice' mode.
+ */
+function autoResolveCombat(r: { state: GameState; events: GameEvent[] }): { state: GameState; events: GameEvent[] } {
+  let { state, events } = r;
+  while (state.pending?.phase === 'COMBAT') {
+    const settled = resolveCombatWithDice(state);
+    state = settled.state;
+    events = [...events, ...settled.events];
+  }
+  return { state, events };
+}
 
 export const randomSeed = (): number => {
   const buf = new Uint32Array(2);
@@ -122,7 +137,7 @@ export class LocalGameClient implements GameClient {
   }
 
   private apply(action: Action): void {
-    const r = applyAction(this.state, action);
+    const r = autoResolveCombat(applyAction(this.state, action));
     this.state = r.state;
     this.lastEvents = r.events;
     this.version += 1;

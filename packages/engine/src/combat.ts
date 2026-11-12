@@ -11,7 +11,8 @@ export interface Fighter {
   indomitableAvailable: boolean;
 }
 
-export interface CombatResult {
+/** Full dice resolution (fighters after the fight + every event); see CombatResult in types.ts for the external contract. */
+export interface CombatResolution {
   a: Fighter;
   b: Fighter;
   winner: 'a' | 'b';
@@ -46,7 +47,7 @@ export function resolveCombat(
   defenderB: Fighter,
   opts: CombatOptions,
   roll: (sides: number) => number,
-): CombatResult {
+): CombatResolution {
   const f = { a: { ...attackerA }, b: { ...defenderB } };
   const events: GameEvent[] = [];
   const first = pickFirst(f.a, f.b, opts.defaultFirst);

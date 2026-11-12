@@ -3,6 +3,7 @@ import {
   createGameWithEvents,
   getLegalActions,
   isLegalAction,
+  resolveCombatWithDice,
   toPublicState,
   type Action,
   type GameEvent,
@@ -45,6 +46,20 @@ export interface SessionNotifier {
 }
 
 export type SubmitSource = 'human' | 'timer' | 'policy';
+
+/**
+ * TEMPORARY resolver until real-time combat (@dragon-rush/combat) lands: settles a pending COMBAT
+ * with the dice rules inside the same submit, so clients see one update exactly like the old 'dice' mode.
+ */
+function autoResolveCombat(r: { state: GameState; events: GameEvent[] }): { state: GameState; events: GameEvent[] } {
+  let { state, events } = r;
+  while (state.pending?.phase === 'COMBAT') {
+    const settled = resolveCombatWithDice(state);
+    state = settled.state;
+    events = [...events, ...settled.events];
+  }
+  return { state, events };
+}
 
 interface SeatController {
   readonly engineSeat: SeatId;
@@ -122,7 +137,7 @@ export class GameSession {
     if (!isLegalAction(this.state, action)) throw new ProtocolError('ILLEGAL_ACTION');
     const ctl = this.seats[seat]!;
     if (source === 'human') ctl.timeouts = 0;
-    const r = applyAction(this.state, action);
+    const r = autoResolveCombat(applyAction(this.state, action));
     this.state = r.state;
     this._version += 1;
     this.notify.update(r.events);

@@ -11,7 +11,7 @@ import { CombatOverlay, type FighterLook } from '../components/overlays/CombatOv
 import { ResultOverlay } from '../components/overlays/ResultOverlay';
 import { useAnimationQueue } from '../hooks/useAnimationQueue';
 import { useAssetUrl } from '../hooks/useAssetUrl';
-import { playSfx, useBgm, useEventSfx, useMuted } from '../hooks/useAudio';
+import { useBgm, useMuted } from '../hooks/useAudio';
 import { useCombatView } from '../hooks/useCombatView';
 import { useCountdown } from '../hooks/useCountdown';
 import { useDecisionUi } from '../hooks/useDecisionUi';
@@ -27,6 +27,7 @@ import { DRAGON_NAME, PHASE_LABEL, seatColor } from '../types/labels';
 import { playerCards, seatName } from '../types/playerView';
 import { outcomeHeadline, resultRows } from '../types/resultView';
 import { DecisionDialogs } from './game/DecisionDialogs';
+import { FxLayer, FxSettingsDock, ShakeContainer, createBoardFxResolver } from '../fx';
 
 const EXIT_LABEL: Record<MenuPage, string> = {
   home: '처음으로',
@@ -34,7 +35,6 @@ const EXIT_LABEL: Record<MenuPage, string> = {
   online: '로비로',
 };
 const DRAGON_LOOK: FighterLook = { name: DRAGON_NAME, job: null, color: '#c0392b' };
-const stepSfx = () => playSfx('move_step');
 
 interface GamePageProps {
   session: GameSession;
@@ -46,18 +46,22 @@ interface GamePageProps {
 export function GamePage({ session, onExit, onRestart }: GamePageProps) {
   const { store } = session;
   useAnimationQueue(store);
-  useEventSfx(store);
   const view = useGameView(store);
   const { latest, display, animating } = view;
   const ui = useDecisionUi(store, latest, animating);
   const combat = useCombatView(store);
   const eliminations = useEliminations(store);
-  const stepped = useSteppedMove(view.current, view.speed, stepSfx);
+  const stepped = useSteppedMove(view.current, view.speed);
   const dice = useLastDice(view.current, display);
   const countdown = useCountdown(latest?.pending?.timeLeftMs ?? null, latest?.version ?? 0);
   const boardBg = useAssetUrl(BOARD_BG_PATH);
   const audio = useMuted();
   const [confirmExit, setConfirmExit] = useState(false);
+  // Effects (and their sounds, incl. hop ticks) follow the animation queue via the FX layer.
+  const fxResolver = useMemo(
+    () => createBoardFxResolver({ getDisplay: () => store.getState().display }),
+    [store],
+  );
   useBgm(combat?.kind === 'dragonFight' ? 'dragon_battle' : 'board');
 
   const escapable =
@@ -143,35 +147,38 @@ export function GamePage({ session, onExit, onRestart }: GamePageProps) {
         </aside>
 
         <section className="game-board">
-          <Board
-            tiles={display.rules.board}
-            tokens={tokens}
-            targets={targets}
-            activeTile={display.players.find((p) => p.seat === display.current)?.position ?? null}
-            backgroundUrl={boardBg}
-            onPickTile={(tile) => void ui.submit({ type: 'USE_TELEPORT', tile })}
-          >
-            <DragonLair
-              dragon={display.rules.dragon}
-              round={display.round}
-              maxRounds={display.rules.maxRounds}
-              dice={dice}
-              decision={decisionText}
-              countdown={countdown}
+          <ShakeContainer className="fx-shake-fill">
+            <Board
+              tiles={display.rules.board}
+              tokens={tokens}
+              targets={targets}
+              activeTile={display.players.find((p) => p.seat === display.current)?.position ?? null}
+              backgroundUrl={boardBg}
+              onPickTile={(tile) => void ui.submit({ type: 'USE_TELEPORT', tile })}
             >
-              {ui.teleportPicking && (
-                <div className="pick-banner">
-                  <span>🌀 이동할 칸을 선택하세요</span>
-                  <button type="button" className="btn btn-ghost" onClick={ui.cancel}>
-                    취소 (Esc)
-                  </button>
-                </div>
-              )}
-            </DragonLair>
-          </Board>
+              <DragonLair
+                dragon={display.rules.dragon}
+                round={display.round}
+                maxRounds={display.rules.maxRounds}
+                dice={dice}
+                decision={decisionText}
+                countdown={countdown}
+              >
+                {ui.teleportPicking && (
+                  <div className="pick-banner">
+                    <span>🌀 이동할 칸을 선택하세요</span>
+                    <button type="button" className="btn btn-ghost" onClick={ui.cancel}>
+                      취소 (Esc)
+                    </button>
+                  </div>
+                )}
+              </DragonLair>
+            </Board>
+          </ShakeContainer>
         </section>
 
         <aside className="game-side">
+          <FxSettingsDock />
           <GameLog entries={view.log} />
         </aside>
       </div>
@@ -211,6 +218,8 @@ export function GamePage({ session, onExit, onRestart }: GamePageProps) {
           homeLabel={EXIT_LABEL[session.exitTo]}
         />
       )}
+
+      <FxLayer store={store} resolver={fxResolver} />
 
       {confirmExit && (
         <Modal

@@ -14,6 +14,8 @@ export const PHASES = [
   'SHIELD_DECISION',
   'TRAINING_CHOICE',
   'POST_MOVE',
+  // Appended last so the indices of the board phases above keep their meaning (obs_v1).
+  'COMBAT',
 ] as const;
 export type Phase = (typeof PHASES)[number];
 
@@ -75,6 +77,9 @@ export interface JobDef {
   readonly def: number;
 }
 
+/** 'dice': fights auto-resolve inside applyAction. 'external': the engine stops at COMBAT until applyCombatResult. */
+export type CombatMode = 'dice' | 'external';
+
 export interface ItemDef {
   readonly price: number;
   readonly perTurnLimit: number | null;
@@ -105,7 +110,7 @@ export interface RulesConfig {
   readonly thiefStealAmount: number;
   readonly board: readonly TileDef[];
   readonly mysteryDeck: readonly MysteryCardDef[];
-  readonly combat: { readonly maxExchanges: number; readonly dieSides: number };
+  readonly combat: { readonly maxExchanges: number; readonly dieSides: number; readonly mode: CombatMode };
   readonly dragon: { readonly hp: number; readonly atk: number; readonly def: number; readonly breathEvery: number };
 }
 
@@ -151,6 +156,30 @@ export interface PvpContext {
   stage: 'arriver' | 'defender' | null;
 }
 
+/** A fight the engine is waiting on (external mode). */
+export interface CombatRequest {
+  kind: 'duel' | 'dragonFight';
+  /** Arriver (duel) or challenger (dragon). */
+  a: SeatId;
+  /** Defender seat, null for the dragon. */
+  b: SeatId | null;
+}
+
+/** Outcome of an externally resolved fight, validated by applyCombatResult. */
+export interface CombatResult {
+  /** 'b' = defender or dragon. */
+  winner: 'a' | 'b';
+  /** a's hp after the fight (<= 0 allowed for the loser). */
+  hpA: number;
+  /** Defender hp after the fight; null for dragon fights. */
+  hpB: number | null;
+  /** Swordsman passive consumed during the fight. */
+  indomitableUsedA?: boolean;
+  indomitableUsedB?: boolean;
+  /** Fight ended by time limit. */
+  timedOut?: boolean;
+}
+
 export interface RngState {
   a: number;
   b: number;
@@ -174,6 +203,7 @@ export interface GameState {
   pending: PendingDecision | null;
   turn: TurnContext;
   pvp: PvpContext | null;
+  combat: CombatRequest | null;
   rng: RngState;
   outcome: GameOutcome | null;
 }

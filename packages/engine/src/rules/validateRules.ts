@@ -30,6 +30,7 @@ export function validateRules(rules: RulesConfig): void {
     }
   }
   if (rules.combat.maxExchanges < 1 || rules.combat.dieSides < 1) fail('invalid combat config');
+  if (rules.combat.mode !== 'dice' && rules.combat.mode !== 'external') fail('combat.mode must be dice or external');
   if (rules.dragon.hp < 1 || rules.dragon.breathEvery < 1) fail('invalid dragon config');
   if (rules.maxRounds !== null && rules.maxRounds < 1) fail('maxRounds must be null or >= 1');
   if (rules.pvpGraceRounds < 0) fail('pvpGraceRounds must be >= 0');

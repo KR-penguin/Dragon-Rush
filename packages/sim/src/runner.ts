@@ -5,8 +5,10 @@ import {
   getLegalActions,
   ITEM_IDS,
   JOB_IDS,
+  resolveCombatWithDice,
   toPublicState,
   type GameEvent,
+  type GameState,
   type ItemId,
   type JobId,
   type OutcomeKind,
@@ -41,6 +43,20 @@ export interface PlayGameOptions {
   random?: () => number;
 }
 
+/**
+ * TEMPORARY resolver until real-time combat (@dragon-rush/combat) lands: settles a pending COMBAT
+ * with the dice rules right away, so sims and the env behave exactly like the old 'dice' mode.
+ */
+export function autoResolveCombat(r: { state: GameState; events: GameEvent[] }): { state: GameState; events: GameEvent[] } {
+  let { state, events } = r;
+  while (state.pending?.phase === 'COMBAT') {
+    const settled = resolveCombatWithDice(state);
+    state = settled.state;
+    events = [...events, ...settled.events];
+  }
+  return { state, events };
+}
+
 export function playGame(opts: PlayGameOptions): GameRecord {
   const rules = opts.rules ?? DEFAULT_RULES;
   const random = opts.random ?? createPolicyRandom(opts.seed ^ 0x5bd1e995);
@@ -52,7 +68,7 @@ export function playGame(opts: PlayGameOptions): GameRecord {
     const seat = state.pending.actor;
     const legal = getLegalActions(state);
     const action = seatPolicies[seat]!.decide({ view: toPublicState(state), seat, legal, random });
-    const r = applyAction(state, action);
+    const r = autoResolveCombat(applyAction(state, action));
     state = r.state;
     for (const e of r.events) events.push(e);
   }

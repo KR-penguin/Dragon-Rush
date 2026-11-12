@@ -2,6 +2,7 @@ import {
   applyAction,
   createGame,
   DEFAULT_RULES,
+  resolveCombatWithDice,
   toPublicState,
   type GameEvent,
   type PublicGameState,
@@ -26,7 +27,9 @@ function replay(display: PublicGameState, events: readonly GameEvent[]) {
 describe('combat overlay model', () => {
   it('follows a real dragon fight hit by hit', () => {
     const state = createGame({ seats: [{ job: 'archer' }, { job: 'mage' }] }, DEFAULT_RULES, 11);
-    const { events } = applyAction(state, { type: 'CHALLENGE_DRAGON' });
+    const requested = applyAction(state, { type: 'CHALLENGE_DRAGON' });
+    // External mode stops at COMBAT; settle it the way the local client does for now.
+    const events = [...requested.events, ...resolveCombatWithDice(requested.state).events];
     const hits = events.filter((e) => e.type === 'CombatHit');
     const ended = events.find((e) => e.type === 'CombatEnded');
     const endIndex = events.findIndex((e) => e.type === 'CombatEnded');
