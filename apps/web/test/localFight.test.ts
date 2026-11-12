@@ -172,7 +172,7 @@ describe('real-time fights in local play', () => {
     const winnerSeat = out.result.winner === 'a' ? arriver : defender;
     const loserSeat = out.result.winner === 'a' ? defender : arriver;
     const winner = after.publicState.players.find((p) => p.seat === winnerSeat)!;
-    expect(winner.hp).toBe(out.result.winner === 'a' ? out.result.hpA : out.result.hpB);
+    expect(winner.hp).toBe(winner.maxHp);
     expect(after.publicState.players.find((p) => p.seat === loserSeat)!.alive).toBe(false);
     expect(eventTypes(after)).toContain('PlayerEliminated');
   });
