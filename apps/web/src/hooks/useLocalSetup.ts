@@ -1,5 +1,6 @@
 import { useStore } from 'zustand';
 import { LocalGameClient } from '../services/LocalGameClient';
+import { combatSettings } from '../store/combatSettingsStore';
 import { navStore } from '../store/navStore';
 import { setupStore } from '../store/setupStore';
 import {
@@ -21,7 +22,19 @@ export function useLocalSetup() {
     if (errors.length > 0) return;
     const config = toLocalConfig(form);
     // No seed: every game, including "다시 하기", gets a fresh random seed.
-    const create = () => new LocalGameClient({ seats: config.seats, maxRounds: config.maxRounds });
+    const create = () => {
+      const client = new LocalGameClient({
+        seats: config.seats,
+        maxRounds: config.maxRounds,
+        fightMode: () => (combatSettings.getState().fastCombat ? 'dice' : 'realtime'),
+        fightBotLevel: () => combatSettings.getState().botLevel,
+        debug: import.meta.env.DEV,
+      });
+      // Dev console hook for testing fights: __dragonRush.debugPatchPlayer(seat, { items: { teleport: 3 } })
+      if (import.meta.env.DEV)
+        (globalThis as { __dragonRush?: LocalGameClient }).__dragonRush = client;
+      return client;
+    };
     navStore.getState().openGame(create(), { restart: create, exitTo: 'home' });
   };
 
