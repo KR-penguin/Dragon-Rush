@@ -102,6 +102,7 @@ export function GamePage({ session, onExit, onRestart }: GamePageProps) {
   const ribbon = useTurnRibbon(store);
 
   const [confirmExit, setConfirmExit] = useState(false);
+  const [battleLive, setBattleLive] = useState(false);
   const [chronicleOpen, setChronicleOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [legend, setLegend] = useState<TileCategory | null>(null);
@@ -111,7 +112,7 @@ export function GamePage({ session, onExit, onRestart }: GamePageProps) {
     gameBgm(
       latest?.publicState.outcome ?? null,
       animating,
-      combat !== null || latest?.fight != null,
+      battleLive || (combat !== null && latest?.publicState.rules.combat.mode === 'dice'),
       latest?.controllableSeats ?? [],
     ),
   );
@@ -355,7 +356,7 @@ export function GamePage({ session, onExit, onRestart }: GamePageProps) {
 
       <DecisionDialogs ui={ui} state={state} nameOf={nameOf} onPreviewTile={setPreview} />
 
-      <CombatLayer store={store} />
+      <CombatLayer store={store} onFightLive={setBattleLive} />
 
       {combat && (
         <CombatOverlay

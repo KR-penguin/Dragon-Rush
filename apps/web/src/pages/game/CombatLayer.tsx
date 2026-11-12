@@ -15,6 +15,7 @@ import { touchControlSide, useTouchCooldowns } from '../../hooks/useTouchCooldow
 import { useKeyboardTest } from '../../hooks/useKeyboardTest';
 import type { PendingFight, SeatInfo } from '../../services/gameClient';
 import type { FightSession } from '../../services/fight';
+import type { FightFrame } from '../../services/fight/types';
 import { BOT_REPLAY_SPEED } from '../../services/fight/LocalFightSession';
 import type { FightNetStats } from '@dragon-rush/netcode';
 import { netDebugEnabled } from '../../services/fight/netDebug';
@@ -30,7 +31,13 @@ const NO_SEATS: readonly SeatInfo[] = [];
  * on once the board has caught up, and reports the result back through `GameClient.reportFight`.
  * Bot-only replays play at 1×; a crashed screen falls back to dice.
  */
-export function CombatLayer({ store }: { store: GameStore }) {
+export function CombatLayer({
+  store,
+  onFightLive,
+}: {
+  store: GameStore;
+  onFightLive: (live: boolean) => void;
+}) {
   const fight = useFightGate(store);
   const client = useStore(store, (s) => s.client);
   const seats = useStore(store, (s) => s.latest?.seats) ?? NO_SEATS;
@@ -47,6 +54,7 @@ export function CombatLayer({ store }: { store: GameStore }) {
         fight={fight}
         seats={seats}
         client={client}
+        onFightLive={onFightLive}
         onDone={(r) => report(fight.id, r)}
       />
     </FightErrorBoundary>
@@ -58,13 +66,29 @@ interface FightContainerProps {
   seats: readonly SeatInfo[];
   onDone: (result: CombatResult) => void;
   client: NonNullable<ReturnType<GameStore['getState']>['client']>;
+  onFightLive: (live: boolean) => void;
 }
 
-function FightContainer({ fight, seats, client, onDone }: FightContainerProps) {
+function FightContainer({ fight, seats, client, onDone, onFightLive }: FightContainerProps) {
   const cards = useMemo(() => fightCards(fight, seats), [fight, seats]);
   const bundle = useFightSession(fight, client);
   const session = bundle?.session ?? null;
   const flow = useFightFlow(session, fight, onDone);
+  useEffect(() => {
+    if (!session) return;
+    let playing = false;
+    const onFrame = (frame: FightFrame) => {
+      if (playing || frame.curr.tick < 1) return;
+      playing = true;
+      onFightLive(true);
+    };
+    const off = session.onFrame(onFrame);
+    onFrame(session.frame());
+    return () => {
+      off();
+      onFightLive(false);
+    };
+  }, [session, onFightLive]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   useArenaRenderer(canvasRef, stageRef, session, fight, cards);
