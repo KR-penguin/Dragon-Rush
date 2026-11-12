@@ -42,8 +42,16 @@ describe('duel balance (balanced bots, base stats)', () => {
       let wins = 0;
       for (let seed = 1; seed <= MATCHUP_N; seed++) {
         const bot = bots[(seed - 1) % 2]!;
-        const asA = runCombat({ kind: 'duel', a: baseFighter(i), b: baseFighter(j) }, [bot, bot], seed);
-        const asB = runCombat({ kind: 'duel', a: baseFighter(j), b: baseFighter(i) }, [bot, bot], seed);
+        const asA = runCombat(
+          { kind: 'duel', a: baseFighter(i), b: baseFighter(j) },
+          [bot, bot],
+          seed,
+        );
+        const asB = runCombat(
+          { kind: 'duel', a: baseFighter(j), b: baseFighter(i) },
+          [bot, bot],
+          seed,
+        );
         if (asA.result.winner === 'a') wins++;
         if (asB.result.winner === 'b') wins++;
       }
@@ -54,13 +62,19 @@ describe('duel balance (balanced bots, base stats)', () => {
     return rates.get(k)!;
   };
 
-  it.each(JOBS)('%s keeps its two intended directions without a 70/30 cell', (job) => {
-    for (const edge of MATCHUPS[job]) {
-      const result = rate(job, edge.beats);
-      expect(result, `${job} > ${edge.beats}`).toBeGreaterThan(0.5);
-      expect(result, `${job} > ${edge.beats}`).toBeLessThan(0.7);
-    }
-  }, 50_000);
+  it.each(JOBS)(
+    '%s keeps its two intended directions without a 70/30 cell',
+    async (job) => {
+      for (const edge of MATCHUPS[job]) {
+        const result = rate(job, edge.beats);
+        expect(result, `${job} > ${edge.beats}`).toBeGreaterThan(0.5);
+        expect(result, `${job} > ${edge.beats}`).toBeLessThan(0.7);
+        // Give the Vitest worker a turn to acknowledge progress during the 20,000-fight matrix.
+        await new Promise<void>((resolve) => setImmediate(resolve));
+      }
+    },
+    50_000,
+  );
 
   it('keeps each job near 50% across four opponents and mirrors even', () => {
     for (const i of JOBS) {
