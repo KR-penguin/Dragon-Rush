@@ -211,3 +211,83 @@
   color: var(--ember-hot);
   font-size: 0.9rem;
 }
+
+@media (max-width: 699px) {
+  .setup {
+    width: 100%;
+    padding: max(16px, env(safe-area-inset-top)) 12px max(24px, env(safe-area-inset-bottom));
+    gap: 14px;
+  }
+
+  .setup .page-head {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .setup .page-head h1 {
+    font-size: clamp(1.5rem, 7vw, 2rem);
+  }
+
+  .setup-options {
+    align-items: stretch;
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .setup-options > .field {
+    flex: 1 1 100%;
+  }
+
+  .setup-options .segmented {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .setup-options .segmented[aria-label='전투 방식'] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .setup-options .segmented button,
+  .setup-footer .btn,
+  .setup .field input,
+  .setup .field select {
+    min-height: 44px;
+  }
+
+  .setup .field input,
+  .setup .field select {
+    font-size: 16px;
+  }
+
+  .setup-note {
+    margin: 0;
+  }
+
+  .seat-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .seat-editor {
+    min-width: 0;
+  }
+
+  .setup .job-pick {
+    min-height: 56px;
+  }
+
+  .setup-footer {
+    position: sticky;
+    z-index: 5;
+    bottom: 0;
+    justify-content: stretch;
+    padding: 10px 0 max(10px, env(safe-area-inset-bottom));
+    background: linear-gradient(180deg, transparent, var(--table-0) 18%);
+  }
+
+  .setup-footer .form-errors,
+  .setup-footer .btn-lg {
+    width: 100%;
+  }
+}

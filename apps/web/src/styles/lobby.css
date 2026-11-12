@@ -1074,3 +1074,106 @@
     width: 100%;
   }
 }
+
+@media (max-width: 699px) {
+  .lobby {
+    width: 100%;
+    min-width: 0;
+    padding: max(16px, env(safe-area-inset-top)) 12px max(24px, env(safe-area-inset-bottom));
+    gap: 14px;
+  }
+
+  .lobby-head {
+    gap: 10px;
+  }
+
+  .lobby-head .page-title {
+    min-width: 0;
+  }
+
+  .lobby-head .page-title h1 {
+    font-size: clamp(1.5rem, 7vw, 2rem);
+  }
+
+  .lobby-head .lobby-conn {
+    margin-left: 0;
+  }
+
+  .lobby-nick,
+  .lobby-room-head,
+  .lobby-options {
+    padding: 14px;
+  }
+
+  .lobby-entry,
+  .lobby-seats {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .lobby-entry-card {
+    padding: 18px 14px;
+  }
+
+  .lobby-room-meta {
+    justify-items: start;
+  }
+
+  .lobby-code-block,
+  .lobby-code,
+  .lobby-banner-text {
+    min-width: 0;
+  }
+
+  .lobby-code span {
+    width: clamp(26px, 8vw, 38px);
+    height: clamp(38px, 11vw, 48px);
+  }
+
+  .lobby-options > .field {
+    flex: 1 1 100%;
+  }
+
+  .lobby-options .segmented {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .lobby-options .segmented[aria-label='전투 방식'] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .lobby .segmented button,
+  .lobby .btn,
+  .lobby .icon-btn,
+  .lobby-field input,
+  .lobby-seat .lobby-seat-config select {
+    min-height: 44px;
+  }
+
+  .lobby-field input,
+  .lobby-seat .lobby-seat-config select {
+    font-size: 16px;
+  }
+
+  .lobby-job-picker.has-random {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .lobby-job-picker .job-pick {
+    min-height: 56px;
+  }
+
+  .lobby-footer {
+    bottom: 0;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+
+  .lobby-footer .lobby-ready-note,
+  .lobby-footer .lobby-reasons,
+  .lobby-start-wrap,
+  .lobby-footer .dock-primary.btn {
+    width: 100%;
+  }
+}
