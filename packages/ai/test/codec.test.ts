@@ -32,6 +32,8 @@ describe('act_v1 codec', () => {
           expect(mask.reduce((a, b) => a + b, 0)).toBe(legal.length);
           if (s.pending.phase === 'CHOOSE_PVP_TARGET' && s.pvp?.candidates.length === 1)
             expect(legal).toEqual([{ type: 'CHOOSE_PVP_TARGET', target: s.pvp.candidates[0] }]);
+          else if (s.pending.phase === 'POST_MOVE' && s.turn.canBuy && legal.length === 1)
+            expect(legal).toEqual([{ type: 'END_TURN' }]);
           else expect(legal.length).toBeGreaterThanOrEqual(2);
           for (const a of legal) {
             const i = encodeAction(v, seat, a);
