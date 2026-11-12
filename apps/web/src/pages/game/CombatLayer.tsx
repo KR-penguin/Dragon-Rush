@@ -7,7 +7,6 @@ import { FightErrorBoundary } from '../../components/combat/FightErrorBoundary';
 import { useArenaRenderer } from '../../hooks/useArenaRenderer';
 import { useCombatPointerAttack } from '../../hooks/useCombatPointerAttack';
 import { useEscape } from '../../hooks/useEscape';
-import { useFightBgm } from '../../hooks/useFightBgm';
 import { useFightFlow } from '../../hooks/useFightFlow';
 import { useFightGate } from '../../hooks/useFightGate';
 import { useFightPause } from '../../hooks/useFightPause';
@@ -73,7 +72,6 @@ function FightContainer({ fight, seats, client, onDone }: FightContainerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   useArenaRenderer(canvasRef, stageRef, session, fight, cards);
-  useFightBgm(fight.setup.kind);
 
   const [helpOpen, setHelpOpen] = useState(false);
   const [testing, setTesting] = useState(false);
