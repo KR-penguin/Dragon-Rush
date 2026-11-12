@@ -1,6 +1,6 @@
-export const OBS_VERSION = 'obs_v1';
+export const OBS_VERSION = 'obs_v2';
 
-export const OBS_V1_SCALES = {
+export const OBS_V2_SCALES = {
   HP_S: 120,
   ATK_S: 20,
   DEF_S: 20,
@@ -73,7 +73,7 @@ const GLOBAL_FIELDS: [string, number][] = [
   ['g.aliveCount', 1],
   ['g.phase', 6],
   ['g.turnPlayer', 4],
-  ['g.dice', 6],
+  ['g.dice', 10],
   ['g.canBuy', 1],
   ['g.thiefUsed', 1],
   ['g.teleportsUsed', 1],
@@ -100,8 +100,8 @@ function buildLayout(): ObsField[] {
   return out;
 }
 
-export const OBS_V1_LAYOUT: readonly ObsField[] = buildLayout();
+export const OBS_V2_LAYOUT: readonly ObsField[] = buildLayout();
 export const SELF_BLOCK = 51;
 export const OPP_BLOCK = 54;
 export const GLOBAL_OFFSET = SELF_BLOCK + OPP_BLOCK * 3;
-export const OBS_DIM = GLOBAL_OFFSET + 40;
+export const OBS_DIM = GLOBAL_OFFSET + 44;

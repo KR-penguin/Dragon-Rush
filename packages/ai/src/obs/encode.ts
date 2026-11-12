@@ -11,7 +11,9 @@ import {
   type PublicGameState,
   type SeatId,
 } from '@dragon-rush/engine';
-import { GLOBAL_OFFSET, OBS_DIM, OBS_V1_SCALES as S, OPP_BLOCK, SELF_BLOCK } from './layout';
+import { GLOBAL_OFFSET, OBS_DIM, OBS_V2_SCALES as S, OPP_BLOCK, SELF_BLOCK } from './layout';
+
+const OBS_DICE_SIDES = 10;
 
 const n = (x: number, scale: number): number => Math.min(2, Math.max(0, x / scale));
 
@@ -61,7 +63,12 @@ function writeSelf(w: Writer, view: PublicGameState, p: PlayerState): void {
   w.put(ninjaCd(p));
 }
 
-function writeOpponent(w: Writer, me: PlayerState, q: PlayerState | undefined): void {
+function writeOpponent(
+  w: Writer,
+  me: PlayerState,
+  q: PlayerState | undefined,
+  rollSides: number,
+): void {
   if (!q) {
     w.skip(OPP_BLOCK);
     return;
@@ -78,8 +85,8 @@ function writeOpponent(w: Writer, me: PlayerState, q: PlayerState | undefined): 
   const back = forwardDistance(q.position, me.position);
   w.put(fwd / S.DIST_S);
   w.put(fwd === 0);
-  w.put(fwd >= 1 && fwd <= 6);
-  w.put(back >= 1 && back <= 6);
+  w.put(fwd >= 1 && fwd <= rollSides);
+  w.put(back >= 1 && back <= rollSides);
   w.put(n(q.hp, S.HP_S));
   w.put(n(q.maxHp, S.HP_S));
   w.put(q.hp / q.maxHp);
@@ -97,8 +104,8 @@ function writeOpponent(w: Writer, me: PlayerState, q: PlayerState | undefined): 
 
 const relative = (seat: SeatId, other: SeatId, count: number) => (other - seat + count) % count;
 
-/** obs_v1 one-hots the six board phases; COMBAT (appended after them) is not a board decision and stays all zero. */
-const OBS_V1_PHASES = 6;
+/** COMBAT is not a board decision and stays all zero in the six phase slots. */
+const OBS_BOARD_PHASES = 6;
 const boardPhaseIndex = (view: PublicGameState): number => {
   if (!view.pending || view.pending.phase === 'COMBAT') return -1;
   return PHASES.indexOf(view.pending.phase);
@@ -115,9 +122,9 @@ function writeGlobal(w: Writer, view: PublicGameState, seat: SeatId): void {
   w.put(view.round > r.pvpGraceRounds);
   w.oneHot(count - 2, 3);
   w.put(view.players.filter((p) => p.alive).length / 4);
-  w.oneHot(boardPhaseIndex(view), OBS_V1_PHASES);
+  w.oneHot(boardPhaseIndex(view), OBS_BOARD_PHASES);
   w.oneHot(view.pending ? relative(seat, view.current, count) : -1, 4);
-  w.oneHot(view.turn.dice !== null ? view.turn.dice - 1 : -1, 6);
+  w.oneHot(view.turn.dice !== null ? view.turn.dice - 1 : -1, OBS_DICE_SIDES);
   w.put(view.turn.canBuy);
   w.put(view.turn.thiefUsed);
   w.put(n(view.turn.teleportsUsed, S.TP_S));
@@ -137,8 +144,11 @@ function writeGlobal(w: Writer, view: PublicGameState, seat: SeatId): void {
   for (const item of ITEM_IDS) w.put(n(r.items[item].price, S.COIN_S));
 }
 
-/** obs_v1: ego-centric float32 vector from the acting seat's point of view (docs/ai-interface-spec.md §3). */
+/** obs_v2: ego-centric float32 vector from the acting seat's point of view (docs/ai-interface-spec.md §3). */
 export function encodeObservation(view: PublicGameState, seat: SeatId): Float32Array {
+  if (view.rules.movement.rollSides > OBS_DICE_SIDES) {
+    throw new RangeError(`obs_v2 supports at most ${OBS_DICE_SIDES} movement roll sides`);
+  }
   const buf = new Float32Array(OBS_DIM);
   const me = view.players[seat];
   if (!me) throw new RangeError(`no seat ${seat}`);
@@ -146,7 +156,12 @@ export function encodeObservation(view: PublicGameState, seat: SeatId): Float32A
   const count = view.players.length;
   for (let k = 1; k <= 3; k++) {
     const q = k < count ? view.players[(seat + k) % count] : undefined;
-    writeOpponent(new Writer(buf, SELF_BLOCK + (k - 1) * OPP_BLOCK), me, q);
+    writeOpponent(
+      new Writer(buf, SELF_BLOCK + (k - 1) * OPP_BLOCK),
+      me,
+      q,
+      view.rules.movement.rollSides,
+    );
   }
   writeGlobal(new Writer(buf, GLOBAL_OFFSET), view, seat);
   return buf;

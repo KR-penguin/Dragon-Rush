@@ -3,7 +3,7 @@
 numpy Actor-Critic으로 "드래곤 러쉬"를 학습시키기 위한 안내서다. 이 문서는 실제 코드 기준의 요약본이고, 계약의 정본은 [docs/ai-interface-spec.md](../docs/ai-interface-spec.md)다(관측 §3, 행동 §4, 마스크 §5, 보상 §6, env 프로토콜 §7, Python API §8, 모델 통합 §9).
 세 과제의 실행 명령·배열 형태·리셋·모델 JSON 준비물은 [AI 학습 환경 시작 가이드](../docs/training-environments.md)에 모았다.
 
-- 관측: `obs_v1`, float32 **253개**
+- 관측: `obs_v2`, float32 **257개**
 - 행동: `act_v1`, 이산 **47개** + 행동 마스크
 - 의존성: numpy만 (gymnasium·torch 없음)
 - **전투 모델은 별도 모델·별도 env**다(`PvPCombatEnv`/`DragonCombatEnv`, `cobs_v1`/`cact_v1`). 보드 가중치와 전투 가중치는 호환되지 않는다. §9를 본다.
@@ -13,8 +13,9 @@ numpy Actor-Critic으로 "드래곤 러쉬"를 학습시키기 위한 안내서�
 ```bash
 pnpm install && pnpm build        # 저장소 루트에서. env 서버(packages/sim/dist/env-server.js)를 만든다
 pip install -e python/            # 이 패키지 설치
-python python/examples/random_agent.py --episodes 20 --combat-resolver sim
 ```
+
+`python/rpgboard_env/env.py`의 기본 기대 관측 버전은 `obs_v2`다. 아래처럼 명시해도 같으며, 예제 스크립트도 기본 설정으로 실행할 수 있다.
 
 ```python
 import numpy as np
@@ -22,8 +23,8 @@ from rpgboard_env import RPGBoardEnv
 
 rng = np.random.default_rng(0)
 env = RPGBoardEnv(mode="single", num_players=4, opponents="heuristic", max_rounds=100,
-                  combat_resolver="sim")
-obs, info = env.reset(seed=0)                 # obs: float32 (253,)
+                  combat_resolver="sim", expect_obs_version="obs_v2")
+obs, info = env.reset(seed=0)                 # obs: float32 (257,)
 while True:
     logits = np.zeros(env.action_dim)         # 예제용 균등 로짓; 학습한 actor(obs)로 교체
     logits = np.where(info["action_mask"], logits, -np.inf)
@@ -44,7 +45,7 @@ env.close()
 - phase 비율은 대략 `PRE_ROLL` 49%, `POST_MOVE` 39~42%, `MOVE_ADJUST` 5%, `SHIELD_DECISION` 2~4%, `TRAINING_CHOICE` 2%, `CHOOSE_PVP_TARGET` 0.1%다.
 - 남의 턴에도 결정할 때가 있다. 내가 방어막을 가진 상태로 공격받으면 `SHIELD_DECISION`이 온다. `info["turn_seat"] != info["acting_seat"]`로 구분하고, 관측의 `g.turnPlayer`(228~231)에도 나타난다.
 
-## 3. 관측 `obs_v1` (253)
+## 3. 관측 `obs_v2` (257)
 
 **자기중심**이다. 항상 지금 결정하는 좌석의 시점이다. 모든 값은 [0, 2] 범위다. 스케일 특징은 `clip(x / S, 0, 2)`로 만들고, one-hot과 플래그는 0 또는 1이다.
 스케일 상수: HP 120, ATK/DEF 20, 코인 50, 강화 레벨 10, 아이템 개수 3, 라운드 100, 거리 23.
@@ -76,29 +77,29 @@ env.close()
 | 2–6 | `job` | 직업 one-hot |
 | 7–30 | `pos` | 칸 one-hot |
 | 31 | `fwdDist` | 내 위치에서 그 상대까지 전진 거리/23 |
-| 32 / 33 / 34 | `sameTile` / `iCanReach` / `canReachMe` | 같은 칸 / 내 주사위(1~6)로 닿음 / 상대 주사위로 내 칸에 닿음 |
+| 32 / 33 / 34 | `sameTile` / `iCanReach` / `canReachMe` | 같은 칸 / 내 이동 주사위(기본 1~10)로 닿음 / 상대 이동 주사위로 내 칸에 닿음 |
 | 35 / 36 / 37 | `hp` / `maxHp` / `hpRatio` | 자기 블록과 같은 스케일 |
 | 38 / 39 / 40 | `atk` / `def` / `coins` | 〃 |
 | 41–43 | `upgradeLvl` | 강화 레벨/10 |
 | 44–46 / 47–49 | `itemCount` / `hasItem` | 아이템 개수/3, 보유 여부 (모든 정보는 공개) |
 | 50 / 51 / 52 / 53 | `skipNextTurn` / `indomitableReady` / `rageActive` / `ninjaCooldown` | 상태 플래그 |
 
-### 3.3 전역 블록 (213~252)
+### 3.3 전역 블록 (213~256)
 | 인덱스 | 이름 | 내용 |
 |---|---|---|
 | 213 / 214 / 215 | `g.round` / `g.maxRounds` / `g.roundsLeftFrac` | round/100, maxRounds/100, 남은 라운드 비율 (무제한이면 0) |
-| 216 / 217 | `g.graceLeft` / `g.pvpEnabled` | 초반 보호 남은 라운드/3, 이번 라운드에 PvP 가능 여부. `rush-6` 기본 규칙은 보호가 없어 시작부터 각각 0 / 1 |
+| 216 / 217 | `g.graceLeft` / `g.pvpEnabled` | 초반 보호 남은 라운드/3, 이번 라운드에 PvP 가능 여부. `rush-7` 기본 규칙은 보호가 없어 시작부터 각각 0 / 1 |
 | 218–220 | `g.numPlayers` | 시작 인원 one-hot [2, 3, 4] |
 | 221 | `g.aliveCount` | 생존자 수/4 |
 | 222–227 | `g.phase` | [PRE_ROLL, MOVE_ADJUST, CHOOSE_PVP_TARGET, SHIELD_DECISION, TRAINING_CHOICE, POST_MOVE] |
 | 228–231 | `g.turnPlayer` | 턴 플레이어 [나, 상대1, 상대2, 상대3]. 내가 아니면 남의 턴에 하는 결정 |
-| 232–237 | `g.dice` | 이번 턴 주사위 눈 1~6 (굴리기 전이면 0) |
-| 238 / 239 | `g.canBuy` / `g.thiefUsed` | 이번 턴 상점에 도착함 / 이번 턴 도둑 사용함 |
-| 240 / 241 | `g.teleportsUsed` / `g.teleportLimitReached` | 이번 턴 텔레포트 사용 수/2, 턴당 상한 도달(기본 무제한이라 0) |
-| 242 / 243 | `g.pvpAmArriver` / `g.pvpAmDefender` | 진행 중인 결투에서 내가 도착자 / 방어자 |
-| 244–246 | `g.pvpOpponent` | 결투 상대 one-hot [상대1, 상대2, 상대3] |
-| 247–249 | `g.dragonHp/Atk/Def` | 용 스탯(규칙 상수: 88/120, 10/20, 6/20) |
-| 250–252 | `g.itemPrice` | [teleport, shield, thief] 가격/50 |
+| 232–241 | `g.dice` | 이번 턴 이동 주사위 눈 1~10 원-핫 (굴리기 전이면 0) |
+| 242 / 243 | `g.canBuy` / `g.thiefUsed` | 이번 턴 상점에 도착함 / 이번 턴 도둑 사용함 |
+| 244 / 245 | `g.teleportsUsed` / `g.teleportLimitReached` | 이번 턴 텔레포트 사용 수/2, 턴당 상한 도달(기본 무제한이라 0) |
+| 246 / 247 | `g.pvpAmArriver` / `g.pvpAmDefender` | 진행 중인 결투에서 내가 도착자 / 방어자 |
+| 248–250 | `g.pvpOpponent` | 결투 상대 one-hot [상대1, 상대2, 상대3] |
+| 251–253 | `g.dragonHp/Atk/Def` | 용 스탯(규칙 상수: 88/120, 10/20, 10/20) |
+| 254–256 | `g.itemPrice` | [teleport, shield, thief] 가격/50 |
 
 이름으로 보고 싶을 때는 다음처럼 한다.
 
@@ -139,7 +140,7 @@ env.obs_layout                   # [{"name", "offset", "length"}, ...] 서버가
 | `max_rounds` 도달 | 0 | `truncated` (부트스트랩할지는 직접 결정) |
 
 - 기본은 **희소 보상**이다. 선택적 shaping은 `RPGBoardEnv(reward_shaping={"coins": 0.01, "stats": 0.05, "kill": 0.3, "dragon_try": 0})`처럼 켠다. 기본값은 모두 0이다. 각 항목은 코인 변화, `(atk + def + maxHp/6)` 변화, 결투로 탈락시킨 수, 용 도전 횟수에 곱해진다.
-- `info["outcome"]`은 `{"kind": "dragon"|"lastSurvivor"|"draw", "winner": 좌석}` 형태다. `info["final_obs"]`에는 끝난 좌석의 종료 관측이 들어 있다(`{좌석: (253,)}`).
+- `info["outcome"]`은 `{"kind": "dragon"|"lastSurvivor"|"draw", "winner": 좌석}` 형태다. `info["final_obs"]`에는 끝난 좌석의 종료 관측이 들어 있다(`{좌석: (257,)}`).
 
 ## 6. 모드와 옵션
 
@@ -152,8 +153,8 @@ env.obs_layout                   # [{"name", "offset", "length"}, ...] 서버가
 | `opponents` | `"heuristic"` | `random`, `random:uniform`, `heuristic`(성향 무작위), `heuristic:aggro`/`growth`/`rush`, 또는 좌석별 목록 |
 | `jobs` | `"random"` | 좌석별 직업 목록으로 고정 가능 |
 | `max_rounds` | 100 | `None`이면 무제한 |
-| `combat_resolver` | `"outcome"` | `outcome`: 내장 `outcome_v1`을 게임 RNG로 샘플링 / `sim`: 두 `scripted:balanced` 봇의 실제 60Hz 전투 / `dice`: 선택형 빠른 전투의 보드 주사위 판정. 관측 `obs_v1`은 그대로 |
-| `outcome_model`, `outcome_skill_noise` | `None`, `0.5` | 외부 모델 JSON 경로를 선택적으로 지정한다. 경로가 없으면 내장 `rush-6`/`combat-2` 모델을 쓴다. 전투 가중치는 `rush-3`에서 이전했으며 현재 분포에 재보정하지 않았다. 모델 버전이 규칙과 다르면 reset 오류다. skill noise는 outcome 샘플의 승률 로짓 이동 크기 |
+| `combat_resolver` | `"outcome"` | `outcome`: 내장 `outcome_v1`을 게임 RNG로 샘플링 / `sim`: 두 `scripted:balanced` 봇의 실제 60Hz 전투 / `dice`: 선택형 빠른 전투의 6면 주사위 판정. 관측 `obs_v2`는 동일 |
+| `outcome_model`, `outcome_skill_noise` | `None`, `0.5` | 외부 모델 JSON 경로를 선택적으로 지정한다. 경로가 없으면 내장 `rush-7`/`combat-2` 이전 모델을 쓴다. 이전 가중치는 새 이동 분포에 재보정하지 않았다. 모델 버전이 규칙과 다르면 reset 오류다. skill noise는 outcome 샘플의 승률 로짓 이동 크기 |
 | `rules`, `reward_shaping`, `return_events` | `"default"`, `None`, `False` | 보드 규칙 일부 덮어쓰기 / §5 보상 계수 / 전이 이벤트 포함 |
 | `server_cmd`, `cwd` | — | env 서버 실행 커맨드와 저장소 루트 (환경변수 `RPGBOARD_ENV_CMD`, `RPGBOARD_ROOT`) |
 
@@ -163,9 +164,9 @@ env.obs_layout                   # [{"name", "offset", "length"}, ...] 서버가
 
 ## 7. 기준선 (실제 60Hz 전투)
 
-- 현재 `rush-6` 4인 휴리스틱 봇 4,000판(seed 2026, 4 workers, 이전 전투 가중치 모델): 평균 4.37(중앙 4)/p95 9라운드, 용 처치 종료 42.9%, 판당 PvP 1.38회, 3라운드 안 좌석 탈락 44.5%, 무승부 0%. 초반 보호·출발 칸 안전 제거로 조기 탈락이 증가했다. 이전 가중치는 새 보드 분포에서 재보정되지 않았다.
+- 현재 `rush-7`의 1~10 이동에 대한 새 실측은 없다. 이전 `rush-6` 4인 휴리스틱 봇 4,000판(seed 2026, 4 workers, 이전 전투 가중치 모델): 평균 4.37(중앙 4)/p95 9라운드, 용 처치 종료 42.9%, 판당 PvP 1.38회, 3라운드 안 좌석 탈락 44.5%, 무승부 0%. 이전 가중치는 새 보드 분포에서 재보정되지 않았다.
 
-- 이전 `rush-4`의 4인 휴리스틱 8,000판(`pnpm sim --games 8000 --players 4 --bots heuristic --seed 2026 --workers 4 --combat sim --outcome-model packages/ai/src/outcome/model.json` 당시 `rush-4` 메타데이터 사용): 평균 5.93(중앙 6)/p95 10라운드, 용 처치 종료 46.5%, 직업 승률 검/궁/마/닌/광 18.9/26.2/34.7/25.5/19.6%, 3라운드 안 좌석 탈락 22.6%. 전투 결과는 실제 sim이 확정했다. 3인·2인 실측과 이전 `rush-3` 비교는 [기획서 §15](../docs/game-design.md)를 본다. 이 규칙에는 라운드 1~2 PvP 보호가 있었다. 현행 `rush-6`의 재현 명령이 아니다.
+- 이전 `rush-4`의 4인 휴리스틱 8,000판(`pnpm sim --games 8000 --players 4 --bots heuristic --seed 2026 --workers 4 --combat sim --outcome-model packages/ai/src/outcome/model.json` 당시 `rush-4` 메타데이터 사용): 평균 5.93(중앙 6)/p95 10라운드, 용 처치 종료 46.5%, 직업 승률 검/궁/마/닌/광 18.9/26.2/34.7/25.5/19.6%, 3라운드 안 좌석 탈락 22.6%. 전투 결과는 실제 sim이 확정했다. 3인·2인 실측과 이전 `rush-3` 비교는 [기획서 §15](../docs/game-design.md)를 본다. 이 규칙에는 라운드 1~2 PvP 보호가 있었다. 현행 `rush-7`의 재현 명령이 아니다.
 - 이전 `rush-3`·`rush-2`의 4인 실측은 역사적 기준이다. 현재 규칙의 수치로 사용하지 않는다.
 
 - `rush-2`의 4인 휴리스틱 8,000판(당시 `rush-2` 내장 모델 사용): 평균 7.67라운드, 중앙 8, p95 11, 용 처치 종료 61.3%, 직업 승률 22.1~29.1%, 3라운드 안 탈락 3.1%. 보드 턴당 10초 가정과 실제 sim 전투 시간 합산 평균 5.19분이었다. 현재 규칙·모델의 재현 명령이 아니다.

@@ -317,6 +317,12 @@ class Planner {
     return v + this.effectsValue(def.effects, 0);
   }
 
+  private teleportValue(tile: number): number {
+    const from = this.me.position;
+    const steps = forwardDistance(from, tile);
+    return this.tileValue(tile, from + steps >= BOARD_SIZE);
+  }
+
   ninjaDelta(legal: readonly Action[]): -1 | 0 | 1 {
     const d = this.view.turn.dice ?? 1;
     const pos = this.me.position;
@@ -372,7 +378,7 @@ class Planner {
         const wp = this.duelWp(p, q);
         if (q.items.shield > 0 && wp > 0.5) continue;
         if (wp >= this.s.hunt) {
-          const v = wp * (q.coins / 2 + this.itemValue(q) + KILL_BONUS);
+          const v = this.teleportValue(q.position);
           if (v > bestV) {
             best = q.position;
             bestV = v;
@@ -384,7 +390,7 @@ class Planner {
     if (p.hp <= p.maxHp * this.s.innFrac && p.maxHp - p.hp >= 12) {
       for (let t = 0; t < BOARD_SIZE; t++) {
         const heal = this.rules.board[t]!.effects.some((e) => e.kind === 'hp' && e.amount >= 15);
-        if (heal && t !== p.position && this.tileValue(t, false) > 0) return t;
+        if (heal && t !== p.position && this.teleportValue(t) > 0) return t;
       }
     }
     if (!preRoll) return null;
@@ -394,15 +400,15 @@ class Planner {
     );
     if (p.coins >= prices.shield.price + prices.thief.price + 2 && shops.length) {
       const dist = Math.min(...shops.map((t) => forwardDistance(p.position, t)));
-      if (dist > 6 || dist === 0) {
+      if (dist > this.rules.movement.rollSides || dist === 0) {
         const cands = shops.filter((t) => t !== p.position);
         if (cands.length) {
           const sh = cands.reduce((a, b) =>
-            this.tileValue(b, false) > this.tileValue(a, false) ? b : a,
+            this.teleportValue(b) > this.teleportValue(a) ? b : a,
           );
           const rich = this.richest();
           if (
-            this.tileValue(sh, false) > 0 &&
+            this.teleportValue(sh) > 0 &&
             (p.items.shield === 0 || (p.items.thief === 0 && (rich?.coins ?? 0) >= 7))
           )
             return sh;
@@ -410,14 +416,14 @@ class Planner {
       }
     }
     let rollEv = 0;
-    for (let d = 1; d <= 6; d++)
+    for (let d = 1; d <= this.rules.movement.rollSides; d++)
       rollEv += this.tileValue((p.position + d) % BOARD_SIZE, p.position + d >= BOARD_SIZE);
-    rollEv /= 6;
+    rollEv /= this.rules.movement.rollSides;
     let bt: number | null = null;
     let bv = -Infinity;
     for (let t = 0; t < BOARD_SIZE; t++) {
       if (t === p.position) continue;
-      const v = this.tileValue(t, false);
+      const v = this.teleportValue(t);
       if (v > bv) {
         bt = t;
         bv = v;
