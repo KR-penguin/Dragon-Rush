@@ -186,7 +186,7 @@ describe('player badges', () => {
 describe('tile tone', () => {
   it('colours tiles by their effect data', () => {
     const tone = (i: number) => tileTone(DEFAULT_RULES.board[i]!);
-    expect(tone(0)).toBe('safe');
+    expect(tone(0)).toBe('special');
     expect(tone(1)).toBe('good');
     expect(tone(2)).toBe('bad');
     expect(tone(6)).toBe('special');

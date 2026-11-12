@@ -16,7 +16,7 @@ describe('DEFAULT_RULES matches docs/game-design.md', () => {
     expect(DEFAULT_RULES.startingCoins).toBe(10);
     expect(DEFAULT_RULES.startingItems).toEqual({});
     expect(DEFAULT_RULES.startBonus).toEqual({ coins: 35, hp: 6 });
-    expect(DEFAULT_RULES.pvpGraceRounds).toBe(2);
+    expect(DEFAULT_RULES.pvpGraceRounds).toBe(0);
     expect(DEFAULT_RULES.pvpWinBonusCoins).toBe(30);
     expect(DEFAULT_RULES.coinShortfallHpPerCoin).toBe(1);
     expect(DEFAULT_RULES.upgrades).toEqual({
@@ -64,7 +64,7 @@ describe('DEFAULT_RULES matches docs/game-design.md', () => {
       'STORM',
       'MYSTERY',
     ]);
-    expect(DEFAULT_RULES.board.filter((t) => t.safe).map((t) => t.id)).toEqual(['START']);
+    expect(DEFAULT_RULES.board.filter((t) => t.safe).map((t) => t.id)).toEqual([]);
     const amounts = (effects: readonly { kind: string; amount?: number }[]) =>
       effects
         .filter((e) => e.kind === 'coins' || e.kind === 'hp')
@@ -114,7 +114,7 @@ describe('DEFAULT_RULES matches docs/game-design.md', () => {
   });
 
   it('carries the balance version', () => {
-    expect(DEFAULT_RULES.version).toBe('rush-5');
+    expect(DEFAULT_RULES.version).toBe('rush-6');
   });
 
   it('is frozen and valid', () => {

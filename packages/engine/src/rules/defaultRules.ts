@@ -13,7 +13,7 @@ const tile = (
 });
 
 const BOARD: readonly TileDef[] = [
-  tile('START', '출발', [], true),
+  tile('START', '출발', []),
   tile('GOBLIN', '고블린 무리 처치', [{ kind: 'coins', amount: 6 }]),
   tile('POISON_SWAMP', '독 늪', [{ kind: 'hp', amount: -5 }]),
   tile('TREASURE', '보물 상자', [{ kind: 'coins', amount: 12 }]),
@@ -75,12 +75,12 @@ const MYSTERY_DECK: readonly MysteryCardDef[] = [
 ];
 
 export const DEFAULT_RULES: RulesConfig = deepFreeze({
-  version: 'rush-5',
+  version: 'rush-6',
   startingCoins: 10,
   startingItems: {},
   startBonus: { coins: 35, hp: 6 },
   maxRounds: null,
-  pvpGraceRounds: 2,
+  pvpGraceRounds: 0,
   pvpWinBonusCoins: 30,
   eventHpFloor: 1,
   coinShortfallHpPerCoin: 1,

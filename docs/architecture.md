@@ -104,12 +104,10 @@ stateDiagram-v2
   PRE_ROLL --> landing : ROLL_DICE 후 이동, USE_TELEPORT
   PRE_ROLL --> COMBAT : CHALLENGE_DRAGON (external)
   MOVE_ADJUST --> landing : ADJUST_MOVE 후 이동
-  landing --> CHOOSE_PVP_TARGET : 비안전 칸에 상대 2명 이상
-  landing --> shieldCheck : 비안전 칸에 상대 1명
-  landing --> afterCombat : 상대 없음 / 안전지대 / 초반 보호(round ≤ pvpGraceRounds)
+  landing --> CHOOSE_PVP_TARGET : 어느 칸이든 상대 1명 이상
+  landing --> afterCombat : 상대 없음
   CHOOSE_PVP_TARGET --> shieldCheck : CHOOSE_PVP_TARGET
-  shieldCheck --> SHIELD_DECISION : 방어막 보유자 있음
-  shieldCheck --> COMBAT : 보유자 없음, external duel
+  shieldCheck --> SHIELD_DECISION : 도착자 방어막 보유 시 먼저 선택, 방어자는 항상 확인
   SHIELD_DECISION --> SHIELD_DECISION : 도착자 미사용 후 방어자 질의
   SHIELD_DECISION --> COMBAT : 미사용, external duel
   SHIELD_DECISION --> afterCombat : 방어막 사용으로 전투 취소

@@ -64,6 +64,7 @@ describe('obs_v1', () => {
     expect(obs[field('g.phase').offset]).toBe(1);
     expect(obs[field('g.turnPlayer').offset]).toBe(1);
     expect(obs[field('g.numPlayers').offset]).toBe(1);
-    expect(obs[field('g.graceLeft').offset]).toBeCloseTo(2 / 3);
+    expect(obs[field('g.graceLeft').offset]).toBe(0);
+    expect(obs[field('g.pvpEnabled').offset]).toBe(1);
   });
 });
