@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { runBatch, summarize } from '../src/index';
 
 describe('balance regression (small, seeded)', () => {
-  it('keeps 4-player heuristic games near the measured rush-3 baseline', () => {
+  it('keeps 4-player heuristic games near the measured rush-4 baseline', () => {
     const outcomeModelPath = fileURLToPath(
       new URL('../../ai/src/outcome/model.json', import.meta.url),
     );
@@ -17,7 +17,7 @@ describe('balance regression (small, seeded)', () => {
         outcomeModelPath,
       }),
     );
-    // The bundled model changes bot timing; the post-fit 8,000-game median is 6 rounds.
+    // With the transferred combat model, the rush-4 8,000-game median is 6 rounds.
     expect(m.avgRounds).toBeGreaterThan(5);
     expect(m.avgRounds).toBeLessThan(9);
     expect(m.dragonEndShare).toBeGreaterThan(0.35);

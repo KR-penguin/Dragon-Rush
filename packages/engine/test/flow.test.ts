@@ -92,6 +92,46 @@ describe('movement and tiles', () => {
     expect(act(s2, { type: 'USE_TELEPORT', tile: 4 }).state.players[0]!.coins).toBe(0);
   });
 
+  it('converts unpaid coin loss into event HP damage', () => {
+    const s = withTeleport(setPlayer(newGame(['swordsman', 'archer'], 5), 0, { coins: 2, hp: 20 }));
+    const { state, events } = act(s, { type: 'USE_TELEPORT', tile: 4 });
+    expect(state.players[0]).toMatchObject({ coins: 0, hp: 18 });
+    expect(eventsOf(events, 'EffectApplied')).toContainEqual({
+      type: 'EffectApplied',
+      seat: 0,
+      effect: 'coins',
+      delta: -2,
+      after: 0,
+    });
+    expect(eventsOf(events, 'EffectApplied')).toContainEqual({
+      type: 'EffectApplied',
+      seat: 0,
+      effect: 'hp',
+      delta: -2,
+      after: 18,
+    });
+  });
+
+  it('penalizes a zero-coin mystery loss without killing by event damage', () => {
+    const rules = withRules({
+      mysteryDeck: [
+        { id: 'NO_COINS', name: '빈 주머니', effects: [{ kind: 'coins', amount: -6 }] },
+      ],
+    });
+    const s = withTeleport(
+      setPlayer(newGame(['swordsman', 'archer'], 5, rules), 0, { coins: 0, hp: 3 }),
+    );
+    const { state, events } = act(s, { type: 'USE_TELEPORT', tile: 17 });
+    expect(state.players[0]).toMatchObject({ coins: 0, hp: 1 });
+    expect(eventsOf(events, 'EffectApplied')).toContainEqual({
+      type: 'EffectApplied',
+      seat: 0,
+      effect: 'hp',
+      delta: -2,
+      after: 1,
+    });
+  });
+
   it('training tile asks for a stat and raises it with its level', () => {
     const s = withTeleport(newGame(['swordsman', 'archer'], 5));
     const r1 = act(s, { type: 'USE_TELEPORT', tile: 5 });

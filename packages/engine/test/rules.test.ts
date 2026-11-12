@@ -18,6 +18,7 @@ describe('DEFAULT_RULES matches docs/game-design.md', () => {
     expect(DEFAULT_RULES.startBonus).toEqual({ coins: 35, hp: 6 });
     expect(DEFAULT_RULES.pvpGraceRounds).toBe(2);
     expect(DEFAULT_RULES.pvpWinBonusCoins).toBe(30);
+    expect(DEFAULT_RULES.coinShortfallHpPerCoin).toBe(1);
     expect(DEFAULT_RULES.upgrades).toEqual({
       atk: { baseCost: 3, costStep: 1, amount: 1 },
       def: { baseCost: 2, costStep: 1, amount: 1 },
@@ -113,7 +114,7 @@ describe('DEFAULT_RULES matches docs/game-design.md', () => {
   });
 
   it('carries the balance version', () => {
-    expect(DEFAULT_RULES.version).toBe('rush-3');
+    expect(DEFAULT_RULES.version).toBe('rush-4');
   });
 
   it('is frozen and valid', () => {
@@ -126,5 +127,6 @@ describe('DEFAULT_RULES matches docs/game-design.md', () => {
     } as unknown as typeof DEFAULT_RULES.combat;
     expect(() => validateRules(withRules({ combat: badMode }))).toThrow();
     expect(() => validateRules(withRules({ pvpWinBonusCoins: -1 }))).toThrow();
+    expect(() => validateRules(withRules({ coinShortfallHpPerCoin: -1 }))).toThrow();
   });
 });

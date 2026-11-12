@@ -15,6 +15,22 @@ const HANDLERS: { [K in EffectSpec['kind']]: EffectHandler<K> } = {
     const before = p.coins;
     const after = addCoins(p, e.amount);
     emit(ctx, { type: 'EffectApplied', seat, effect: 'coins', delta: after - before, after });
+    const shortfall = Math.max(0, -(before + e.amount));
+    if (shortfall > 0 && ctx.s.rules.coinShortfallHpPerCoin > 0) {
+      const hpBefore = p.hp;
+      const hpAfter = healOrHurtByEvent(
+        ctx.s.rules,
+        p,
+        -shortfall * ctx.s.rules.coinShortfallHpPerCoin,
+      );
+      emit(ctx, {
+        type: 'EffectApplied',
+        seat,
+        effect: 'hp',
+        delta: hpAfter - hpBefore,
+        after: hpAfter,
+      });
+    }
   },
   hp: (ctx, seat, e) => {
     const p = playerAt(ctx.s, seat);

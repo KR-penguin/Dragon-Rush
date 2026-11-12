@@ -94,6 +94,7 @@ export interface RulesConfig {
   readonly pvpGraceRounds: number;
   readonly pvpWinBonusCoins: number;
   readonly eventHpFloor: number;
+  readonly coinShortfallHpPerCoin: number;
   readonly jobs: Readonly<Record<JobId, JobDef>>;
   readonly passives: {
     readonly indomitableUses: number;

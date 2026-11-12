@@ -75,7 +75,7 @@ const MYSTERY_DECK: readonly MysteryCardDef[] = [
 ];
 
 export const DEFAULT_RULES: RulesConfig = deepFreeze({
-  version: 'rush-3',
+  version: 'rush-4',
   startingCoins: 10,
   startingItems: {},
   startBonus: { coins: 35, hp: 6 },
@@ -83,6 +83,7 @@ export const DEFAULT_RULES: RulesConfig = deepFreeze({
   pvpGraceRounds: 2,
   pvpWinBonusCoins: 30,
   eventHpFloor: 1,
+  coinShortfallHpPerCoin: 1,
   jobs: {
     swordsman: { hp: 53, atk: 5, def: 5 },
     archer: { hp: 39, atk: 6, def: 6 },
