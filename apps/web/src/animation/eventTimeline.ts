@@ -233,9 +233,24 @@ export function applyEventToDisplay(display: PublicGameState, e: GameEvent): Pub
     case 'EffectApplied':
       if (e.effect === 'coins') return patchPlayer(e.seat, { coins: e.after });
       if (e.effect === 'hp') return patchPlayer(e.seat, { hp: e.after });
+      if (e.effect === 'stat' && e.stat) return patchPlayer(e.seat, { [e.stat]: e.after });
+      if (e.effect === 'maxHp') {
+        const hp = display.players.find((p) => p.seat === e.seat)!.hp;
+        return patchPlayer(e.seat, { maxHp: e.after, hp: hp + e.delta });
+      }
       return display;
     case 'StatUpgraded':
-      return patchPlayer(e.seat, { coins: e.coinsAfter });
+      return patchPlayer(e.seat, {
+        coins: e.coinsAfter,
+        [e.stat]: e.valueAfter,
+        ...(e.stat === 'maxHp'
+          ? {
+              hp:
+                display.players.find((p) => p.seat === e.seat)!.hp +
+                display.rules.upgrades.maxHp.amount,
+            }
+          : {}),
+      });
     case 'ItemBought':
       return patchPlayer(e.seat, { coins: e.coinsAfter });
     case 'CombatHit':

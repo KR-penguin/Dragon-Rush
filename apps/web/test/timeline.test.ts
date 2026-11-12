@@ -23,6 +23,62 @@ import { createGameStore } from '../src/store/gameStore';
 import { ICON_NAMES } from '../src/types/icons';
 
 describe('event timeline', () => {
+  it('shows a blacksmith defense bonus as its event plays, before the queue reaches the next turn', () => {
+    const before = toPublicState(
+      createGameWithEvents({ seats: [{ job: 'mage' }, { job: 'ninja' }] }, DEFAULT_RULES, 42).state,
+    );
+    const defAfter = before.players[0]!.def + 1;
+    const effect: GameEvent = {
+      type: 'EffectApplied',
+      seat: 0,
+      effect: 'stat',
+      stat: 'def',
+      delta: 1,
+      after: defAfter,
+    };
+    const nextTurn: GameEvent = { type: 'TurnStarted', seat: 1, round: 1, resting: false };
+    const store = createGameStore();
+    store.setState({
+      latest: {
+        version: 1,
+        publicState: {
+          ...before,
+          players: before.players.map((p) => (p.seat === 0 ? { ...p, def: defAfter } : p)),
+        },
+        events: [effect, nextTurn],
+        pending: null,
+        controllableSeats: [],
+        legalActions: [],
+        seats: [],
+        snapshot: false,
+      },
+      display: before,
+      queue: [effect, nextTurn],
+      current: null,
+    });
+
+    store.getState().advance();
+    expect(store.getState().queue).toEqual([nextTurn]);
+    expect(store.getState().display!.players[0]!.def).toBe(defAfter);
+  });
+  it('shows a paid stat upgrade while the same turn is still animating', () => {
+    const before = toPublicState(
+      createGameWithEvents({ seats: [{ job: 'mage' }, { job: 'ninja' }] }, DEFAULT_RULES, 42)
+        .state,
+    );
+    const after = applyEventToDisplay(before, {
+      type: 'StatUpgraded',
+      seat: 0,
+      stat: 'atk',
+      cost: 3,
+      free: false,
+      valueAfter: before.players[0]!.atk + 1,
+      levelAfter: 1,
+      coinsAfter: before.players[0]!.coins - 3,
+    });
+    expect(after.players[0]!.atk).toBe(before.players[0]!.atk + 1);
+    expect(after.players[0]!.coins).toBe(before.players[0]!.coins - 3);
+  });
   it('explains HP lost because an event could not collect enough coins', () => {
     expect(
       describeEvent(
