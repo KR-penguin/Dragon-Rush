@@ -179,7 +179,7 @@ describe('file BGM through the audio bus', () => {
     expect(fetch).toHaveBeenCalledWith('/assets/audio/bgm/result_defeat.mp3');
   });
 
-  it('keeps menu playing while battle decodes, then cross-fades', async () => {
+  it('keeps menu playing while battle decodes, then switches without overlap', async () => {
     let releaseBattle: (() => void) | undefined;
     vi.stubGlobal(
       'fetch',
@@ -204,10 +204,10 @@ describe('file BGM through the audio bus', () => {
     releaseBattle!();
     await vi.waitFor(() => expect(sources).toHaveLength(2));
     expect(sources[0]!.stopped).toBe(true);
-    expect(sources[1]!.startAt).toBeLessThan(sources[0]!.stopAt);
+    expect(sources[1]!.startAt).toBeGreaterThanOrEqual(sources[0]!.stopAt);
   });
 
-  it('starts on unlock, shares menu for lobby and board, and fades into battle', async () => {
+  it('starts on unlock, shares menu for lobby and board, and switches to battle', async () => {
     const audio = await import('../src/services/audio');
     audio.playBgm('lobby');
     expect(sources).toHaveLength(0);
@@ -234,7 +234,7 @@ describe('file BGM through the audio bus', () => {
     audio.playBgm('dragon_battle');
     await vi.waitFor(() => expect(sources).toHaveLength(2));
     expect(sources[0]!.stopped).toBe(true);
-    expect(sources[1]!.startAt).toBeLessThan(sources[0]!.stopAt);
+    expect(sources[1]!.startAt).toBeGreaterThanOrEqual(sources[0]!.stopAt);
     expect(sources[1]!.buffer).toBe(fileBuffer);
     await vi.waitFor(() => expect(sources[0]!.disconnected).toBe(true), { timeout: 2000 });
     expect(sources[0]!.connections[0]!.disconnected).toBe(true);
@@ -249,6 +249,19 @@ describe('file BGM through the audio bus', () => {
     await vi.waitFor(() => expect(sources).toHaveLength(3));
     audio.playBgm(null);
     expect(sources[2]!.stopped).toBe(true);
+  });
+
+  it('returns from battle to the menu without playing both tracks together', async () => {
+    const audio = await import('../src/services/audio');
+    audio.playBgm('dragon_battle');
+    audio.unlockAudio();
+    await vi.waitFor(() => expect(sources).toHaveLength(1));
+
+    audio.playBgm('lobby');
+    await vi.waitFor(() => expect(sources).toHaveLength(2));
+    expect(sources[1]!.startAt).toBeGreaterThanOrEqual(sources[0]!.stopAt);
+    audio.playBgm('board');
+    expect(sources).toHaveLength(2);
   });
 
   it('does not synthesize music when a listed file cannot be decoded', async () => {

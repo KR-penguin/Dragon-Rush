@@ -422,17 +422,14 @@ function stopBgm(forResult = false): number {
   if (!g) return 0;
   const t = g.ctx.currentTime;
   cur.gain.gain.cancelScheduledValues(t);
-  cur.gain.gain.setTargetAtTime(0, t, forResult ? 0.01 : 0.1);
-  const stopAt = t + (forResult ? 0.06 : 0.5);
+  cur.gain.gain.setTargetAtTime(0, t, forResult ? 0.01 : 0.02);
+  const stopAt = t + (forResult ? 0.06 : 0.08);
   cur.src.stop(stopAt);
-  setTimeout(
-    () => {
-      cur.src.disconnect();
-      cur.gain.disconnect();
-    },
-    forResult ? 100 : 700,
-  );
-  return forResult ? stopAt : t;
+  setTimeout(() => {
+    cur.src.disconnect();
+    cur.gain.disconnect();
+  }, 120);
+  return stopAt;
 }
 
 function startBgmBuffer(
