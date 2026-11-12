@@ -1,6 +1,6 @@
 # 개발 계획서 — 드래곤 러쉬 (Dragon Rush)
 
-> 상태: **1차 P0~P7 구현 완료 (2026-11-11)**, **2차 개발 진행 중 (2026-11-12, §5)**. 사용자 자료 대기: D4·D13(보드·전투 모델 가중치 포맷), D8·D12(추가 이미지·효과음), D9(배포 대상). 제공받은 MP3를 BGM으로 사용한다. D14는 Normal 기본값을 적용했고 D16의 outcome 적합 도구와 `rush-3` 내장 결과 모델을 구현했다.
+> 상태: **1차 P0~P7 구현 완료 (2026-11-11)**, **2차 개발 진행 중 (2026-11-12, §5)**. 사용자 자료 대기: D4·D13(보드·전투 모델 가중치 포맷), D8·D12(추가 이미지·효과음), D9(배포 대상). 제공받은 MP3를 주 게임 BGM으로, 자체 제작 MP3를 결과 음악으로 사용한다. 보드·PvP·용전 학습 환경과 `rush-4` 내장 결과 모델이 있다. 전투 가중치는 `rush-3`에서 이전했다.
 > 정본 분담: 규칙·수치 → [game-design.md](game-design.md) · 구조·프로토콜 → [architecture.md](architecture.md) · 보드 AI 계약 → [ai-interface-spec.md](ai-interface-spec.md) · 실시간 전투 → [combat-design.md](combat-design.md) · 전투 AI 계약 → [combat-ai-spec.md](combat-ai-spec.md) · 화면·연출·효과·오디오 → [art-direction.md](art-direction.md) · 코딩 규칙 → [coding_convention.md](../coding_convention.md) · 워크스페이스 안내 → [README.md](../README.md), [AI_README.md](../AI_README.md)
 
 ## 1. 전체 전략
@@ -32,7 +32,7 @@
 ### 2.1 규칙 열린 질문 R1~R7 (상세는 기획서 §16, R6은 §15. 2차 Phase R1~R8과는 별개 번호)
 - **R1 초반 PvP 보호** (승인): 같은 칸이어도 싸우지 않는 초반 라운드. `rush-1`에서 3 → 2라운드(`pvpGraceRounds = 2`).
 - **R2 텔레포트 턴당 제한**: 기본 무제한(`perTurnLimit = null`). **R3 도둑**: 일회용·턴당 1회(`rush-1`에서 최대 10코인).
-- **R4 목표 게임 길이·용 처치 비중**: 현재 `rush-3` 실제 전투 4인 8,000판 중앙 6/p95 9라운드, 용 처치 종료 46.8%다. 중앙 9~11 목표는 미달했다. 보드 턴당 10초 가정 평균 4.15분이며 실제 사람 선택 시간은 아직 계측하지 않았다(기획서 §15).
+- **R4 목표 게임 길이·용 처치 비중**: 현재 `rush-4` 실제 전투 4인 8,000판 중앙 6/p95 10라운드, 용 처치 종료 46.5%다. 중앙 9~11 목표는 미달했다. 보드 턴당 10초 가정 평균 4.16분이며 실제 사람 선택 시간은 아직 계측하지 않았다(기획서 §15).
 - **R5 밸런스 구조 변경**: 시작 방어막 지급은 `rush-3`에서 제거했다(2026-11-12 사용자 요청). 닌자 ±1 보정 후 4턴 쿨다운은 유지한다(`ninjaCooldown`은 `obs_v1`에 포함).
 - **R6 밸런스 미달 수용**: 2·3인 아이템 구매 편중 등. 기본안 수용. **R7 쉬는 턴** (결정): 이동만 막는다.
 
@@ -155,12 +155,13 @@
 - 이전 이름 대응은 `apps/web/src/fx/audio/soundCatalog.ts`의 `soundFileCandidates()` 별칭으로 구현했다(2026-11-12). 파일을 `public/assets/` 아래 표의 경로에 놓으면 자동으로 절차 효과음을 대체한다. 예: `dice_roll` → `board/dice_land_01`, `move_step` → `board/pawn_hop_01`, `attack_hit` → `combat/hit_light_01`, `coin` → `board/coin_gain_01`, `upgrade` → `board/stat_up`, `item_use` → `board/item_use`, `shield` → `board/item_shield`, `dragon_breath` → `dragon/breath_loop`, `victory`·`defeat` → `bgm/stinger_victory`·`stinger_defeat`.
 
 **음악 8개 + 환경음 3개**
-현재 로비·보드·PvP 결투·용전은 제공받은 `audio/bgm/dragon_foothills.mp3` 한 파일(44.1 kHz 스테레오, 약 100.5초)을 공용 BGM으로 사용한다. 아래 장면별 음악은 향후 개별 곡을 받을 때의 선택적 교체 목록이다. 현재 공용 MP3는 첫 입력 이후 재생되고 장면 전환 때 다시 시작한다.
+현재 로비·보드·PvP 결투·용전은 제공받은 `audio/bgm/dragon_foothills.mp3` 한 파일(44.1 kHz 스테레오, 약 100.5초)을 공용 BGM으로 사용한다. 게임 결과 화면의 로컬 승리·패배·무승부에는 새로 제작한 `audio/bgm/result_victory.mp3`, `result_defeat.mp3`, `result_draw.mp3`를 각각 사용한다. 이 세 파일의 원본·CC0-1.0 라이선스·재생성 방법은 `apps/web/assets/audio/README.md`에 기록했다. 결과 곡은 음악 버스와 음소거 설정을 공유한다. 아래 장면별 음악은 개별 곡을 받을 때의 선택적 교체 목록이다.
 | 용도 | 경로·파일명 | 길이·규격 | 우선 |
 |---|---|---|---|
 | 보드 진행 루프 (따뜻한 선술집 판타지, 현악·가벼운 타악) | `audio/bgm/board.mp3` | 2~3분 이음매 없는 루프, 90~100 BPM | P0 |
 | PvP 결투 루프 (몰아치는 타악·금관) | `audio/bgm/duel.mp3` | 60~90초 루프, 140~160 BPM | P0 |
 | 용전 루프 (기존 이름) | `audio/bgm/dragon_battle.mp3` | 90~120초 루프 | P0 |
+| 결과 화면 승리·패배·무승부 루프 (구현) | `audio/bgm/result_victory.mp3` / `result_defeat.mp3` / `result_draw.mp3` | 원곡 16초 / 21.8초 / 18.5초, 44.1 kHz 스테레오 192 kbps | 완료 |
 | 게임 승리 / 패배·탈락 스팅어 (이전 `victory`/`defeat`) | `audio/bgm/stinger_victory.mp3` / `stinger_defeat.mp3` | 4~8초 / 3~5초 | P0 |
 | 루프 지점 (선택) | `audio/bgm/loops.json` — `{ "dragon_foothills.mp3": { "loopStart": 초, "loopEnd": 초 } }` | JSON; 제공받은 파일은 현재 전체 길이를 반복 | P0 |
 | 타이틀·로비 루프 (기존 이름) / 다른 플레이어 탈락 스팅어 | `audio/bgm/lobby.mp3` / `stinger_elimination.mp3` | 1.5~2.5분 루프 / 2~3초 | P1 |

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import base64
 import os
-from typing import Any, Mapping, Sequence
+from typing import Any, Literal, Mapping, Sequence
 
 import numpy as np
 
@@ -208,3 +208,39 @@ class CombatEnv(_CombatBase):
         e = self._proc.call("step", {"actions": self._actions(action)})["envs"][0]
         rewards = np.asarray(e["rewards"], dtype=np.float32)
         return self._obs(e), rewards, bool(e["terminated"]), bool(e["truncated"]), self._env_info(e)
+
+
+def _fixed_mode(mode: Literal["pvp", "dragon"], kwargs: dict[str, Any]) -> dict[str, Any]:
+    if "mode_mix" in kwargs:
+        raise ValueError("mode_mix cannot be set on a fixed-mode combat environment")
+    return {**kwargs, "mode_mix": {"pvp": int(mode == "pvp"), "dragon": int(mode == "dragon")}}
+
+
+class PvPCombatEnv(CombatEnv):
+    """One 1v1 duel. Both fighters are controlled by default; use controlled='p0' for a scripted rival."""
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**_fixed_mode("pvp", kwargs))
+
+
+class PvPCombatVecEnv(CombatVecEnv):
+    """Batched 1v1 duels with automatic reset into another duel."""
+
+    def __init__(self, num_envs: int = 64, **kwargs: Any) -> None:
+        super().__init__(num_envs=num_envs, **_fixed_mode("pvp", kwargs))
+
+
+class DragonCombatEnv(CombatEnv):
+    """One fighter against the dragon. Controls slot 0 only by default."""
+
+    def __init__(self, **kwargs: Any) -> None:
+        kwargs.setdefault("controlled", "p0")
+        super().__init__(**_fixed_mode("dragon", kwargs))
+
+
+class DragonCombatVecEnv(CombatVecEnv):
+    """Batched dragon fights with automatic reset into another dragon fight."""
+
+    def __init__(self, num_envs: int = 64, **kwargs: Any) -> None:
+        kwargs.setdefault("controlled", "p0")
+        super().__init__(num_envs=num_envs, **_fixed_mode("dragon", kwargs))

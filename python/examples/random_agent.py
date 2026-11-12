@@ -25,13 +25,20 @@ def main() -> None:
     parser.add_argument("--episodes", type=int, default=20)
     parser.add_argument("--players", type=int, default=4)
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--combat-resolver", choices=("outcome", "sim", "dice"), default="outcome")
     args = parser.parse_args()
 
     rng = np.random.default_rng(args.seed)
     outcomes: Counter[str] = Counter()
     steps = 0
     started = time.perf_counter()
-    with RPGBoardEnv(mode="single", num_players=args.players, opponents="heuristic", max_rounds=100) as env:
+    with RPGBoardEnv(
+        mode="single",
+        num_players=args.players,
+        opponents="heuristic",
+        max_rounds=100,
+        combat_resolver=args.combat_resolver,
+    ) as env:
         weights = rng.normal(0.0, 0.01, (env.obs_dim, env.action_dim)).astype(np.float32)
         total_return = 0.0
         for episode in range(args.episodes):

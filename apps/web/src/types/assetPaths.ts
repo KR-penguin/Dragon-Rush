@@ -21,12 +21,28 @@ export const SFX_NAMES = [
 ] as const;
 export type SfxName = (typeof SFX_NAMES)[number];
 
-export const BGM_NAMES = ['lobby', 'board', 'dragon_battle'] as const;
+export const BGM_NAMES = [
+  'lobby',
+  'board',
+  'dragon_battle',
+  'result_victory',
+  'result_defeat',
+  'result_draw',
+] as const;
 export type BgmName = (typeof BGM_NAMES)[number];
 export const BGM_FILE = 'dragon_foothills.mp3';
+const BGM_FILES: Readonly<Record<BgmName, string>> = {
+  lobby: BGM_FILE,
+  board: BGM_FILE,
+  dragon_battle: BGM_FILE,
+  result_victory: 'result_victory.mp3',
+  result_defeat: 'result_defeat.mp3',
+  result_draw: 'result_draw.mp3',
+};
 
 export const sfxPath = (name: SfxName): string => `audio/sfx/${name}.mp3`;
-export const bgmPath: (name: BgmName) => string = () => `audio/bgm/${BGM_FILE}`;
+export const bgmFile = (name: BgmName): string => BGM_FILES[name];
+export const bgmPath = (name: BgmName): string => `audio/bgm/${bgmFile(name)}`;
 
 /** Normalizes manifest entries (OS separators, leading slashes) and drops dotfiles. */
 export function normalizeManifest(files: readonly string[]): Set<string> {

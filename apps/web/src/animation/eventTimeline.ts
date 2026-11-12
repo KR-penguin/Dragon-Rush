@@ -8,7 +8,7 @@ export type NameOf = (seat: SeatId) => string;
 
 export const EVENT_CARD_RISE_MS = 200;
 export const EVENT_CARD_FLIP_MS = 180;
-export const EVENT_CARD_HOLD_MS = 3000;
+export const EVENT_CARD_HOLD_MS = 2700;
 export const EVENT_CARD_FADE_MS = 250;
 export const EVENT_CARD_MS =
   EVENT_CARD_RISE_MS + EVENT_CARD_FLIP_MS + EVENT_CARD_HOLD_MS + EVENT_CARD_FADE_MS;
@@ -120,7 +120,11 @@ function describeEffect(
     case 'coins':
       return e.delta === 0 ? null : `${n} 코인 ${e.delta > 0 ? '+' : ''}${e.delta}`;
     case 'hp':
-      return e.delta === 0 ? null : `${n} HP ${e.delta > 0 ? '+' : ''}${e.delta}`;
+      return e.delta === 0
+        ? null
+        : e.cause === 'coinShortfall'
+          ? `${n} 코인 부족으로 HP ${e.delta}`
+          : `${n} HP ${e.delta > 0 ? '+' : ''}${e.delta}`;
     case 'stat':
       return `${n} ${STAT_LABEL[e.stat ?? 'atk']} +${e.delta}`;
     case 'maxHp':

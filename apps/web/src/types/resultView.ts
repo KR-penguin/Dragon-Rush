@@ -7,6 +7,25 @@ import type {
   SeatId,
 } from '@dragon-rush/engine';
 import { DRAGON_NAME, OUTCOME_LABEL } from './labels';
+import type { BgmName } from './assetPaths';
+
+/** A spectator hears the winner's theme; a local seat hears its own outcome. */
+export function resultBgm(outcome: GameOutcome, controllable: readonly SeatId[]): BgmName {
+  if (outcome.winner === null) return 'result_draw';
+  return controllable.length === 0 || controllable.includes(outcome.winner)
+    ? 'result_victory'
+    : 'result_defeat';
+}
+
+export function gameBgm(
+  outcome: GameOutcome | null,
+  animating: boolean,
+  combat: boolean,
+  controllable: readonly SeatId[],
+): BgmName {
+  if (outcome && !animating) return resultBgm(outcome, controllable);
+  return combat ? 'dragon_battle' : 'board';
+}
 
 export interface EliminationRecord {
   readonly round: number;

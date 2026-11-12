@@ -94,6 +94,7 @@ export interface RulesConfig {
   readonly pvpGraceRounds: number;
   readonly pvpWinBonusCoins: number;
   readonly eventHpFloor: number;
+  readonly coinShortfallHpPerCoin: number;
   readonly jobs: Readonly<Record<JobId, JobDef>>;
   readonly passives: {
     readonly indomitableUses: number;
@@ -276,6 +277,7 @@ export type GameEvent =
       effect: EffectSpec['kind'];
       delta: number;
       after: number;
+      cause?: 'coinShortfall';
       item?: ItemId;
       stat?: 'atk' | 'def';
     }

@@ -13,6 +13,7 @@ import {
   sfxPath,
   tileImagePath,
 } from '../src/types/assetPaths';
+import { gameBgm, resultBgm } from '../src/types/resultView';
 
 /** Minimal client that records its lifecycle. */
 function fakeClient() {
@@ -134,13 +135,37 @@ describe('asset paths', () => {
   it('builds the agreed file names', () => {
     expect(tileImagePath('POISON_SWAMP')).toBe('images/tiles/poison_swamp.png');
     expect(sfxPath('dice_roll')).toBe('audio/sfx/dice_roll.mp3');
-    for (const scene of BGM_NAMES) {
+    for (const scene of BGM_NAMES.slice(0, 3)) {
       const path = bgmPath(scene);
       expect(path).toBe('audio/bgm/dragon_foothills.mp3');
       expect(
         statSync(fileURLToPath(new URL(`../public/assets/${path}`, import.meta.url))).size,
       ).toBeGreaterThan(2_000_000);
     }
+    expect(bgmPath('result_victory')).toBe('audio/bgm/result_victory.mp3');
+    expect(bgmPath('result_defeat')).toBe('audio/bgm/result_defeat.mp3');
+    expect(bgmPath('result_draw')).toBe('audio/bgm/result_draw.mp3');
+    for (const scene of BGM_NAMES.slice(3)) {
+      expect(
+        statSync(fileURLToPath(new URL(`../public/assets/${bgmPath(scene)}`, import.meta.url)))
+          .size,
+      ).toBeGreaterThan(50_000);
+    }
+  });
+
+  it('selects final music for a local win, loss, draw, and spectator', () => {
+    expect(resultBgm({ kind: 'dragon', winner: 0 }, [0])).toBe('result_victory');
+    expect(resultBgm({ kind: 'lastSurvivor', winner: 1 }, [0])).toBe('result_defeat');
+    expect(resultBgm({ kind: 'draw', winner: null }, [0])).toBe('result_draw');
+    expect(resultBgm({ kind: 'dragon', winner: 1 }, [])).toBe('result_victory');
+  });
+
+  it('switches at the result overlay, after the final animation and combat', () => {
+    const outcome = { kind: 'dragon' as const, winner: 0 };
+    expect(gameBgm(null, false, false, [0])).toBe('board');
+    expect(gameBgm(outcome, true, false, [0])).toBe('board');
+    expect(gameBgm(outcome, true, true, [0])).toBe('dragon_battle');
+    expect(gameBgm(outcome, false, false, [0])).toBe('result_victory');
   });
 
   it('normalizes manifest entries and skips dotfiles', () => {

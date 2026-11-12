@@ -40,6 +40,8 @@ export function validateRules(rules: RulesConfig): void {
   if (!Number.isSafeInteger(rules.pvpWinBonusCoins) || rules.pvpWinBonusCoins < 0)
     fail('pvpWinBonusCoins must be a non-negative safe integer');
   if (rules.eventHpFloor < 1) fail('eventHpFloor must be >= 1');
+  if (!Number.isSafeInteger(rules.coinShortfallHpPerCoin) || rules.coinShortfallHpPerCoin < 0)
+    fail('coinShortfallHpPerCoin must be a non-negative safe integer');
 }
 
 export function validateSetup(setup: GameSetup): void {

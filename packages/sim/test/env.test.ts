@@ -150,7 +150,7 @@ describe('env server (in-process)', () => {
     expect(
       call(new EnvServer(), 1, 'reset', { config: { combat_resolver: 'outcome' } }).result
         ?.outcome_model_id,
-    ).toBe('outcome-v1-rush3');
+    ).toBe('outcome-v1-rush4-transfer');
   });
 
   it('rejects bad configs', () => {

@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const BGM_PATH = 'audio/bgm/dragon_foothills.mp3';
 
 vi.mock('../src/services/assets', () => ({
-  hasAsset: (path: string) => path === BGM_PATH,
+  hasAsset: (path: string) => path === BGM_PATH || path.startsWith('audio/bgm/result_'),
   assetUrl: (path: string) => `/assets/${path}`,
 }));
 vi.mock('../src/services/storage', () => ({
@@ -49,8 +49,10 @@ const sources: (FakeNode & {
   loop: boolean;
   started: boolean;
   stopped: boolean;
-  start(): void;
-  stop(): void;
+  startAt: number;
+  stopAt: number;
+  start(at: number): void;
+  stop(at: number): void;
 })[] = [];
 const gains: (FakeNode & { gain: ReturnType<typeof param> })[] = [];
 let decodeFails = false;
@@ -88,11 +90,15 @@ class FakeAudioContext {
       loop: false,
       started: false,
       stopped: false,
-      start() {
+      startAt: -1,
+      stopAt: -1,
+      start(at: number) {
         this.started = true;
+        this.startAt = at;
       },
-      stop() {
+      stop(at: number) {
         this.stopped = true;
+        this.stopAt = at;
       },
     });
     sources.push(source);
@@ -121,6 +127,52 @@ beforeEach(() => {
 });
 
 describe('file BGM through the audio bus', () => {
+  it('replaces board music with the selected result file without overlap and obeys mute', async () => {
+    const audio = await import('../src/services/audio');
+    audio.playBgm('board');
+    audio.unlockAudio();
+    await vi.waitFor(() => expect(sources).toHaveLength(1));
+
+    audio.playBgm('result_victory');
+    await vi.waitFor(() => expect(sources).toHaveLength(2));
+    expect(sources[0]!.stopped).toBe(true);
+    expect(sources[1]!.startAt).toBeGreaterThanOrEqual(sources[0]!.stopAt);
+    expect(fetch).toHaveBeenCalledWith('/assets/audio/bgm/result_victory.mp3');
+    expect(sources[1]!.loop).toBe(true);
+
+    audio.setMuted(true);
+    expect(sources[1]!.stopped).toBe(true);
+    audio.setMuted(false);
+    await vi.waitFor(() => expect(sources).toHaveLength(3));
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('discards a late board decode after the result track is requested', async () => {
+    let releaseBoard: (() => void) | undefined;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => ({
+        ok: true,
+        arrayBuffer: () =>
+          url.endsWith(BGM_PATH)
+            ? new Promise<ArrayBuffer>((resolve) => {
+                releaseBoard = () => resolve(new ArrayBuffer(8));
+              })
+            : Promise.resolve(new ArrayBuffer(8)),
+      })),
+    );
+    const audio = await import('../src/services/audio');
+    audio.playBgm('board');
+    audio.unlockAudio();
+    await vi.waitFor(() => expect(releaseBoard).toBeDefined());
+    audio.playBgm('result_defeat');
+    await vi.waitFor(() => expect(sources).toHaveLength(1));
+    releaseBoard!();
+    await vi.waitFor(() => expect(decodeCount).toBe(2));
+    expect(sources).toHaveLength(1);
+    expect(fetch).toHaveBeenCalledWith('/assets/audio/bgm/result_defeat.mp3');
+  });
+
   it('starts on unlock, shares one decoded file, restarts for scenes, and follows volume and mute', async () => {
     const audio = await import('../src/services/audio');
     audio.playBgm('lobby');
@@ -197,5 +249,13 @@ describe('file BGM through the audio bus', () => {
     audio.playBgm('board');
     expect(elements).toHaveLength(2);
     expect(elements[0]!.pause).toHaveBeenCalledOnce();
+    audio.playBgm('result_draw');
+    expect(elements).toHaveLength(3);
+    expect(elements[1]!.pause).toHaveBeenCalledOnce();
+    expect(elements[2]!.src).toBe('/assets/audio/bgm/result_draw.mp3');
+    audio.setVolume('music', 0.3);
+    expect(elements[2]!.volume).toBe(0.3);
+    audio.setMuted(true);
+    expect(elements[2]!.pause).toHaveBeenCalledOnce();
   });
 });
