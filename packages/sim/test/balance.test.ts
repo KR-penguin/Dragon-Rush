@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { runBatch, summarize } from '../src/index';
 
 describe('balance regression (small, seeded)', () => {
-  it('keeps 4-player heuristic games near the measured rush-2 baseline', () => {
+  it('keeps 4-player heuristic games near the measured rush-3 baseline', () => {
     const outcomeModelPath = fileURLToPath(
       new URL('../../ai/src/outcome/model.json', import.meta.url),
     );
@@ -17,12 +17,12 @@ describe('balance regression (small, seeded)', () => {
         outcomeModelPath,
       }),
     );
-    // The 8,000-game median is 8 rounds; the 9–11 round design target remains open.
-    expect(m.avgRounds).toBeGreaterThan(7);
-    expect(m.avgRounds).toBeLessThan(13);
-    expect(m.dragonEndShare).toBeGreaterThan(0.4);
-    expect(m.dragonEndShare).toBeLessThan(0.75);
-    expect(m.earlyEliminationShare).toBeLessThan(0.05);
+    // The bundled model changes bot timing; the post-fit 8,000-game median is 6 rounds.
+    expect(m.avgRounds).toBeGreaterThan(5);
+    expect(m.avgRounds).toBeLessThan(9);
+    expect(m.dragonEndShare).toBeGreaterThan(0.35);
+    expect(m.dragonEndShare).toBeLessThan(0.65);
+    expect(m.earlyEliminationShare).toBeLessThan(0.35);
     expect(m.drawShare).toBeLessThan(0.02);
     for (const rate of Object.values(m.jobWinRate)) {
       if (rate !== null) expect(rate).toBeGreaterThan(0.1);

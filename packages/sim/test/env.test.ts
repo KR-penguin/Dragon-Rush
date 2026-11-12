@@ -56,7 +56,8 @@ describe('env server (in-process)', () => {
           expect(e.episode_start).toBeDefined();
           expect(e.legal.length).toBeGreaterThan(0);
         } else {
-          expect(e.legal.length).toBeGreaterThanOrEqual(2);
+          expect(e.legal.length).toBeGreaterThan(0);
+          if (e.legal.length === 1) expect(e.phase).toBe('CHOOSE_PVP_TARGET');
         }
       }
     }
@@ -149,7 +150,7 @@ describe('env server (in-process)', () => {
     expect(
       call(new EnvServer(), 1, 'reset', { config: { combat_resolver: 'outcome' } }).result
         ?.outcome_model_id,
-    ).toBe('outcome-v1-rush2');
+    ).toBe('outcome-v1-rush3');
   });
 
   it('rejects bad configs', () => {
