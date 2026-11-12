@@ -26,6 +26,7 @@ import { statOptions } from '../types/decisionView';
 import { DRAGON_NAME, PHASE_LABEL, seatColor } from '../types/labels';
 import { playerCards, seatName } from '../types/playerView';
 import { outcomeHeadline, resultRows } from '../types/resultView';
+import { CombatLayer } from './game/CombatLayer';
 import { DecisionDialogs } from './game/DecisionDialogs';
 import { FxLayer, FxSettingsDock, ShakeContainer, createBoardFxResolver } from '../fx';
 
@@ -203,6 +204,8 @@ export function GamePage({ session, onExit, onRestart }: GamePageProps) {
       />
 
       <DecisionDialogs ui={ui} state={state} nameOf={nameOf} />
+
+      <CombatLayer store={store} />
 
       {combat && (
         <CombatOverlay view={combat} lookOf={lookOf} onSkip={() => store.getState().snap()} />

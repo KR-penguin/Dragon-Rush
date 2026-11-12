@@ -1,6 +1,7 @@
 import { DEFAULT_RULES } from '@dragon-rush/engine';
 import { SeatEditor } from '../components/setup/SeatEditor';
 import { useLocalSetup } from '../hooks/useLocalSetup';
+import { CombatOptions } from './setup/CombatOptions';
 import {
   jobStatScale,
   MAX_ROUND_OPTIONS,
@@ -60,6 +61,7 @@ export function LocalSetupPage({ onBack }: LocalSetupPageProps) {
             ))}
           </div>
         </div>
+        <CombatOptions />
         <p className="muted setup-note">턴 순서는 게임을 시작할 때 무작위로 정해집니다.</p>
       </section>
 

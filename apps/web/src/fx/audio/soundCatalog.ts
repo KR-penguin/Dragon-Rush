@@ -23,6 +23,11 @@ export const EXTRA_SOUND_NAMES = [
   'thud',
   'chime',
   'clink',
+  // Real-time combat
+  'dash',
+  'shot',
+  'telegraph',
+  'clash',
 ] as const;
 export type ExtraSoundName = (typeof EXTRA_SOUND_NAMES)[number];
 export type SoundName = SfxName | ExtraSoundName;
@@ -110,6 +115,11 @@ export const SOUND_SPEC: Readonly<Record<SoundName, SoundSpec>> = {
   thud: spec(),
   chime: spec({ volume: 0.8 }),
   clink: spec({ volume: 0.55 }),
+  dash: spec({ volume: 0.6 }),
+  shot: spec({ volume: 0.7 }),
+  // Recognition cue: identical every time, like the breath charge.
+  telegraph: spec({ vary: false, maxVoices: 2 }),
+  clash: spec({ maxVoices: 1, duck: true }),
 };
 
 export const SOUND_EXTENSIONS = ['mp3', 'ogg', 'wav'] as const;
