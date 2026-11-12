@@ -85,7 +85,7 @@ env.close()
 | 인덱스 | 이름 | 내용 |
 |---|---|---|
 | 213 / 214 / 215 | `g.round` / `g.maxRounds` / `g.roundsLeftFrac` | round/100, maxRounds/100, 남은 라운드 비율 (무제한이면 0) |
-| 216 / 217 | `g.graceLeft` / `g.pvpEnabled` | 초반 보호 남은 라운드/3(`rush-1`은 보호 2라운드라 시작 값 0.67), 이번 라운드에 PvP 가능 여부(라운드 3부터 1) |
+| 216 / 217 | `g.graceLeft` / `g.pvpEnabled` | 초반 보호 남은 라운드/3(`rush-2`는 보호 2라운드라 시작 값 0.67), 이번 라운드에 PvP 가능 여부(라운드 3부터 1) |
 | 218–220 | `g.numPlayers` | 시작 인원 one-hot [2, 3, 4] |
 | 221 | `g.aliveCount` | 생존자 수/4 |
 | 222–227 | `g.phase` | [PRE_ROLL, MOVE_ADJUST, CHOOSE_PVP_TARGET, SHIELD_DECISION, TRAINING_CHOICE, POST_MOVE] |
@@ -150,7 +150,8 @@ env.obs_layout                   # [{"name", "offset", "length"}, ...] 서버가
 | `opponents` | `"heuristic"` | `random`, `random:uniform`, `heuristic`(성향 무작위), `heuristic:aggro`/`growth`/`rush`, 또는 좌석별 목록 |
 | `jobs` | `"random"` | 좌석별 직업 목록으로 고정 가능 |
 | `max_rounds` | 100 | `None`이면 무제한 |
-| `combat_resolver` | `"dice"` | `dice`: 보드 주사위 전투 / `sim`: 두 `scripted:balanced` 봇의 실시간 전투 결과. 학습한 전투 모델은 사용하지 않으며 `obs_v1`은 그대로 |
+| `combat_resolver` | `"outcome"` | `outcome`: 내장 `outcome_v1`을 게임 RNG로 샘플링 / `sim`: 두 `scripted:balanced` 봇의 실제 60Hz 전투 / `dice`: 선택형 빠른 전투의 보드 주사위 판정. 관측 `obs_v1`은 그대로 |
+| `outcome_model`, `outcome_skill_noise` | `None`, `0.5` | 외부 모델 JSON 경로를 선택적으로 지정한다. 경로가 없으면 내장 `rush-2`/`combat-2` 모델을 쓴다. 모델 버전이 규칙과 다르면 reset 오류다. skill noise는 outcome 샘플의 승률 로짓 이동 크기 |
 | `rules`, `reward_shaping`, `return_events` | `"default"`, `None`, `False` | 보드 규칙 일부 덮어쓰기 / §5 보상 계수 / 전이 이벤트 포함 |
 | `server_cmd`, `cwd` | — | env 서버 실행 커맨드와 저장소 루트 (환경변수 `RPGBOARD_ENV_CMD`, `RPGBOARD_ROOT`) |
 
@@ -158,10 +159,10 @@ env.obs_layout                   # [{"name", "offset", "length"}, ...] 서버가
 - **셀프플레이**: `reward`는 좌석별 `(4,)` 배열이다. `info["acting_seat"]`로 그 결정을 어느 좌석 버퍼에 넣을지 고르고, 탈락이나 종료 시에는 해당 좌석 버퍼의 마지막 전이에 `reward[seat]`를 더한다.
 - **결정성**: 같은 `seed`와 같은 행동 열이면 같은 궤적이 나온다.
 
-## 7. 기준선 (`rush-1` 시뮬)
+## 7. 기준선 (`rush-2`, 실제 60Hz 전투)
 
-- 무작위 정책 좌석의 승률은 4인 2.7%, 2인 16.3%다. 휴리스틱 봇끼리는 공정 승률(4인 25%) 근처다.
-- 한 판 평균 10.2라운드(4인, p95 15)이고, 용 처치로 끝나는 비율은 4인 88%, 2인 64%다. 휴리스틱 봇의 용 도전 성공률은 79%다. 규칙이 `final-1`(평균 23.5라운드)에서 바뀌었으므로 그 규칙으로 학습한 모델은 다시 학습해야 한다.
+- 4인 휴리스틱 8,000판(`pnpm sim --combat sim --outcome-model packages/ai/src/outcome/model.json --seed 2026`): 평균 9.19라운드, 중앙 9, p95 15, 용 처치 종료 66.5%, 직업 승률 21.1~28.4%, 3라운드 안 탈락 2.0%. 보드 턴당 10초 가정과 실제 sim 전투 시간 합산 평균 5.84분이다. 사람 턴은 다를 수 있다.
+- `rush-1`의 주사위 전투 결과(4인 용 처치 종료 87.5%)나 그 규칙에서 학습한 보드 정책을 현재 기준선으로 사용하지 않는다. 전투 정책과 보드 정책은 각각 별도 env에서 학습한다.
 - 무작위 정책은 `CHALLENGE_DRAGON`(2번)을 자주 눌러 금방 탈락한다. 초반에는 이 행동의 로짓을 낮게 초기화하거나, `opponents="random"`으로 쉬운 상대부터 시작하는 것도 방법이다.
 
 ## 8. 학습한 모델을 게임에 넣으려면
@@ -261,7 +262,7 @@ env.close()
 | `opponent` | `"scripted:pool"` | `scripted:balanced`·`aggressive`·`cautious`·`idle`·`random`·`pool`(에피소드마다 앞의 세 성향 중 하나). `p0`에서 사용 |
 | `mode_mix` | `{"pvp": 0.75, "dragon": 0.25}` | 에피소드별 결투/용전 확률 |
 | `jobs` | `"uniform"` | 또는 슬롯별 목록, 예 `["ninja", "uniform"]` (같은 직업 대결 허용) |
-| `stat_sampler` | `"uniform_board"` | `rush-1` 직업 스탯 + 강화 단계(보드 휴리스틱 3000판 로그의 p5~p95 범위)에서 균등 표본 / `"start"`(시작 스탯) / `"file:<path>"`(`pnpm sim --games 10000 --log-fights <path>`가 만든 `stat_dist_v1`) |
+| `stat_sampler` | `"uniform_board"` | `rush-2`에서도 유지된 직업 시작 스탯 + 강화 단계(과거 보드 휴리스틱 로그의 p5~p95 범위)에서 균등 표본 / `"start"`(시작 스탯) / `"file:<path>"`(`packages/sim/data/rush2_stat_dist_v1.json` 또는 `pnpm sim --combat sim --log-fights <path>`의 `stat_dist_v1`) |
 | `action_repeat` / `obs_delay` | 4 / `(4, 18)` | 결정당 라이브 틱 / 반응 지연 범위(정수면 고정) |
 | `flat_actions` / `mirror` | False / True | |
 | `reward`, `return_events` | None, False | shaping 계수(`k_start`, `k_end`, `anneal_decisions`, `approach`) / 전투 이벤트 포함 |
