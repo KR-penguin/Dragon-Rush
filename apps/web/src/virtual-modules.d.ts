@@ -1,5 +1,5 @@
 declare module 'virtual:asset-manifest' {
-  /** Paths relative to `public/assets/`, using `/` separators. */
-  const files: readonly string[];
+  /** SHA-256 digests indexed by paths relative to `public/assets/`. */
+  const files: Readonly<Record<string, string>>;
   export default files;
 }
