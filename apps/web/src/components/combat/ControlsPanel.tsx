@@ -37,6 +37,13 @@ export function ControlsPanel({ pressed, testing, onToggleTest, onClose }: Contr
         <KeycapHints layout={KEY_LAYOUTS.solo} lit={lit} />
       </section>
       <section className="controls-section">
+        <h3>마우스·터치</h3>
+        <p>
+          전투 경기장 안에서 왼쪽 클릭하거나 터치하면 기본 공격합니다. 누르고 있으면 공격을
+          유지하고, 경기장 밖으로 나가거나 손을 떼면 멈춥니다. 핫시트에서는 P1이 사용합니다.
+        </p>
+      </section>
+      <section className="controls-section">
         <h3>게임패드</h3>
         <p>
           스틱 또는 십자키로 이동 · <kbd className="keycap">A</kbd> 공격 ·{' '}
