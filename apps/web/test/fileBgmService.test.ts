@@ -2,10 +2,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const MENU_PATH = 'audio/bgm/menu.mp3';
 const BATTLE_PATH = 'audio/bgm/battle.mp3';
+const VICTORY_PATH = 'audio/bgm/triumph_of_the_hero.mp3';
 
 vi.mock('../src/services/assets', () => ({
   hasAsset: (path: string) =>
-    path === MENU_PATH || path === BATTLE_PATH || path.startsWith('audio/bgm/result_'),
+    path === MENU_PATH ||
+    path === BATTLE_PATH ||
+    path === VICTORY_PATH ||
+    path.startsWith('audio/bgm/result_'),
   assetUrl: (path: string) => `/assets/${path}`,
 }));
 vi.mock('../src/services/storage', () => ({
@@ -152,7 +156,7 @@ describe('file BGM through the audio bus', () => {
     await vi.waitFor(() => expect(sources).toHaveLength(2));
     expect(sources[0]!.stopped).toBe(true);
     expect(sources[1]!.startAt).toBeGreaterThanOrEqual(sources[0]!.stopAt);
-    expect(fetch).toHaveBeenCalledWith('/assets/audio/bgm/result_victory.mp3');
+    expect(fetch).toHaveBeenCalledWith(`/assets/${VICTORY_PATH}`);
     expect(sources[1]!.loop).toBe(true);
 
     audio.setMuted(true);

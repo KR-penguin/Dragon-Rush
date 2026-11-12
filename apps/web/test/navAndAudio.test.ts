@@ -1,8 +1,9 @@
 import type { GameEvent } from '@dragon-rush/engine';
-import { statSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { readFileSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { sfxForEvent } from '../src/animation/eventSfx';
+import { sfxForEvent, soundCuesForEvent } from '../src/animation/eventSfx';
 import { LocalGameClient } from '../src/services/LocalGameClient';
 import type { GameClient, GameUpdate, SubmitResult } from '../src/services/gameClient';
 import { createNavStore } from '../src/store/navStore';
@@ -123,11 +124,12 @@ describe('sound mapping', () => {
     expect(sfxForEvent({ type: 'TurnEnded', seat: 0 }, [0])).toBeNull();
   });
 
-  it('plays victory only when a local seat wins', () => {
-    expect(sfxForEvent(ended(0), [0])).toBe('victory');
+  it('leaves victory music to the result BGM without an old jingle', () => {
+    expect(sfxForEvent(ended(0), [0])).toBeNull();
+    expect(soundCuesForEvent(ended(0), { controllable: [0] })).toEqual([]);
     expect(sfxForEvent(ended(1), [0])).toBe('defeat');
     expect(sfxForEvent(ended(null), [0])).toBe('defeat');
-    expect(sfxForEvent(ended(1), [])).toBe('victory');
+    expect(sfxForEvent(ended(1), [])).toBeNull();
   });
 });
 
@@ -142,7 +144,18 @@ describe('asset paths', () => {
         statSync(fileURLToPath(new URL(`../public/assets/${path}`, import.meta.url))).size,
       ).toBeGreaterThan(2_000_000);
     }
-    expect(bgmPath('result_victory')).toBe('audio/bgm/result_victory.mp3');
+    expect(bgmPath('result_victory')).toBe('audio/bgm/triumph_of_the_hero.mp3');
+    expect(
+      createHash('sha256')
+        .update(
+          readFileSync(
+            fileURLToPath(
+              new URL('../public/assets/audio/bgm/triumph_of_the_hero.mp3', import.meta.url),
+            ),
+          ),
+        )
+        .digest('hex'),
+    ).toBe('1db3424d208fba9f14e51d46ad6589f93149d96b82abaffddc2d872f380502f9');
     expect(bgmPath('result_defeat')).toBe('audio/bgm/result_defeat.mp3');
     expect(bgmPath('result_draw')).toBe('audio/bgm/result_draw.mp3');
     for (const scene of BGM_NAMES.slice(3)) {

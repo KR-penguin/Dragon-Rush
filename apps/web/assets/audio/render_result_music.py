@@ -138,5 +138,5 @@ def render(name, theme):
 
 for theme_name, theme_score in THEMES.items():
     if theme_name == "victory":
-        continue  # Keep the project owner's supplied result_victory.mp3.
+        continue  # Keep the project owner's supplied triumph_of_the_hero.mp3.
     render(theme_name, theme_score)

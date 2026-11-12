@@ -38,7 +38,7 @@ const BGM_FILES: Readonly<Record<BgmName, string>> = {
   lobby: 'menu.mp3',
   board: 'menu.mp3',
   dragon_battle: 'battle.mp3',
-  result_victory: 'result_victory.mp3',
+  result_victory: 'triumph_of_the_hero.mp3',
   result_defeat: 'result_defeat.mp3',
   result_draw: 'result_draw.mp3',
 };

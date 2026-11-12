@@ -383,7 +383,7 @@ export function fightFxFor(e: CombatEvent, ctx: FightFxContext): FightFxCommand[
       return [{ type: 'cues', cues: [sound('chime'), { type: 'caption', text: '시간 종료!' }] }];
     case 'FightEnded': {
       const won = ctx.localSides.length === 0 || ctx.localSides.includes(e.result.winner);
-      return [{ type: 'cues', cues: [sound(won ? 'victory' : 'defeat')] }];
+      return won ? [] : [{ type: 'cues', cues: [sound('defeat')] }];
     }
     case 'ProjectileSpawn':
     case 'BreathTick':

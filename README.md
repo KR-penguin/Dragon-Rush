@@ -5,7 +5,7 @@
 ## 현재 상태
 
 - **P0~P7 구현 완료.** 규칙 엔진, 학습 환경(env 서버 + Python 클라이언트), 밸런스 시뮬, 웹 로컬 플레이, 온라인 멀티플레이 서버가 동작한다.
-- **남은 사용자 입력**: ① 가중치 JSON 포맷과 패리티 샘플을 받으면 모델 어댑터를 구현해 모델 좌석을 켠다(P6). ② 추가 이미지·효과음과 배포 대상을 받으면 적용한다(P7). 모델 좌석은 "준비 중"이고 일부 시각·효과음에는 game-icons SVG와 절차 CSS·Canvas·Web Audio 대체재를 쓴다. 메뉴·보드에는 제공받은 `menu.mp3`, PvP·PvE·용전에는 `battle.mp3`, 승리 결과에는 `result_victory.mp3`(제공받은 Triumph of the Hero)를 사용한다. 패배·무승부 음악은 기존 파일이다.
+- **남은 사용자 입력**: ① 가중치 JSON 포맷과 패리티 샘플을 받으면 모델 어댑터를 구현해 모델 좌석을 켠다(P6). ② 추가 이미지·효과음과 배포 대상을 받으면 적용한다(P7). 모델 좌석은 "준비 중"이고 일부 시각·효과음에는 game-icons SVG와 절차 CSS·Canvas·Web Audio 대체재를 쓴다. 메뉴·보드에는 제공받은 `menu.mp3`, PvP·PvE·용전에는 `battle.mp3`, 승리 결과에는 `triumph_of_the_hero.mp3`(제공받은 Triumph of the Hero)를 사용한다. 패배·무승부 음악은 기존 파일이다.
 - 보드(`obs_v2`/`act_v1`), PvP, 용전(`cobs_v1`/`cact_v1`) 학습 환경을 각각 실행할 수 있다. 명령과 관측·행동·보상 계약은 [학습 시작 가이드](docs/training-environments.md)에 있다. 확인이 필요한 사항은 [개발 계획서 §2](docs/development-plan.md)와 [기획서 §16](docs/game-design.md)에 있다.
 
 ## 게임 한눈에 보기

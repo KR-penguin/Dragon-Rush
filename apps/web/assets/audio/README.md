@@ -1,6 +1,6 @@
 # Dragon Rush music
 
-`menu.mp3`, `battle.mp3`, and `result_victory.mp3` in
+`menu.mp3`, `battle.mp3`, and `triumph_of_the_hero.mp3` in
 `apps/web/public/assets/audio/bgm/` were provided by the project owner.
 The victory track is `Triumph of the Hero.mp3` (119.736 seconds).
 The menu track plays on the home, lobby, and board screens; the battle track

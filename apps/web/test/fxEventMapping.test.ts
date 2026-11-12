@@ -301,10 +301,10 @@ describe('event → effect mapping', () => {
     expect(sounds(dragon)).toEqual(['dragon_roar']);
   });
 
-  it('GameEnded: confetti and a fanfare for a local (or spectated) win, gloom otherwise', () => {
+  it('GameEnded: confetti for a win without an old jingle, gloom otherwise', () => {
     const win = fxForEvent({ type: 'GameEnded', outcome: { kind: 'dragon', winner: 0 } }, ctx());
     expect(ofType(win, 'burst').filter((c) => c.preset === 'confetti')).toHaveLength(2);
-    expect(sounds(win)).toEqual(['victory']);
+    expect(sounds(win)).toEqual([]);
     const lose = fxForEvent(
       { type: 'GameEnded', outcome: { kind: 'lastSurvivor', winner: 1 } },
       ctx(),
@@ -316,7 +316,7 @@ describe('event → effect mapping', () => {
       { type: 'GameEnded', outcome: { kind: 'lastSurvivor', winner: 1 } },
       ctx({ controllable: [] }),
     );
-    expect(sounds(spectated)).toEqual(['victory']);
+    expect(sounds(spectated)).toEqual([]);
   });
 
   it('tracks the fight on screen', () => {

@@ -152,7 +152,7 @@ describe('sim event → effects', () => {
       ),
     ).toEqual(['telegraph']);
     const won = ev({ type: 'FightEnded', result: { winner: 'a', hpA: 3, hpB: 0 } });
-    expect(sounds(fightFxFor(won, ctx))).toEqual(['victory']);
+    expect(sounds(fightFxFor(won, ctx))).toEqual([]);
     expect(sounds(fightFxFor(won, { ...ctx, localSides: ['b'] }))).toEqual(['defeat']);
     const swing = ev({
       type: 'AttackStart',

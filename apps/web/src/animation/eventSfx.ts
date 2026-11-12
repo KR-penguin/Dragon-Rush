@@ -28,7 +28,7 @@ export function sfxForEvent(e: GameEvent, controllable: readonly SeatId[]): SfxN
     case 'CombatHit':
       return e.breath ? 'dragon_breath' : 'attack_hit';
     case 'GameEnded':
-      return isLocalWin(e, controllable) ? 'victory' : 'defeat';
+      return isLocalWin(e, controllable) ? null : 'defeat';
     default:
       return null;
   }
@@ -137,7 +137,7 @@ export function soundCuesForEvent(e: GameEvent, ctx: SoundContext): SoundCue[] {
     case 'PlayerEliminated':
       return [{ name: 'eliminate' }];
     case 'GameEnded':
-      return [{ name: isLocalWin(e, ctx.controllable) ? 'victory' : 'defeat' }];
+      return isLocalWin(e, ctx.controllable) ? [] : [{ name: 'defeat' }];
     default:
       return [];
   }
