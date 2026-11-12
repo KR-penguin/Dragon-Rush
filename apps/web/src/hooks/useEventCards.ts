@@ -1,5 +1,6 @@
 import type { GameEvent, SeatId } from '@dragon-rush/engine';
 import { useEffect, useState } from 'react';
+import { EVENT_CARD_MS } from '../animation/eventTimeline';
 import { getFxAnchor } from '../services/fxAnchors';
 import type { GameStore } from '../store/gameStore';
 import { eventCardFor, type EventCardFace } from '../types/eventCards';
@@ -12,7 +13,7 @@ export interface LiveCard {
   readonly face: EventCardFace;
   /** False while a cave card waits face down for its mystery card. */
   readonly revealed: boolean;
-  /** Total time on screen since `born` at the current speed (rise, flip and the 1.2 s sticky). */
+  /** Total time on screen since `born` at the current speed. */
   readonly lifeMs: number;
   readonly born: number;
   readonly speed: number;
@@ -28,9 +29,6 @@ export interface Flyer {
   readonly ms: number;
 }
 
-const RISE_MS = 200;
-const FLIP_MS = 180;
-const STICKY_MS = 1200;
 const FLY_MS = 250;
 /** Where the card sits: the CSS centres `.event-card` here (fraction of the viewport). */
 export const CARD_SCREEN_POS = { x: 0.5, y: 0.42 } as const;
@@ -76,7 +74,7 @@ export function useEventCards(
     };
 
     const showCard = (face: EventCardFace, speed: number) => {
-      const lifeMs = (RISE_MS + FLIP_MS + STICKY_MS) / speed;
+      const lifeMs = EVENT_CARD_MS / speed;
       const now = performance.now();
       setCards((cs) => {
         const last = cs.at(-1);

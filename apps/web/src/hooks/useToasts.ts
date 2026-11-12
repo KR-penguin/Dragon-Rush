@@ -12,9 +12,9 @@ export interface Toast {
 }
 
 const MAX_TOASTS = 3;
-const TOAST_MS = 4000;
+export const TOAST_MS = 6000;
 
-/** The last few events as short toasts (3 at a time, 4 s each); the full log lives in the chronicle. */
+/** The last few events as short toasts; the full log lives in the chronicle. */
 export function useToasts(store: GameStore): Toast[] {
   const [toasts, setToasts] = useState<Toast[]>([]);
   useEffect(() => {

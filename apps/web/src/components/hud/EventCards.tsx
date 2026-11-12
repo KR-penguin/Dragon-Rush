@@ -1,4 +1,9 @@
 import { useLayoutEffect, useRef, type CSSProperties } from 'react';
+import {
+  EVENT_CARD_FADE_MS,
+  EVENT_CARD_FLIP_MS,
+  EVENT_CARD_RISE_MS,
+} from '../../animation/eventTimeline';
 import type { Flyer, LiveCard } from '../../hooks/useEventCards';
 import { getFxAnchor } from '../../services/fxAnchors';
 import { seatColor } from '../../types/labels';
@@ -18,7 +23,7 @@ function EventCard({ card, reduced }: { card: LiveCard; reduced: boolean }) {
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el || reduced || typeof el.animate !== 'function') return;
-    // Rise from the tile to the centre: scale .4 -> 1 over 200 ms with back-out easing.
+    // Rise from the tile to the centre with back-out easing.
     // Transform only: opacity here would flatten the 3D flip inside the card.
     const tile = face.tile === null ? null : getFxAnchor({ kind: 'tile', id: face.tile });
     const r = el.getBoundingClientRect();
@@ -29,7 +34,7 @@ function EventCard({ card, reduced }: { card: LiveCard; reduced: boolean }) {
         { transform: `translate(${dx}px, ${dy}px) scale(0.4)` },
         { transform: 'translate(0, 0) scale(1)' },
       ],
-      { duration: 200 / card.speed, easing: 'cubic-bezier(.34,1.56,.64,1)' },
+      { duration: EVENT_CARD_RISE_MS / card.speed, easing: 'cubic-bezier(.34,1.56,.64,1)' },
     );
     // Runs once per card: later updates only turn the card over.
   }, [card.key]);
@@ -37,7 +42,9 @@ function EventCard({ card, reduced }: { card: LiveCard; reduced: boolean }) {
   const style = {
     '--seat-color': seatColor(face.seat),
     '--life': `${card.lifeMs}ms`,
-    '--flip-delay': `${200 / card.speed}ms`,
+    '--fade-ms': `${EVENT_CARD_FADE_MS / card.speed}ms`,
+    '--flip-delay': `${EVENT_CARD_RISE_MS / card.speed}ms`,
+    '--flip-ms': `${EVENT_CARD_FLIP_MS / card.speed}ms`,
   } as CSSProperties;
   return (
     <div

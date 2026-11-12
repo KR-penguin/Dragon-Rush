@@ -81,10 +81,17 @@ export function BoardTile({
   const style: CSSProperties = { gridRow: row + 1, gridColumn: col + 1 };
   const hover = {
     onPointerEnter: (e: { currentTarget: HTMLElement }) => onHover?.(index, e.currentTarget),
-    onPointerLeave: () => onHover?.(null, null),
+    onPointerLeave: (e: { currentTarget: HTMLElement }) => {
+      const el = e.currentTarget;
+      onHover?.(el.matches(':focus') ? index : null, el.matches(':focus') ? el : null);
+    },
     onFocus: (e: { currentTarget: HTMLElement }) => onHover?.(index, e.currentTarget),
-    onBlur: () => onHover?.(null, null),
+    onBlur: (e: { currentTarget: HTMLElement }) => {
+      const el = e.currentTarget;
+      onHover?.(el.matches(':hover') ? index : null, el.matches(':hover') ? el : null);
+    },
   };
+  const descriptionId = `tile-tooltip-${index}`;
   const body = (
     <>
       <span className="tile-face parchment">
@@ -105,6 +112,7 @@ export function BoardTile({
         style={style}
         onClick={onPick}
         aria-label={`${name}(으)로 텔레포트`}
+        aria-describedby={descriptionId}
         {...fxAnchorProps({ kind: 'tile', id: index })}
         {...hover}
       >
@@ -116,6 +124,10 @@ export function BoardTile({
     <div
       className={className}
       style={style}
+      role="group"
+      tabIndex={0}
+      aria-label={`${index}번 칸 ${name}`}
+      aria-describedby={descriptionId}
       {...fxAnchorProps({ kind: 'tile', id: index })}
       {...hover}
     >

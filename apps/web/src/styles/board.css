@@ -5,11 +5,13 @@
  * mix-blend-mode, isolation, contain: paint. They silently flatten the 3D scene.
  */
 
+/* 3D parent planes can intercept far tiles; leave input to tiles and lair controls. */
 .stage {
   position: absolute;
   left: 0;
   top: 0;
   transform-origin: 0 0;
+  pointer-events: none;
 }
 
 .camera {
@@ -17,6 +19,7 @@
   inset: 0;
   transform-style: preserve-3d;
   transform-origin: 50% 50%;
+  pointer-events: none;
 }
 
 .board3d {
@@ -25,6 +28,7 @@
   transform-style: preserve-3d;
   transform: rotateX(var(--tilt));
   transition: transform 0.45s var(--ease-camera);
+  pointer-events: none;
 }
 
 /* Walnut rim with a gold bead, drawn just under the plane. */
@@ -33,6 +37,7 @@
   inset: -28px;
   border-radius: 26px;
   transform: translateZ(-2px);
+  pointer-events: none;
   background-color: var(--wood);
   background-image:
     radial-gradient(circle at 50% 45%, rgba(255, 140, 60, 0.18), transparent 55%),
@@ -61,6 +66,7 @@
   inset: 0;
   display: grid;
   transform-style: preserve-3d;
+  pointer-events: none;
 }
 
 /* ---------- Tiles ---------- */
@@ -76,7 +82,12 @@
   font: inherit;
   text-align: center;
   transform-style: preserve-3d;
+  pointer-events: auto;
   transition: transform 0.15s ease-out;
+}
+
+.tile > * {
+  pointer-events: none;
 }
 
 .tile-face {
@@ -256,7 +267,8 @@
 }
 
 /* Hover lift, legend lift, active, preview, targets */
-.tile:hover {
+.tile:hover,
+.tile:focus-visible {
   transform: translateZ(6px);
 }
 

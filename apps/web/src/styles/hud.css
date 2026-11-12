@@ -1229,7 +1229,7 @@
     0 6px 14px rgba(0, 0, 0, 0.5);
   animation:
     toast-in 0.25s var(--ease-out-back) both,
-    toast-out 0.4s ease-in 3.6s forwards;
+    toast-out 0.4s ease-in calc(var(--toast-life) - 400ms) forwards;
 }
 
 .toast button {
@@ -1511,7 +1511,7 @@
   min-width: 180px;
   min-height: 246px;
   perspective: 900px;
-  animation: card-leave 0.25s ease-in calc(var(--life) - 250ms) forwards;
+  animation: card-leave var(--fade-ms) ease-in calc(var(--life) - var(--fade-ms)) forwards;
 }
 
 .event-card-inner {
@@ -1523,7 +1523,7 @@
 }
 
 .event-card-inner.is-revealed {
-  animation: card-flip 0.18s ease-out var(--flip-delay) both;
+  animation: card-flip var(--flip-ms) ease-out var(--flip-delay) both;
 }
 
 .event-card.is-reduced .event-card-inner {
