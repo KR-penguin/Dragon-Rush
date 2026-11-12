@@ -44,9 +44,18 @@ importers:
       '@dragon-rush/ai':
         specifier: workspace:*
         version: link:../../packages/ai
+      '@dragon-rush/combat':
+        specifier: workspace:*
+        version: link:../../packages/combat
+      '@dragon-rush/combat-ai':
+        specifier: workspace:*
+        version: link:../../packages/combat-ai
       '@dragon-rush/engine':
         specifier: workspace:*
         version: link:../../packages/engine
+      '@dragon-rush/netcode':
+        specifier: workspace:*
+        version: link:../../packages/netcode
       '@dragon-rush/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
@@ -78,6 +87,9 @@ importers:
       '@dragon-rush/engine':
         specifier: workspace:*
         version: link:../../packages/engine
+      '@dragon-rush/netcode':
+        specifier: workspace:*
+        version: link:../../packages/netcode
       '@dragon-rush/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
@@ -148,8 +160,20 @@ importers:
 
   packages/engine: {}
 
+  packages/netcode:
+    dependencies:
+      '@dragon-rush/combat':
+        specifier: workspace:*
+        version: link:../combat
+      '@dragon-rush/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+
   packages/protocol:
     dependencies:
+      '@dragon-rush/combat':
+        specifier: workspace:*
+        version: link:../combat
       '@dragon-rush/engine':
         specifier: workspace:*
         version: link:../engine

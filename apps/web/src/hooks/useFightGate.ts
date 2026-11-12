@@ -12,6 +12,11 @@ export function useFightGate(store: GameStore): PendingFight | null {
   const idle = useStore(store, (s) => !isAnimating(s));
   const [shown, setShown] = useState<PendingFight | null>(null);
   if (pending === null && shown !== null) setShown(null);
-  else if (pending !== null && idle && shown?.id !== pending.id) setShown(pending);
+  else if (
+    pending !== null &&
+    idle &&
+    (shown?.id !== pending.id || (pending.replay !== null && shown?.replay !== pending.replay))
+  )
+    setShown(pending);
   return pending === null ? null : shown;
 }

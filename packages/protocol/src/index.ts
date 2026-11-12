@@ -39,3 +39,4 @@ export type {
   ErrorMsg,
   ModelInfo,
 } from './messages';
+export * from './fight/index';

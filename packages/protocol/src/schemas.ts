@@ -45,7 +45,9 @@ export const HandshakeAuthSchema = z.object({
 export const RoomCreateSchema = z.object({ nickname: NicknameSchema }).strict();
 export const RoomJoinSchema = z.object({ roomCode, nickname: NicknameSchema }).strict();
 export const RoomLeaveSchema = z.object({}).strict();
-export const RoomConfigureSchema = z.object({ maxRounds: z.number().int().min(1).max(500).nullable() }).strict();
+export const RoomConfigureSchema = z
+  .object({ maxRounds: z.number().int().min(1).max(500).nullable(), quickCombat: z.boolean().optional() })
+  .strict();
 export const RoomConfigureSeatSchema = z
   .object({
     seat: seatId,

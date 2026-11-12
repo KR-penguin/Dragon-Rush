@@ -13,6 +13,7 @@
     "@dragon-rush/ai": "workspace:*",
     "@dragon-rush/combat": "workspace:*",
     "@dragon-rush/engine": "workspace:*",
+    "@dragon-rush/netcode": "workspace:*",
     "@dragon-rush/protocol": "workspace:*",
     "@fontsource/black-han-sans": "^5.3.0",
     "@fontsource/gowun-batang": "^5.3.0",

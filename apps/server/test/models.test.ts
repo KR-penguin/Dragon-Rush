@@ -72,7 +72,7 @@ describe('model registry', () => {
     await call(C2S.roomCreate, { nickname: 'Host' });
     expect(await call(C2S.roomConfigureSeat, { seat: 1, kind: 'model', modelId: 'missing' })).toMatchObject({ ok: false, error: { code: 'MODEL_NOT_FOUND' } });
     expect((await call(C2S.roomConfigureSeat, { seat: 1, kind: 'model', modelId: 'roller' })).ok).toBe(true);
-    await call(C2S.roomConfigure, { maxRounds: 6 });
+    await call(C2S.roomConfigure, { maxRounds: 6, quickCombat: true });
     await call(C2S.roomSelectJob, { job: 'berserker' });
     expect((await call(C2S.roomStart)).ok).toBe(true);
     const start = Date.now();

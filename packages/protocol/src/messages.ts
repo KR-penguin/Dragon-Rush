@@ -18,6 +18,8 @@ export interface LobbySeat {
 
 export interface RoomOptions {
   maxRounds: number | null;
+  /** 빠른 전투: fights auto-resolve with dice instead of real-time combat. */
+  quickCombat?: boolean;
 }
 
 export interface RoomStateMsg {
