@@ -112,10 +112,10 @@ function fighterBlock(
   );
   // cooldowns and passive
   const iy = 45;
-  const ix = (i: number) => (right ? VIEW_W - 26 - i * 24 : 26 + i * 24);
-  cooldownIcon(ctx, ix(0), iy, KIT_LABEL[f.job].skill.slice(0, 1), skillCooldown(s, f));
-  cooldownIcon(ctx, ix(1), iy, KIT_LABEL[f.job].dash.slice(0, 1), dashCooldown(s, f));
-  passive(ctx, passivePip(s, f), right ? ix(2) + 8 : ix(2) - 8, iy, right, now);
+  const ix = (offset: number) => (right ? VIEW_W - offset : offset);
+  cooldownIcon(ctx, ix(26), iy, KIT_LABEL[f.job].skill, skillCooldown(s, f), right);
+  cooldownIcon(ctx, ix(146), iy, KIT_LABEL[f.job].dash, dashCooldown(s, f), right);
+  passive(ctx, passivePip(s, f), ix(254), iy, right, now);
   ctx.restore();
 }
 
@@ -123,8 +123,9 @@ function cooldownIcon(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
-  glyph: string,
+  label: string,
   cd: CooldownView,
+  right: boolean,
 ): void {
   const r = 9;
   const ready = cd.charges > 0;
@@ -150,12 +151,20 @@ function cooldownIcon(
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = ready ? PAL.bone : PAL.boneDim;
-  ctx.fillText(glyph, x, y + 0.5);
+  ctx.fillText(label.slice(0, 1), x, y + 0.5);
   if (cd.maxCharges > 1) {
     ctx.font = `8px ${FONT_IMPACT}`;
     ctx.fillStyle = PAL.goldHi;
     ctx.fillText(String(cd.charges), x + 8, y - 7);
   }
+  ctx.font = `700 10px ${FONT_UI}`;
+  ctx.textAlign = right ? 'right' : 'left';
+  ctx.fillStyle = ready ? PAL.bone : PAL.goldHi;
+  const state =
+    cd.seconds > 0
+      ? `${cd.seconds.toFixed(1)}초${cd.maxCharges > 1 ? ` (${cd.charges}/${cd.maxCharges})` : ''}`
+      : `${cd.charges}/${cd.maxCharges} 준비`;
+  ctx.fillText(`${label} ${state}`, x + (right ? -14 : 14), y + 0.5, 100);
   ctx.restore();
 }
 

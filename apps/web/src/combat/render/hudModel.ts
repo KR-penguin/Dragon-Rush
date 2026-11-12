@@ -30,24 +30,38 @@ export const secondsLeft = (s: CombatState): number =>
 export interface CooldownView {
   readonly charges: number;
   readonly maxCharges: number;
+  /** Time until the next charge, rounded up to a visible tenth of a second. */
+  readonly seconds: number;
   /** 0 = ready (or full), 1 = just used; the recharge of the next charge. */
   readonly remaining: number;
 }
 
 export function skillCooldown(s: CombatState, f: FighterState): CooldownView {
   const kit = s.rules.jobs[f.job];
+  const timer = f.skillCharges >= kit.skillCharges ? 0 : f.skillTimer;
   const remaining =
     f.skillCharges >= kit.skillCharges
       ? 0
       : Math.min(1, f.skillTimer / Math.max(1, kit.skillCooldown));
-  return { charges: f.skillCharges, maxCharges: kit.skillCharges, remaining };
+  return {
+    charges: f.skillCharges,
+    maxCharges: kit.skillCharges,
+    seconds: Math.ceil(timer / 6) / 10,
+    remaining,
+  };
 }
 
 export function dashCooldown(s: CombatState, f: FighterState): CooldownView {
   const d = s.rules.dashes[s.rules.jobs[f.job].dash];
   const full = d.cooldown + d.ticks;
   const remaining = f.dashCharges >= d.charges ? 0 : Math.min(1, f.dashTimer / Math.max(1, full));
-  return { charges: f.dashCharges, maxCharges: d.charges, remaining };
+  const timer = f.dashCharges >= d.charges ? 0 : f.dashTimer;
+  return {
+    charges: f.dashCharges,
+    maxCharges: d.charges,
+    seconds: Math.ceil(timer / 6) / 10,
+    remaining,
+  };
 }
 
 /** Passive state per job for the HUD pips (불굴 방패, 선제 화살, 회피 8칸, 광폭, 관통). */
