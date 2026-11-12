@@ -381,7 +381,7 @@ createModelPolicy(model: PolicyModel, opts?: { mode?: 'argmax' | 'sample'; tempe
 | growth | 0.6 / 0.4 | 0.25 | 0.80 | 1 | 7 | 0.45 | 6 | 4 |
 | rush | 1.0 / 0 | 0.17 | 0.85 | 0 | 7 | 0.5 | 6 | 99 |
 
-- 기준선 지표(`rush-2`, 실제 전투): 4인 휴리스틱 8,000판 중앙 9/p95 15라운드, 용 처치 종료 66.5%, 직업 승률 21.1~28.4%. 3인·2인 길이와 공정성 한계는 game-design §15에 기록한다. 온라인 대리 플레이는 `heuristic:growth`.
+- 기준선 지표(`rush-2`, 실제 전투): 4인 휴리스틱 8,000판 중앙 8/p95 11라운드, 용 처치 종료 61.3%, 직업 승률 22.1~29.1%. 중앙 9~11 목표는 미달했고 3인·2인 길이와 공정성 한계는 game-design §15에 기록한다. 온라인 대리 플레이는 `heuristic:growth`.
 
 ## 11. 계약 검증 (Vitest, Python은 pytest)
 

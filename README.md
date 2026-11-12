@@ -10,7 +10,7 @@
 
 ## 게임 한눈에 보기
 
-현재 기본 규칙은 `rush-2`다. 4인 휴리스틱 봇 8,000판의 실제 60Hz 전투 기준 중앙 9라운드, p95 15라운드였다. 수치 정본은 [기획서](docs/game-design.md)와 `DEFAULT_RULES`다.
+현재 기본 규칙은 `rush-2`다. 4인 휴리스틱 봇 8,000판의 실제 60Hz 전투 기준 중앙 8라운드, p95 11라운드였다. 길이 목표의 중앙 9~11에는 미달한다. 수치 정본은 [기획서](docs/game-design.md)와 `DEFAULT_RULES`다.
 
 - **인원·보드**: 2~4명(사람·봇·AI 모델 자유 조합). 24칸 순환 링을 주사위 1개(1d6)로 돈다. 모두 0번(출발, 안전지대)에서 코인 10으로 시작하고, 주사위 이동으로 출발 칸을 지나거나 도착하면 코인 +35, HP +6.
 - **칸 이벤트**: 좋은 칸 11, 나쁜 칸 8, 특수 칸 5(출발, 상점 2, 미지의 동굴 2). 예: 고블린 무리 처치 코인 +6, 가시 함정 HP −6. 이벤트로는 죽지 않는다(HP 최소 1).
@@ -37,7 +37,7 @@
 | 기능 | 내용 |
 |---|---|
 | 로컬 플레이 | 핫시트(한 화면에서 2~4명) + vs 봇. 서버 없이 브라우저에서 엔진을 직접 실행한다 |
-| 온라인 멀티플레이 | 6자리 방 코드, 닉네임만 사용(계정 없음). 보드는 서버 권위이며 기본 전투는 서버가 확정하는 60Hz 롤백 전투다(`packages/netcode`). PvP 클라이언트는 입력을 예측하고 서버 확정 입력과 다르면 재시뮬한다. 빠른 전투를 선택한 방에서만 서버 주사위 판정을 쓴다. 턴 타이머 60초·재접속 유예 60초·봇 대행을 지원한다. 단일 인스턴스·인메모리이며 손실이 큰 회선의 롤백 깊이 목표와 실제 브라우저 체감은 추가 검증이 필요하다 |
+| 온라인 멀티플레이 | 6자리 방 코드, 닉네임만 사용(계정 없음). 보드는 서버 권위이며 기본 전투는 서버가 확정하는 60Hz 롤백 전투다(`packages/netcode`). PvP 클라이언트는 입력을 예측하고 서버 확정 입력과 다르면 재시뮬한다. 빠른 전투는 로컬 설정에서 선택할 수 있고, 온라인 UI는 기본 실시간 전투를 사용한다. 온라인 프로토콜의 `quickCombat`은 서버 옵션·테스트에서만 사용한다. 턴 타이머 60초·재접속 유예 60초·봇 대행을 지원한다. 단일 인스턴스·인메모리이며 손실이 큰 회선의 롤백 깊이 목표와 실제 브라우저 체감은 추가 검증이 필요하다 |
 | AI 좌석 | 좌석마다 사람 / 봇(`RandomBot`, `HeuristicBot`) / 모델(`ModelPolicy`) 중 선택. 로컬 게임은 브라우저에서, 온라인 게임은 서버에서 실행한다. 모델 좌석은 사용자 가중치 JSON 포맷을 받기 전까지 "준비 중"으로 비활성화된다 |
 | AI 학습 환경 | 보드 `obs_v1`/`act_v1` env와 전투 `cobs_v1`/`cact_v1` env는 별도 프로세스·모델이다. 보드 env는 기본 `outcome_v1` 결과 모델을 내부에서 샘플링하며 `dice`·실제 60Hz `sim`도 선택할 수 있다. numpy Python 클라이언트·행동 마스크·배치 env를 제공한다. 승률 예측은 인게임에 표시하지 않는다 |
 | 밸런스 시뮬 | `pnpm sim`으로 봇끼리 대량 대전 → 직업별 승률, 게임 길이, 용 처치 시점 등 리포트 |
@@ -111,8 +111,8 @@ pnpm lint                    # ESLint
 pnpm typecheck               # 타입 검사
 pnpm build                   # 프로덕션 빌드
 pnpm start                   # 빌드 후 단일 Node 서비스 실행 (웹 정적 파일 + Socket.IO, :3001)
-pnpm sim --games 10000 --players 4 --bots heuristic   # 헤드리스 밸런스 시뮬 (CPU 코어 수만큼 병렬)
-pnpm sim --games 1000 --players 4 --combat sim        # 결투·용전을 실시간 전투 sim(스크립트 봇)으로 해결
+pnpm sim --games 10000 --players 4 --bots heuristic --combat sim --outcome-model packages/ai/src/outcome/model.json
+                                                    # 실제 60Hz 전투로 보드 밸런스 측정
 pnpm sim --games 1000 --players 4 --combat outcome --outcome-model packages/ai/src/outcome/model.json
 pnpm env-server              # 학습용 env 서버(stdio) 단독 실행. 먼저 pnpm build, 보통은 Python 클라이언트가 자동 실행
 pnpm combat-env-server       # 전투 모델 학습용 env 서버(stdio) 단독 실행. 보드 env와 별도 프로세스
