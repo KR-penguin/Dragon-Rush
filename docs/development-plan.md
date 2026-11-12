@@ -101,7 +101,7 @@
 |---|---|---|---|---|
 | 직업 초상화 (HUD 메달, 직업 선택, VS) | `images/jobs/{swordsman,archer,mage,ninja,berserker}.png` | PNG 256², 흉상, 3/4 우향 | P0 | — |
 | 보드 말 스탠디 (흉상~무릎, 좌석색은 코드가 받침에) | `images/jobs/standee/{job}.png` ×5 | PNG 384×512 | P0 | — |
-| 전투 바디 아틀라스 (측면 우향, 좌는 반전) | `images/combat/jobs/{job}/{job}_body.png` + `.json` ×5 | 셀 128² (피벗 64,112), Aseprite/TexturePacker array JSON, 프레임 태그 | P0 | — |
+| 전투 바디 아틀라스 (위에서 비스듬히 내려다본 3/4 시점, 우향·좌는 반전) | `images/combat/jobs/{job}/{job}_body.png` + `.json` ×5 | 셀 128² (발 피벗 64,112), Aseprite/TexturePacker array JSON, 프레임 태그. 순수 측면 그림은 사용하지 않는다 | P0 | — |
 | 회전 무기 | `images/combat/jobs/archer/bow.png`, `images/combat/jobs/mage/staff.png` | PNG 128², 손잡이 중심 피벗 | P0 | — |
 | 투사체 | `images/combat/projectiles/` `arrow.png`(64×16), `arrow_charged.png`(96×24), `arcane_bolt.png`(48²×4 스트립), `kunai.png`(48×16), `fireball.png`(96²×6 스트립) | PNG | P0 | — |
 | 전투 정면·후면 시트 (+ 바디 아틀라스 `victory` 태그 4프레임) | `images/combat/jobs/{job}/{job}_body_up.png`, `{job}_body_down.png` ×5 | 같은 규격 | P2 | — |

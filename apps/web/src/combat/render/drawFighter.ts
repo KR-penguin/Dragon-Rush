@@ -15,7 +15,7 @@ export interface FighterPose {
   readonly y: number;
   readonly f: FighterState;
   readonly look: FighterLookInput;
-  /** +1 faces right, -1 faces left (side sprite mirrored, art-direction §10). */
+  /** +1 faces right, -1 faces left (overhead 3/4 sprite mirrored, art-direction §10). */
   readonly flip: 1 | -1;
   /** White hit flash strength 0..1. */
   readonly flash: number;
