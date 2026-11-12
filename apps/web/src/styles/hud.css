@@ -1428,6 +1428,83 @@
 }
 
 /* ---------- Turn ribbon ---------- */
+.shield-notice {
+  position: fixed;
+  z-index: 29;
+  left: 50%;
+  top: calc(var(--strip-h) + 94 * var(--u));
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: calc(100vw - 32px);
+  padding: 12px 18px;
+  border: 2px solid var(--seat-color);
+  border-radius: 16px;
+  color: var(--ink);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+  animation: shield-notice-life var(--shield-ms) ease-out both;
+}
+
+.shield-notice svg {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  color: var(--seat-color);
+}
+
+.shield-notice strong {
+  font-family: var(--font-display);
+  font-size: clamp(14px, 1.5vw, 21px);
+}
+
+.shield-notice span {
+  flex: none;
+  font-weight: 800;
+  color: #9f352d;
+}
+
+@keyframes shield-notice-life {
+  0% {
+    opacity: 0;
+    translate: 0 -12px;
+  }
+  12%,
+  80% {
+    opacity: 1;
+    translate: 0 0;
+  }
+  100% {
+    opacity: 0;
+    translate: 0 -6px;
+  }
+}
+
+[data-motion='reduced'] .shield-notice {
+  animation: none;
+}
+
+@media (max-width: 699px) {
+  .shield-notice {
+    top: calc(var(--strip-h) + 20px);
+    width: calc(100vw - 32px);
+    flex-wrap: wrap;
+    gap: 6px 8px;
+    padding: 9px 12px;
+  }
+
+  .shield-notice strong {
+    flex: 1;
+    min-width: 0;
+    font-size: 14px;
+  }
+
+  .shield-notice span {
+    margin-left: 36px;
+  }
+}
+
 .turn-ribbon {
   --ribbon-ms: 1300ms;
   position: fixed;

@@ -11,6 +11,7 @@ import { CornerCard } from '../components/hud/CornerCard';
 import { Dock } from '../components/hud/Dock';
 import { EventCards } from '../components/hud/EventCards';
 import { SettingsPopover } from '../components/hud/SettingsPopover';
+import { ShieldNotice } from '../components/hud/ShieldNotice';
 import { Spotlight } from '../components/hud/Spotlight';
 import { TargetBanner } from '../components/hud/TargetBanner';
 import { Toasts } from '../components/hud/Toasts';
@@ -34,6 +35,7 @@ import { useGameView } from '../hooks/useGameView';
 import { useLastDice } from '../hooks/useLastDice';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { useReducedMotion } from '../hooks/useReducedMotion';
+import { useShieldNotice } from '../hooks/useShieldNotice';
 import { useSteppedMove } from '../hooks/useSteppedMove';
 import { useToasts } from '../hooks/useToasts';
 import { useTurnRibbon } from '../hooks/useTurnRibbon';
@@ -97,6 +99,7 @@ export function GamePage({ session, onExit, onRestart }: GamePageProps) {
   useCameraDirector(store, cameraRef, { tiltDeg, reduced: motion.reduced });
   const { cards: eventCards, flyers } = useEventCards(store, motion.reduced);
   const toasts = useToasts(store);
+  const shieldNotice = useShieldNotice(store);
   const ribbon = useTurnRibbon(store);
 
   const [confirmExit, setConfirmExit] = useState(false);
@@ -304,6 +307,7 @@ export function GamePage({ session, onExit, onRestart }: GamePageProps) {
         </div>
 
         <Toasts toasts={toasts} onOpenChronicle={() => setChronicleOpen(true)} />
+        {shieldNotice && <ShieldNotice notice={shieldNotice} />}
 
         <Dock
           status={status}
