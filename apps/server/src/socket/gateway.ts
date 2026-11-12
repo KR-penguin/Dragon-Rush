@@ -1,6 +1,7 @@
 import { randomInt } from 'node:crypto';
 import { DEFAULT_RULES, withRules, type GameEvent } from '@dragon-rush/engine';
-import { createModelPolicy, createPolicyByName } from '@dragon-rush/ai';
+import { bundledOutcomeModel, createModelPolicy, createPolicyByName } from '@dragon-rush/ai';
+import { DEFAULT_COMBAT_RULES } from '@dragon-rush/combat';
 import {
   C2S,
   FIGHT_C2S,
@@ -103,6 +104,9 @@ export function registerGateway(io: Server, deps: GatewayDeps): { dispose(): voi
 
   const startGame = (room: Room, hostId: string) => {
     const active = room.prepareStart(hostId, random);
+    const outcomeModel = room.options.quickCombat
+      ? undefined
+      : (bundledOutcomeModel(DEFAULT_RULES.version, DEFAULT_COMBAT_RULES.version) ?? undefined);
     const seats: SessionSeatSetup[] = active.map((s) => {
       const base = { lobbySeat: s.seat, playerId: s.playerId, job: s.job! };
       if (s.kind === 'human')
@@ -123,7 +127,7 @@ export function registerGateway(io: Server, deps: GatewayDeps): { dispose(): voi
         kind: 'bot',
         name: BOT_LABEL[botName] ?? '봇',
         botName,
-        policy: createPolicyByName(botName, random),
+        policy: createPolicyByName(botName, random, outcomeModel),
       };
     });
     const game = new GameSession(

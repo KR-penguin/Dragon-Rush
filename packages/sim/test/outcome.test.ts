@@ -231,7 +231,7 @@ describe('outcome pipeline', () => {
           }),
         ),
       );
-      expect(bad.error.code).toBe('BAD_CONFIG');
+      expect(bad.result.outcome_model_id).toBe('outcome-v1-rush2');
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

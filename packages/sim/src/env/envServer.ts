@@ -4,6 +4,7 @@ import {
   ACTION_DIM,
   ACTION_NAMES,
   BOT_NAMES,
+  bundledOutcomeModel,
   OBS_DIM,
   OBS_V1_LAYOUT,
   OBS_VERSION,
@@ -94,11 +95,12 @@ export class EnvServer {
     const seed = p.seed ?? (Date.now() % 2 ** 31) * 1000 + Math.floor(Math.random() * 1000);
     const rules = buildRules(p.config);
     let outcomeModel: OutcomeModel | undefined;
-    if (p.config.combat_resolver === 'outcome') {
-      if (!p.config.outcome_model)
-        throw new EnvError('BAD_CONFIG', 'outcome_model path is required');
+    if (p.config.combat_resolver === 'outcome' || p.config.outcome_model) {
       try {
-        outcomeModel = loadOutcomeModel(p.config.outcome_model);
+        outcomeModel = p.config.outcome_model
+          ? loadOutcomeModel(p.config.outcome_model)
+          : (bundledOutcomeModel(rules.version, DEFAULT_COMBAT_RULES.version) ?? undefined);
+        if (!outcomeModel) throw new Error('bundled outcome_v1 model is unavailable');
         assertOutcomeCompatible(outcomeModel, rules.version, DEFAULT_COMBAT_RULES.version);
       } catch (e) {
         throw new EnvError('BAD_CONFIG', `outcome_model: ${(e as Error).message}`);
