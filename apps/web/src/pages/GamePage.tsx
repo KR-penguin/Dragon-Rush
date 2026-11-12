@@ -47,7 +47,7 @@ import { DRAGON_NAME, PHASE_LABEL, seatColor } from '../types/labels';
 import { breathRunesLit, dragonIntentCue, lairState } from '../types/lairView';
 import { buildPawns } from '../types/pawnView';
 import { playerCards, playerOf, seatName } from '../types/playerView';
-import { outcomeHeadline, resultRows } from '../types/resultView';
+import { gameBgm, outcomeHeadline, resultRows } from '../types/resultView';
 import type { TileCategory } from '../types/tileView';
 import { CombatLayer } from './game/CombatLayer';
 import { DecisionDialogs } from './game/DecisionDialogs';
@@ -105,7 +105,14 @@ export function GamePage({ session, onExit, onRestart }: GamePageProps) {
   const [legend, setLegend] = useState<TileCategory | null>(null);
   const [hover, setHover] = useState<TileHover | null>(null);
   const [preview, setPreview] = useState<number | null>(null);
-  useBgm(combat ? 'dragon_battle' : 'board');
+  useBgm(
+    gameBgm(
+      latest?.publicState.outcome ?? null,
+      animating,
+      combat !== null,
+      latest?.controllableSeats ?? [],
+    ),
+  );
 
   const escapable =
     ui.teleportPicking || ui.dialog === 'thief' || ui.dialog === 'dragon' || ui.dialog === 'shop';

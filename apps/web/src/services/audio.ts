@@ -17,7 +17,7 @@ import {
 } from '../fx/audio/soundCatalog';
 import { dbToGain, semitonesToRate } from '../fx/core/easing';
 import { createFxRng } from '../fx/core/rng';
-import { BGM_FILE, bgmPath, type BgmName } from '../types/assetPaths';
+import { bgmFile, bgmPath, type BgmName } from '../types/assetPaths';
 import { assetUrl, hasAsset } from './assets';
 import { readStorage, writeStorage } from './storage';
 
@@ -404,25 +404,27 @@ function loadLoopPoints(): Promise<Record<string, LoopPoints>> {
   return loopPoints;
 }
 
-function stopBgm(): void {
+function stopBgm(forResult = false): number {
   const cur = bgm;
   bgm = null;
   playingBgm = null;
-  if (!cur) return;
+  if (!cur) return graph?.ctx.currentTime ?? 0;
   if (cur.kind === 'element') {
     cur.el.pause();
-    return;
+    return graph?.ctx.currentTime ?? 0;
   }
   const g = graph;
-  if (!g) return;
+  if (!g) return 0;
   const t = g.ctx.currentTime;
   cur.gain.gain.cancelScheduledValues(t);
-  cur.gain.gain.setTargetAtTime(0, t, 0.1);
-  cur.src.stop(t + 0.5);
-  setTimeout(() => cur.gain.disconnect(), 700);
+  cur.gain.gain.setTargetAtTime(0, t, forResult ? 0.01 : 0.1);
+  const stopAt = t + (forResult ? 0.06 : 0.5);
+  cur.src.stop(stopAt);
+  setTimeout(() => cur.gain.disconnect(), forResult ? 100 : 700);
+  return stopAt;
 }
 
-function startBgmBuffer(g: Graph, buf: AudioBuffer, lp?: LoopPoints): void {
+function startBgmBuffer(g: Graph, buf: AudioBuffer, startAt: number, lp?: LoopPoints): void {
   const src = g.ctx.createBufferSource();
   src.buffer = buf;
   src.loop = true;
@@ -431,7 +433,7 @@ function startBgmBuffer(g: Graph, buf: AudioBuffer, lp?: LoopPoints): void {
     src.loopEnd = lp.loopEnd;
   }
   const gain = g.ctx.createGain();
-  const t = g.ctx.currentTime;
+  const t = Math.max(g.ctx.currentTime, startAt);
   gain.gain.setValueAtTime(0, t);
   gain.gain.setTargetAtTime(1, t, 0.15);
   src.connect(gain).connect(g.buses.music);
@@ -443,7 +445,7 @@ function syncBgm(force = false): void {
   const target = muted ? null : wantedBgm;
   if (target === playingBgm && !force) return;
   const request = ++bgmRequest;
-  stopBgm();
+  const startAt = stopBgm(target?.startsWith('result_') ?? false);
   if (!target) return;
   const g = graph;
   if (g && g.ctx.state === 'running') {
@@ -451,7 +453,7 @@ function syncBgm(force = false): void {
     if (!hasAsset(bgmPath(target))) return;
     void Promise.all([loadBuffer(bgmPath(target)), loadLoopPoints()]).then(([buf, loops]) => {
       if (request !== bgmRequest || playingBgm !== target || !buf) return;
-      startBgmBuffer(g, buf, loops[BGM_FILE]);
+      startBgmBuffer(g, buf, startAt, loops[bgmFile(target)]);
     });
     return;
   }
