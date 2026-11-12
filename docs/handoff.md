@@ -1,21 +1,21 @@
 # 인수인계 — 드래곤 러쉬 2차 개발 (2026-11-12)
 
-> 이 문서는 진행 중이던 작업을 다른 에이전트(새 세션)가 이어받기 위한 문서다. **각 작업 블록의 "프롬프트"를 그대로 새 세션에 붙여 넣으면 된다.**
+> 이 문서는 진행 중이던 작업을 다른 에이전트(새 세션)가 이어받기 위한 문서다. **완료 표시가 없는 작업만 이어간다.**
 > 공통 규칙은 `AI_README.md`, `coding_convention.md`가 정본이다. 설계 근거 자료는 `docs/research/`(영어, 웹 조사 결과 원문)에 있다.
 
 ## 0. 현재 상태 한눈에
 
 | 항목 | 상태 |
 |---|---|
-| `main` | `70e2bf3` 이후 + 이 문서 커밋. **⚠ 테스트 3개 실패 중**(전투 AI 마스크·env 지연 관측 — 작업 A에서 수정) |
-| 완료·병합 | 1차 P0~P7 전부, 이름 변경(드래곤 러쉬), Ember Table 보드 재디자인, 이펙트·사운드 툴킷, 온라인 로비(기능), 7~10분 밸런스(rush-1), 엔진 COMBAT 단계, 실시간 전투 엔진(`packages/combat`, 1차 보정), 전투 AI 인터페이스·학습 환경(`packages/combat-ai`, combat-env-server, Python `CombatEnv`/`CombatVecEnv`), Canvas 전투 화면(로컬) |
-| 진행 중 브랜치 (전부 사용량 한도로 중단, 체크포인트 커밋됨) | `bugfix/combat-ai-sync` (A), `feature/rollback-netcode` (C), `feature/lobby-ember-style` (D) |
-| 미착수 | 상성 2차 보정(B), 실시간 전투 기준 보드 밸런스·승률 예측 모델(E), 문서 동기화(F) |
-| 워크트리 | `.claude/worktrees/agent-*` 에 위 브랜치가 체크아웃되어 있다. 새 세션은 **새 워크트리나 메인 체크아웃에서 해당 브랜치를 체크아웃**해서 이어가면 된다(다른 워크트리가 잡고 있으면 `git worktree remove --force <경로>` 후). |
+| `main` | `41360b5` 기준. 전투 AI 테스트 수정, 글꼴 경량화, 효과음 파일 별칭, 온라인 로비 재디자인 병합 완료. 전투 AI 3개 실패도 해결됨. |
+| 완료·병합 | 1차 P0~P7, 기존 2차 보드·FX·로컬 전투·AI 학습 환경, **A 전투 AI 동기화**(`d3f0bdb`), **D 온라인 로비 재디자인**(`41360b5`), 글꼴 경량화(`20233f2`), 효과음 에셋 경로 별칭(`8c5e2d9`) |
+| 진행 중 | B 상성 보정(`codex/feature-matchup-calibration-v2`, 루트 체크아웃), C 온라인 롤백(`feature/rollback-netcode` 작업 트리), F 화면 잔여 수정(별도 에이전트). 세 작업은 병렬 진행 중. |
+| 남음 | E 실시간 전투 기준 보드 밸런스·승률 예측 모델(B 이후), F 전체 포맷·문서 동기화 및 최종 통합 검증 |
+| 워크트리 | `main` 통합용은 `.claude/worktrees/codex-integrate-main`. **루트는 B 에이전트가 사용 중이므로 브랜치 전환·파일 수정 금지.** 다른 에이전트 작업 트리도 수정하지 않는다. |
 
-**작업 순서와 병렬화**: A를 먼저 끝내 `main`을 초록으로 만든다 → B, C, D는 서로 다른 파일이라 **동시에** 진행 가능 → E는 B가 병합된 뒤 → F는 마지막(또는 각 작업에서 같이).
+**작업 순서와 병렬화**: A·D 및 F의 글꼴·효과음은 완료. B·C·F 화면 수정을 병렬 마무리해 `main`에 병합한다 → E는 B가 병합된 뒤 수행한다 → F 전체 포맷·문서 동기화·최종 검증.
 
-**브랜치 규칙**: `main` 직접 커밋 금지, `feature/…`·`bugfix/…`·`docs/…`, 영어 Conventional Commits(본문 끝에 `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`). 체크포인트 커밋(`wip(...)`)은 병합 전에 squash 한다. 병합은 `git merge --no-ff`.
+**브랜치 규칙**: `main` 직접 커밋 금지. 새 브랜치는 `codex/` 접두어 사용, 영어 Conventional Commits. 체크포인트 커밋(`wip(...)`)은 병합 전에 squash 한다. 병합은 `git merge --no-ff`.
 
 **공통 검증 명령**: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`, `python -m pytest python/tests`. 브라우저 확인은 `.claude/launch.json`의 `web`/`server` 구성으로 미리보기 도구를 쓸 수 있다.
 
@@ -29,8 +29,9 @@
 | D8 / D12 | 에셋(이미지 149·효과음 164·음악 8·환경음 3) 제공 — 목록은 `docs/development-plan.md` §4.2 | 플레이스홀더로 동작 |
 | D9 | 배포 호스팅 대상 | 미정 |
 
-## A. 전투 AI 테스트 동기화 (우선순위 1, 작음)
+## A. 전투 AI 테스트 동기화 — 완료
 
+- `49c36ae`로 테스트 실패 원인을 수정해 `main`에 병합했다. 전체 lint/typecheck/test/build 및 Python 테스트 통과. 전투 시뮬 2,000판 기준 평균 10.5라운드, 용 처치 종료 76.9%, 용 도전 성공률 61.7%.
 - **브랜치**: `bugfix/combat-ai-sync` (체크포인트 `398468f`, 5개 파일 수정 중)
 - **배경**: 전투 엔진 1차 보정(봇 노브 poke/punish/fire/spacing, 전방위 패링·환급·경직, 백스탭, 용 chip/피해 배율 0.17, 짧아진 용 대기 간격 등)이 병합되면서 `packages/combat-ai/test/mask.test.ts` 2개와 `packages/sim/test/combatEnv.test.ts` 1개가 실패한다. 마스크 테스트는 시뮬에서 실제로 버튼을 눌러 검증하므로 **로직(mask/actionability)을 메커니즘에 맞게 고쳐야 한다**(테스트만 고치지 말 것). 직전 에이전트는 `hitstunLeft` 기반으로 actionability 테스트를 고치던 중이었다.
 
@@ -96,8 +97,9 @@ docs/research/netcode-design-v2.md(정본), netcode-review-issues.md, docs/comba
 전체 검증 통과 후 체크포인트를 squash하고 Conventional Commits로 정리, main에 --no-ff 병합. RTT 구간별 롤백 통계와 남은 과제를 한국어로 보고하라.
 ```
 
-## D. 온라인 로비 Ember Table 재디자인 (독립, 작음)
+## D. 온라인 로비 Ember Table 재디자인 — 완료
 
+- `780cff0`으로 이모지를 game-icons로 교체하고 선택자 충돌·좁은 화면·접근성을 정리해 `main`에 병합했다. 전체 테스트 425개, lint/typecheck/web build 통과.
 - **브랜치**: `feature/lobby-ember-style` (체크포인트 `f81a300`, 15개 파일. 공유 CSS 규칙과 우선순위가 겹치는 선택자 `.game-icon`, `.crest`, `.modal-seal`을 정리하던 중)
 - **범위**: `apps/web/src/pages/OnlinePage.tsx`, `components/lobby/*`, `styles/lobby.css`, 필요 시 `types/onlineLobby.ts`. 기능 변경 없음, 이모지 → game-icons.
 
@@ -133,6 +135,9 @@ docs/game-design.md §15, docs/combat-ai-spec.md(combat_resolver, outcome 모델
 ```
 
 ## F. 정리·문서 동기화 (마지막, 작은 작업 묶음)
+
+- 완료: 효과음 폴더·번호 별칭과 자동 선택 테스트(`59ed798`), 한국어 WOFF2 9개만 묶는 글꼴 경량화(`e00ecaa`; CSS 1,080,673→99,364B, 글꼴 25,673,736→3,403,548B).
+- 진행 중: 화면 잔여 3건은 별도 에이전트. 남음: 전체 Prettier, 개발 현황 문서, 최종 검증.
 
 **프롬프트**
 ```
