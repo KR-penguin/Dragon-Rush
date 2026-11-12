@@ -3,6 +3,7 @@ import type {
   CombatEvent,
   CombatKind,
   CombatRules,
+  MoveId,
   Side,
   Vec,
 } from '@dragon-rush/combat';
@@ -70,14 +71,23 @@ const bamDir = (bam: number) => {
 const sound = (name: SoundName, volume?: number): FxCue =>
   volume === undefined ? { type: 'sound', name } : { type: 'sound', name, volume };
 
-const RANGED_SOUND: Readonly<Record<string, SoundName>> = {
+const MOVE_SOUND: Readonly<Record<MoveId, SoundName>> = {
+  slash1: 'blade',
+  slash2: 'blade',
+  thrust: 'blade',
+  parry: 'parry',
+  counter: 'blade',
+  draw: 'swing',
   quickShot: 'shot',
   fullShot: 'shot',
   volley: 'shot',
-  kunai: 'shot',
   bolt: 'magic',
   meteor: 'magic',
-  draw: 'swing',
+  dagger1: 'dagger',
+  dagger2: 'dagger',
+  kunai: 'kunai',
+  greataxe: 'axe',
+  whirlwind: 'axe',
 };
 
 const isLocal = (ctx: FightFxContext, who: CombatantId | 'ring'): boolean =>
@@ -90,11 +100,9 @@ const isLocal = (ctx: FightFxContext, who: CombatantId | 'ring'): boolean =>
 export function fightFxFor(e: CombatEvent, ctx: FightFxContext): FightFxCommand[] {
   switch (e.type) {
     case 'AttackStart':
-      return ctx.replay
-        ? []
-        : [{ type: 'cues', cues: [sound(RANGED_SOUND[e.move] ?? 'swing', 0.8)] }];
+      return ctx.replay ? [] : [{ type: 'cues', cues: [sound(MOVE_SOUND[e.move], 0.8)] }];
     case 'SkillUsed':
-      return ctx.replay ? [] : [{ type: 'cues', cues: [sound(RANGED_SOUND[e.skill] ?? 'swing')] }];
+      return ctx.replay ? [] : [{ type: 'cues', cues: [sound(MOVE_SOUND[e.skill])] }];
     case 'Dash':
       if (ctx.replay) return [];
       return [
