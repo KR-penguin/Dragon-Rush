@@ -135,6 +135,9 @@ export function textFrame(
 
 export function formatTextValue(kind: FloatingTextKind, value: number): string {
   switch (kind) {
+    case 'damage':
+    case 'heavy':
+      return value.toFixed(1);
     case 'heal':
     case 'gain':
     case 'coin':

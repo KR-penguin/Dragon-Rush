@@ -3,6 +3,7 @@ import {
   TEXT_KINDS,
   TEXT_MAX_PER_TARGET,
   createFloatingTextBook,
+  formatTextValue,
   popScale,
   textFrame,
 } from '../src/fx/core/floatingText';
@@ -165,7 +166,7 @@ describe('floating text', () => {
     const b = book.add({ kind: 'damage', x: 0, y: 0, value: 3, target: 'p1' });
     expect(b.merged).toBe(true);
     expect(b.item.id).toBe(a.item.id);
-    expect(b.item.text).toBe('7');
+    expect(b.item.text).toBe('7.0');
     expect(b.item.popAt).toBe(100);
     t = 300;
     expect(book.add({ kind: 'damage', x: 0, y: 0, value: 1, target: 'p1' }).merged).toBe(false);
@@ -183,6 +184,22 @@ describe('floating text', () => {
       book.add({ kind: 'callout', x: 0, y: 0, text: `x${i}`, target: 'p4' });
     expect(book.live().filter((it) => it.target === 'p4').length).toBe(TEXT_MAX_PER_TARGET);
     expect(book.add({ kind: 'loss', x: 0, y: 0, value: 5 }).item.text).toBe('−5');
+  });
+});
+
+describe('floating damage labels', () => {
+  it('rounds display to one decimal while retaining raw hit values for merging', () => {
+    expect(formatTextValue('damage', 1.23456789)).toBe('1.2');
+    expect(formatTextValue('heavy', 1.29999999)).toBe('1.3');
+    let now = 0;
+    const book = createFloatingTextBook(() => now);
+    const first = book.add({ kind: 'damage', x: 0, y: 0, value: 1.23456789, target: 'dragon' });
+    expect(first.item.value).toBe(1.23456789);
+    expect(first.item.text).toBe('1.2');
+    now = 100;
+    const merged = book.add({ kind: 'damage', x: 0, y: 0, value: 0.33333333, target: 'dragon' });
+    expect(merged.item.value).toBeCloseTo(1.56790122, 8);
+    expect(merged.item.text).toBe('1.6');
   });
 });
 
