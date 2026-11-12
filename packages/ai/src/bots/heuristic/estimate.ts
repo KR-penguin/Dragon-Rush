@@ -1,5 +1,15 @@
-import { createRng, nextFloat, resolveCombat, type Fighter, type JobId, type PlayerState, type RngState, type RulesConfig } from '@dragon-rush/engine';
+import {
+  createRng,
+  nextFloat,
+  resolveCombat,
+  type Fighter,
+  type JobId,
+  type PlayerState,
+  type RngState,
+  type RulesConfig,
+} from '@dragon-rush/engine';
 import { hashString } from '../../policy';
+import { predictOutcome, type OutcomeModel, type OutcomeSetup } from '../../outcome';
 
 /** Compact combat profile: what matters for estimating a fight. */
 export interface Profile {
@@ -17,7 +27,8 @@ export const profileOf = (p: PlayerState, rules: RulesConfig): Profile => ({
   maxHp: p.maxHp,
   atk: p.atk,
   def: p.def,
-  indomitable: p.job === 'swordsman' && !p.passive.indomitableUsed ? rules.passives.indomitableUses : 0,
+  indomitable:
+    p.job === 'swordsman' && !p.passive.indomitableUsed ? rules.passives.indomitableUses : 0,
 });
 
 export const dragonProfile = (rules: RulesConfig): Profile => ({
@@ -48,7 +59,35 @@ const cache = new Map<string, number>();
  * Monte Carlo win probability of `a` (striking first unless `b` is an archer) against `b`.
  * Seeded from the profile key so results never depend on call order.
  */
-export function winProbability(rules: RulesConfig, a: Profile, b: Profile, samples: number): number {
+export function winProbability(
+  rules: RulesConfig,
+  a: Profile,
+  b: Profile,
+  samples: number,
+  outcomeModel?: OutcomeModel,
+): number {
+  if (outcomeModel) {
+    if (outcomeModel.rules_version !== rules.version)
+      throw new RangeError('outcome model rules version mismatch');
+    const fighter = (p: Profile) => ({
+      job: p.job as Exclude<Profile['job'], 'dragon'>,
+      hp: p.hp,
+      maxHp: p.maxHp,
+      atk: p.atk,
+      def: p.def,
+      indomitableAvailable: p.indomitable > 0,
+    });
+    const setup: OutcomeSetup =
+      b.job === 'dragon'
+        ? {
+            kind: 'dragonFight',
+            a: fighter(a),
+            b: null,
+            dragon: { hp: b.hp, atk: b.atk, def: b.def },
+          }
+        : { kind: 'duel', a: fighter(a), b: fighter(b) };
+    return predictOutcome(outcomeModel, setup).winA;
+  }
   const k = `${rules.version}|${key(a)}|${key(b)}|${samples}`;
   const hit = cache.get(k);
   if (hit !== undefined) return hit;
@@ -91,7 +130,9 @@ export function expectedDamage(rules: RulesConfig, a: Profile, b: Profile): numb
   if (a.job === 'mage') def = Math.floor(def / ps.mageDefDivisor);
   let e: number;
   if (a.job === 'berserker') {
-    e = 0.6 * fexp(a.atk - def) + 0.4 * fexp(Math.floor((a.atk * ps.berserkerRageNum) / ps.berserkerRageDen) - def);
+    e =
+      0.6 * fexp(a.atk - def) +
+      0.4 * fexp(Math.floor((a.atk * ps.berserkerRageNum) / ps.berserkerRageDen) - def);
   } else if (a.job === 'dragon') {
     const k = rules.dragon.breathEvery;
     e = ((k - 1) * fexp(a.atk - def) + fexp(a.atk)) / k;

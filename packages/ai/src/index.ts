@@ -27,7 +27,13 @@ export {
   STYLE_PARAMS,
   type HeuristicStyle,
 } from './bots/heuristic/heuristicBot';
-export { winProbability, race, profileOf, dragonProfile, type Profile } from './bots/heuristic/estimate';
+export {
+  winProbability,
+  race,
+  profileOf,
+  dragonProfile,
+  type Profile,
+} from './bots/heuristic/estimate';
 export { createModelPolicy, type ModelPolicyOptions } from './model/modelPolicy';
 export { createPolicyByName, BOT_NAMES } from './bots/registry';
 export {
@@ -38,3 +44,19 @@ export {
   type ParityTolerance,
 } from './model/parity';
 export { getWeightAdapter, USER_WEIGHT_ADAPTER } from './model/adapters';
+export {
+  OUTCOME_VERSION,
+  OUTCOME_FEATURE_DIM,
+  OUTCOME_CONDITIONAL_DIM,
+  OutcomeModelSchema,
+  OutcomeDamageSchema,
+  parseOutcomeModel,
+  emptyOutcomeModel,
+  assertOutcomeCompatible,
+  outcomeFeatures,
+  predictOutcome,
+  type OutcomeModel,
+  type OutcomePrediction,
+  type OutcomeSetup,
+  type OutcomeDamage,
+} from './outcome';

@@ -13,6 +13,7 @@ import {
   type UpgradeStat,
 } from '@dragon-rush/engine';
 import type { DecisionContext, Policy } from '../../policy';
+import type { OutcomeModel } from '../../outcome';
 import { dragonProfile, profileOf, race, winProbability, type Profile } from './estimate';
 
 export type HeuristicStyle = 'aggro' | 'growth' | 'rush';
@@ -33,9 +34,42 @@ interface StyleParams {
 
 /** Style table from docs/ai-interface-spec.md §10. */
 export const STYLE_PARAMS: Readonly<Record<HeuristicStyle, StyleParams>> = {
-  aggro: { wd: 0.35, wp: 0.65, dragonThreshold: 0.55, hunt: 0.7, wantTeleport: 1, wantShield: 1, thiefMin: 6, innFrac: 0.35, tpEcon: 5, tpBuySpare: 0 },
-  growth: { wd: 0.6, wp: 0.4, dragonThreshold: 0.6, hunt: 0.8, wantTeleport: 1, wantShield: 1, thiefMin: 7, innFrac: 0.45, tpEcon: 6, tpBuySpare: 4 },
-  rush: { wd: 1, wp: 0, dragonThreshold: 0.48, hunt: 0.85, wantTeleport: 0, wantShield: 1, thiefMin: 7, innFrac: 0.5, tpEcon: 6, tpBuySpare: 99 },
+  aggro: {
+    wd: 0.35,
+    wp: 0.65,
+    dragonThreshold: 0.55,
+    hunt: 0.7,
+    wantTeleport: 1,
+    wantShield: 1,
+    thiefMin: 6,
+    innFrac: 0.35,
+    tpEcon: 5,
+    tpBuySpare: 0,
+  },
+  growth: {
+    wd: 0.6,
+    wp: 0.4,
+    dragonThreshold: 0.6,
+    hunt: 0.8,
+    wantTeleport: 1,
+    wantShield: 1,
+    thiefMin: 7,
+    innFrac: 0.45,
+    tpEcon: 6,
+    tpBuySpare: 4,
+  },
+  rush: {
+    wd: 1,
+    wp: 0,
+    dragonThreshold: 0.48,
+    hunt: 0.85,
+    wantTeleport: 0,
+    wantShield: 1,
+    thiefMin: 7,
+    innFrac: 0.5,
+    tpEcon: 6,
+    tpBuySpare: 99,
+  },
 };
 
 const PVP_SAMPLES = 192;
@@ -56,6 +90,7 @@ class Planner {
     private readonly view: PublicGameState,
     private readonly seat: SeatId,
     style: HeuristicStyle,
+    private readonly outcomeModel?: OutcomeModel,
   ) {
     this.rules = view.rules;
     this.me = view.players[seat]!;
@@ -67,7 +102,13 @@ class Planner {
   }
 
   private duelWp(att: PlayerState, def: PlayerState): number {
-    return winProbability(this.rules, profileOf(att, this.rules), profileOf(def, this.rules), PVP_SAMPLES);
+    return winProbability(
+      this.rules,
+      profileOf(att, this.rules),
+      profileOf(def, this.rules),
+      PVP_SAMPLES,
+      this.outcomeModel,
+    );
   }
 
   private upgraded(p: Profile, stat: UpgradeStat): Profile {
@@ -79,13 +120,20 @@ class Planner {
 
   private power(p: Profile, opps: Profile[]): number {
     let v = this.s.wd * race(this.rules, p, dragonProfile(this.rules));
-    if (this.s.wp && opps.length) v += (this.s.wp * opps.reduce((sum, q) => sum + race(this.rules, p, q), 0)) / opps.length;
+    if (this.s.wp && opps.length)
+      v += (this.s.wp * opps.reduce((sum, q) => sum + race(this.rules, p, q), 0)) / opps.length;
     return v;
   }
 
-  private pickUpgrade(p: Profile, levels: Record<UpgradeStat, number>, budget: number, dragonOnly: boolean): UpgradeStat | null {
+  private pickUpgrade(
+    p: Profile,
+    levels: Record<UpgradeStat, number>,
+    budget: number,
+    dragonOnly: boolean,
+  ): UpgradeStat | null {
     const opps = this.opponents().map((q) => profileOf(q, this.rules));
-    const value = (x: Profile) => (dragonOnly ? race(this.rules, x, dragonProfile(this.rules)) : this.power(x, opps));
+    const value = (x: Profile) =>
+      dragonOnly ? race(this.rules, x, dragonProfile(this.rules)) : this.power(x, opps);
     const base = value(p);
     let best: UpgradeStat | null = null;
     let bestGain = 0;
@@ -114,13 +162,24 @@ class Planner {
       p = this.upgraded(p, stat);
       ups.push(stat);
     }
-    if (race(this.rules, p, dragonProfile(this.rules)) < -0.9) return { wp: 0, ups };
-    return { wp: winProbability(this.rules, p, dragonProfile(this.rules), DRAGON_SAMPLES), ups };
+    if (!this.outcomeModel && race(this.rules, p, dragonProfile(this.rules)) < -0.9)
+      return { wp: 0, ups };
+    return {
+      wp: winProbability(
+        this.rules,
+        p,
+        dragonProfile(this.rules),
+        DRAGON_SAMPLES,
+        this.outcomeModel,
+      ),
+      ups,
+    };
   }
 
   private dragonThreshold(): number {
     let thr = this.s.dragonThreshold;
-    if (this.view.round > LATE_GAME_ROUND) thr -= LATE_GAME_DECAY * (this.view.round - LATE_GAME_ROUND);
+    if (this.view.round > LATE_GAME_ROUND)
+      thr -= LATE_GAME_DECAY * (this.view.round - LATE_GAME_ROUND);
     const opps = this.opponents();
     if (opps.length === 1 && this.dragonPlan(opps[0]).wp >= 0.5) thr -= 0.12;
     return Math.max(thr, 0.35);
@@ -129,7 +188,8 @@ class Planner {
   private reserve(): number {
     let r = 0;
     if (this.s.wantShield && this.me.items.shield === 0) r += this.rules.items.shield.price;
-    if (this.s.wantTeleport && this.me.items.teleport === 0 && this.s.tpBuySpare === 0) r += this.rules.items.teleport.price;
+    if (this.s.wantTeleport && this.me.items.teleport === 0 && this.s.tpBuySpare === 0)
+      r += this.rules.items.teleport.price;
     return r;
   }
 
@@ -225,7 +285,8 @@ class Planner {
         case 'mystery':
           if (depth === 0) {
             const deck = this.rules.mysteryDeck;
-            v += deck.reduce((sum, card) => sum + this.effectsValue(card.effects, 1), 0) / deck.length;
+            v +=
+              deck.reduce((sum, card) => sum + this.effectsValue(card.effects, 1), 0) / deck.length;
           }
           break;
       }
@@ -246,7 +307,10 @@ class Planner {
         if (q.items.shield > 0 && wp > 0.5) {
           // they will shield
         } else if (p.items.shield > 0 && wp < 0.5) v -= this.rules.items.shield.price;
-        else v += wp * (q.coins / 2 + this.itemValue(q) + KILL_BONUS) - (1 - wp) * (DEATH_PENALTY + p.coins);
+        else
+          v +=
+            wp * (q.coins / 2 + this.itemValue(q) + KILL_BONUS) -
+            (1 - wp) * (DEATH_PENALTY + p.coins);
       }
     }
     return v + this.effectsValue(def.effects, 0);
@@ -255,7 +319,8 @@ class Planner {
   ninjaDelta(legal: readonly Action[]): -1 | 0 | 1 {
     const d = this.view.turn.dice ?? 1;
     const pos = this.me.position;
-    const valueOf = (steps: number) => this.tileValue((pos + steps) % BOARD_SIZE, pos + steps >= BOARD_SIZE);
+    const valueOf = (steps: number) =>
+      this.tileValue((pos + steps) % BOARD_SIZE, pos + steps >= BOARD_SIZE);
     const base = valueOf(d);
     let best: -1 | 0 | 1 = 0;
     let bestV = base;
@@ -322,20 +387,29 @@ class Planner {
     }
     if (!preRoll) return null;
     const prices = this.rules.items;
-    const shops = [...this.rules.board.keys()].filter((t) => this.rules.board[t]!.effects.some((e) => e.kind === 'shop'));
+    const shops = [...this.rules.board.keys()].filter((t) =>
+      this.rules.board[t]!.effects.some((e) => e.kind === 'shop'),
+    );
     if (p.coins >= prices.shield.price + prices.thief.price + 2 && shops.length) {
       const dist = Math.min(...shops.map((t) => forwardDistance(p.position, t)));
       if (dist > 6 || dist === 0) {
         const cands = shops.filter((t) => t !== p.position);
         if (cands.length) {
-          const sh = cands.reduce((a, b) => (this.tileValue(b, false) > this.tileValue(a, false) ? b : a));
+          const sh = cands.reduce((a, b) =>
+            this.tileValue(b, false) > this.tileValue(a, false) ? b : a,
+          );
           const rich = this.richest();
-          if (this.tileValue(sh, false) > 0 && (p.items.shield === 0 || (p.items.thief === 0 && (rich?.coins ?? 0) >= 7))) return sh;
+          if (
+            this.tileValue(sh, false) > 0 &&
+            (p.items.shield === 0 || (p.items.thief === 0 && (rich?.coins ?? 0) >= 7))
+          )
+            return sh;
         }
       }
     }
     let rollEv = 0;
-    for (let d = 1; d <= 6; d++) rollEv += this.tileValue((p.position + d) % BOARD_SIZE, p.position + d >= BOARD_SIZE);
+    for (let d = 1; d <= 6; d++)
+      rollEv += this.tileValue((p.position + d) % BOARD_SIZE, p.position + d >= BOARD_SIZE);
     rollEv /= 6;
     let bt: number | null = null;
     let bv = -Infinity;
@@ -355,17 +429,30 @@ class Planner {
     const p = this.me;
     const price = (id: 'teleport' | 'shield' | 'thief') => this.rules.items[id].price;
     const rich = this.richest();
-    if (p.items.shield < this.s.wantShield && p.coins >= price('shield') && this.threatened()) return { type: 'BUY_ITEM', item: 'shield' };
-    if (p.items.thief === 0 && rich && rich.coins >= this.s.thiefMin && p.coins >= price('thief')) return { type: 'BUY_ITEM', item: 'thief' };
-    if (p.items.teleport < this.s.wantTeleport && p.coins >= price('teleport') + this.s.tpBuySpare) return { type: 'BUY_ITEM', item: 'teleport' };
-    if (p.items.teleport === 0 && p.coins >= price('teleport') && p.hp <= p.maxHp * 0.4 && p.maxHp - p.hp >= 15) return { type: 'BUY_ITEM', item: 'teleport' };
+    if (p.items.shield < this.s.wantShield && p.coins >= price('shield') && this.threatened())
+      return { type: 'BUY_ITEM', item: 'shield' };
+    if (p.items.thief === 0 && rich && rich.coins >= this.s.thiefMin && p.coins >= price('thief'))
+      return { type: 'BUY_ITEM', item: 'thief' };
+    if (p.items.teleport < this.s.wantTeleport && p.coins >= price('teleport') + this.s.tpBuySpare)
+      return { type: 'BUY_ITEM', item: 'teleport' };
+    if (
+      p.items.teleport === 0 &&
+      p.coins >= price('teleport') &&
+      p.hp <= p.maxHp * 0.4 &&
+      p.maxHp - p.hp >= 15
+    )
+      return { type: 'BUY_ITEM', item: 'teleport' };
     return null;
   }
 }
 
-function choose(ctx: DecisionContext, style: HeuristicStyle): Action | null {
+function choose(
+  ctx: DecisionContext,
+  style: HeuristicStyle,
+  outcomeModel?: OutcomeModel,
+): Action | null {
   const { view, seat, legal } = ctx;
-  const plan = new Planner(view, seat, style);
+  const plan = new Planner(view, seat, style, outcomeModel);
   const phase = view.pending?.phase;
   switch (phase) {
     case 'MOVE_ADJUST':
@@ -410,11 +497,14 @@ function choose(ctx: DecisionContext, style: HeuristicStyle): Action | null {
   }
 }
 
-export function createHeuristicBot(style: HeuristicStyle = 'growth'): Policy {
+export function createHeuristicBot(
+  style: HeuristicStyle = 'growth',
+  outcomeModel?: OutcomeModel,
+): Policy {
   return {
     id: `heuristic:${style}`,
     decide(ctx: DecisionContext): Action {
-      const wanted = choose(ctx, style);
+      const wanted = choose(ctx, style, outcomeModel);
       if (wanted) {
         const key = actionKey(wanted);
         const legal = ctx.legal.find((a) => actionKey(a) === key);
