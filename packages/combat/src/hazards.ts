@@ -47,6 +47,7 @@ function projectileDesc(c: Ctx, p: MProjectile): HitDesc {
     rage: p.rage,
     backstab: false,
     projectile: p,
+    armorBreak: false,
   };
 }
 
@@ -71,10 +72,11 @@ function reflect(c: Ctx, p: MProjectile, by: MFighter): void {
   p.angle = (p.angle + 128) & 255;
   p.vx = -p.vx;
   p.vy = -p.vy;
-  p.power = spec.type === 'parry' ? spec.reflectPower : p.power;
+  p.power = spec.type === 'parry' ? Math.round((p.power * spec.reflectPower) / 100) : p.power;
   p.atkNum = atkNum;
   p.atkDen = atkDen;
   p.defDiv = defDivisorOf(c.r, by.job);
+  p.pierce = false;
   p.rage = isRaging(by);
   p.hitMask = targetBit(by.side);
   p.homingLeft = 0;
@@ -184,10 +186,38 @@ export function updateProjectiles(c: Ctx): void {
   if (list.length === 0) return;
   const kept: MProjectile[] = [];
   for (const p of list) if (stepProjectile(c, p)) kept.push(p);
-  c.s.projectiles = kept;
+  const cleared = new Set<number>();
+  for (const shot of kept) {
+    const shotMove = c.r.moves[shot.kind];
+    if (shotMove.type !== 'shot' || !shotMove.projectile.cancelsProjectiles) continue;
+    for (const other of kept) {
+      if (other.owner === shot.owner || (other.kind !== 'bolt' && other.kind !== 'kunai')) continue;
+      const dx = shot.x - shot.vx - (other.x - other.vx);
+      const dy = shot.y - shot.vy - (other.y - other.vy);
+      const vx = shot.vx - other.vx;
+      const vy = shot.vy - other.vy;
+      const den = vx * vx + vy * vy;
+      const t =
+        den === 0 ? 0 : Math.max(0, Math.min(256, divRound(-(dx * vx + dy * vy) * 256, den)));
+      const cx = dx + divRound(vx * t, 256);
+      const cy = dy + divRound(vy * t, 256);
+      const radius = (shot.radius + other.radius) * Q;
+      if (cx * cx + cy * cy <= radius * radius) cleared.add(other.id);
+    }
+  }
+  c.s.projectiles = kept.filter((p) => {
+    if (!cleared.has(p.id)) return true;
+    emit(c, String(p.id), {
+      type: 'ProjectileEnd',
+      entity: p.id,
+      reason: 'cleared',
+      pos: pos(p.x, p.y),
+    });
+    return false;
+  });
 }
 
-function zoneDesc(z: MZone, dir: number): HitDesc {
+function zoneDesc(c: Ctx, z: MZone, dir: number): HitDesc {
   return {
     attacker: z.owner,
     kind: z.kind,
@@ -207,6 +237,8 @@ function zoneDesc(z: MZone, dir: number): HitDesc {
     rage: false,
     backstab: false,
     projectile: null,
+    armorBreak:
+      z.kind === 'meteor' && c.r.moves.meteor.type === 'rune' && c.r.moves.meteor.armorBreak,
   };
 }
 
@@ -217,7 +249,7 @@ function zoneHits(c: Ctx, z: MZone, dot: boolean): void {
     if (!dot && z.hitMask & bit) return;
     for (const h of dragonHurtCircles(c.r, d)) {
       if (circleHit(z.x, z.y, z.radius, h.x, h.y, h.r)) {
-        if (hitDragon(c, d, zoneDesc(z, 0), h.head, h.x, h.y) !== 'immune') z.hitMask |= bit;
+        if (hitDragon(c, d, zoneDesc(c, z, 0), h.head, h.x, h.y) !== 'immune') z.hitMask |= bit;
         return;
       }
     }
@@ -229,7 +261,27 @@ function zoneHits(c: Ctx, z: MZone, dot: boolean): void {
   if (!dot && z.hitMask & bit) return;
   if (!circleHit(z.x, z.y, z.radius, t.x, t.y, c.r.body.hurtRadius)) return;
   const dir = atan2i(t.y - z.y, t.x - z.x);
-  if (hitFighter(c, t, zoneDesc(z, dir)) !== 'immune') z.hitMask |= bit;
+  const outcome = hitFighter(c, t, zoneDesc(c, z, dir));
+  if (outcome !== 'immune') z.hitMask |= bit;
+  if (outcome === 'parried' && z.kind === 'fireball' && c.s.dragon) {
+    const [atkNum, atkDen] = effectiveAtk(c.r, t);
+    hitDragon(
+      c,
+      c.s.dragon,
+      {
+        ...zoneDesc(c, z, 0),
+        attacker: t.side,
+        power: 100,
+        atkNum,
+        atkDen,
+        defDiv: defDivisorOf(c.r, t.job),
+        parryable: false,
+      },
+      false,
+      c.s.dragon.x,
+      c.s.dragon.y,
+    );
+  }
 }
 
 function stepZone(c: Ctx, z: MZone, spawned: MZone[]): boolean {

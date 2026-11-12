@@ -1,5 +1,11 @@
 import { JOB_IDS, type JobId } from '@dragon-rush/engine';
-import type { LobbySeat, RoomConfigureSeat, RoomOptions, RoomStateMsg, RoomStatus } from '@dragon-rush/protocol';
+import type {
+  LobbySeat,
+  RoomConfigureSeat,
+  RoomOptions,
+  RoomStateMsg,
+  RoomStatus,
+} from '@dragon-rush/protocol';
 import { ProtocolError } from '../errors';
 import type { GameSession } from '../game/GameSession';
 
@@ -18,7 +24,7 @@ const emptySeat = (seat: number, kind: LobbySeat['kind']): LobbySeat => ({
 /** Lobby state for one room: host, 4 seats, options, and the running game when started. */
 export class Room {
   status: RoomStatus = 'lobby';
-  options: RoomOptions = { maxRounds: null };
+  options: RoomOptions = { maxRounds: null, quickCombat: false };
   readonly seats: LobbySeat[];
   readonly members = new Set<string>();
   game: GameSession | null = null;
@@ -30,18 +36,37 @@ export class Room {
     hostNickname: string,
     now: number,
   ) {
-    this.seats = [emptySeat(0, 'human'), emptySeat(1, 'human'), emptySeat(2, 'empty'), emptySeat(3, 'empty')];
+    this.seats = [
+      emptySeat(0, 'human'),
+      emptySeat(1, 'human'),
+      emptySeat(2, 'empty'),
+      emptySeat(3, 'empty'),
+    ];
     this.occupy(this.seats[0]!, hostId, hostNickname);
     this.members.add(hostId);
     this.lastActivity = now;
   }
 
   private occupy(seat: LobbySeat, playerId: string, nickname: string): void {
-    Object.assign(seat, { kind: 'human', playerId, nickname, ready: false, connected: true, botName: null, modelId: null });
+    Object.assign(seat, {
+      kind: 'human',
+      playerId,
+      nickname,
+      ready: false,
+      connected: true,
+      botName: null,
+      modelId: null,
+    });
   }
 
   toState(): RoomStateMsg {
-    return { roomCode: this.code, hostId: this.hostId, status: this.status, options: { ...this.options }, seats: this.seats.map((s) => ({ ...s })) };
+    return {
+      roomCode: this.code,
+      hostId: this.hostId,
+      status: this.status,
+      options: { ...this.options },
+      seats: this.seats.map((s) => ({ ...s })),
+    };
   }
 
   seatOf(playerId: string): LobbySeat | null {
@@ -88,18 +113,24 @@ export class Room {
     if (seat) seat.connected = connected;
   }
 
-  configure(playerId: string, maxRounds: number | null): void {
+  configure(playerId: string, maxRounds: number | null, quickCombat?: boolean): void {
     this.assertLobby();
     this.assertHost(playerId);
     this.options.maxRounds = maxRounds;
+    if (quickCombat !== undefined) this.options.quickCombat = quickCombat;
   }
 
-  configureSeat(playerId: string, p: RoomConfigureSeat, modelExists: (id: string) => boolean): void {
+  configureSeat(
+    playerId: string,
+    p: RoomConfigureSeat,
+    modelExists: (id: string) => boolean,
+  ): void {
     this.assertLobby();
     this.assertHost(playerId);
     const seat = this.seats[p.seat]!;
     if (seat.playerId !== null) throw new ProtocolError('SEAT_OCCUPIED');
-    if (p.kind === 'model' && (!p.modelId || !modelExists(p.modelId))) throw new ProtocolError('MODEL_NOT_FOUND');
+    if (p.kind === 'model' && (!p.modelId || !modelExists(p.modelId)))
+      throw new ProtocolError('MODEL_NOT_FOUND');
     Object.assign(seat, emptySeat(seat.seat, p.kind), {
       botName: p.kind === 'bot' ? (p.botName ?? 'heuristic') : null,
       modelId: p.kind === 'model' ? (p.modelId ?? null) : null,
@@ -114,10 +145,12 @@ export class Room {
     if (seatIndex !== undefined && seatIndex !== this.seatOf(playerId)?.seat) {
       this.assertHost(playerId);
       seat = this.seats[seatIndex] ?? null;
-      if (!seat || (seat.kind !== 'bot' && seat.kind !== 'model')) throw new ProtocolError('SEAT_OCCUPIED');
+      if (!seat || (seat.kind !== 'bot' && seat.kind !== 'model'))
+        throw new ProtocolError('SEAT_OCCUPIED');
     } else seat = this.seatOf(playerId);
     if (!seat) throw new ProtocolError('NOT_IN_ROOM');
-    if (job && this.seats.some((s) => s !== seat && s.job === job && s.kind !== 'empty')) throw new ProtocolError('JOB_TAKEN');
+    if (job && this.seats.some((s) => s !== seat && s.job === job && s.kind !== 'empty'))
+      throw new ProtocolError('JOB_TAKEN');
     seat.job = job;
   }
 
@@ -132,11 +165,15 @@ export class Room {
   prepareStart(playerId: string, pick: () => number): LobbySeat[] {
     this.assertLobby();
     this.assertHost(playerId);
-    const active = this.seats.filter((s) => s.kind === 'bot' || s.kind === 'model' || (s.kind === 'human' && s.playerId !== null));
+    const active = this.seats.filter(
+      (s) => s.kind === 'bot' || s.kind === 'model' || (s.kind === 'human' && s.playerId !== null),
+    );
     if (active.length < 2) throw new ProtocolError('NOT_READY', 'need at least 2 seats');
     for (const s of active) {
-      if (s.kind === 'human' && s.playerId !== this.hostId && !s.ready) throw new ProtocolError('NOT_READY', `${s.nickname} is not ready`);
-      if (s.kind === 'human' && !s.job) throw new ProtocolError('NOT_READY', `${s.nickname} has no job`);
+      if (s.kind === 'human' && s.playerId !== this.hostId && !s.ready)
+        throw new ProtocolError('NOT_READY', `${s.nickname} is not ready`);
+      if (s.kind === 'human' && !s.job)
+        throw new ProtocolError('NOT_READY', `${s.nickname} has no job`);
     }
     for (const s of active) {
       if (s.job) continue;

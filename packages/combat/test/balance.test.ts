@@ -1,27 +1,29 @@
 import { describe, expect, it } from 'vitest';
 import type { JobId } from '@dragon-rush/engine';
 import { favouredJob, MATCHUPS } from '../src/matchups';
+import { createCombatBot, runCombat } from '../src/index';
 import {
   baseFighter,
   dragonSeries,
   duelSeries,
   JOBS,
   mean,
-  pairRate,
   statFighter,
   upgradeRate,
 } from './calibration';
 
 /**
- * Coarse balance regression with balanced bots (small samples: wide tolerances). The full report with
- * large samples is `pnpm --filter @dragon-rush/combat calibrate`.
+ * Balance regression with side swaps and pooled Normal/Easy reaction time. Exact major/minor
+ * target bands remain aspirational; this gate checks the achieved ring and prevents runaway cells.
  */
 const N = 60;
+const MATCHUP_N = 1_000;
 
 describe('designed matchup chart', () => {
   it('is a 5-way rock-paper-scissors: each job beats exactly two and loses to two', () => {
     for (const j of JOBS) {
       const beats = MATCHUPS[j].map((e) => e.beats);
+      expect(MATCHUPS[j].map((e) => e.tier).sort()).toEqual(['major', 'minor']);
       expect(new Set(beats).size).toBe(2);
       expect(beats).not.toContain(j);
       const losesTo = JOBS.filter((o) => MATCHUPS[o].some((e) => e.beats === j));
@@ -36,29 +38,42 @@ describe('duel balance (balanced bots, base stats)', () => {
   const rate = (i: JobId, j: JobId): number => {
     const k = `${i}:${j}`;
     if (!rates.has(k)) {
-      const r = pairRate(i, j, N, 1);
+      const bots = [10, 16].map((reaction) => createCombatBot('balanced', { reaction }));
+      let wins = 0;
+      for (let seed = 1; seed <= MATCHUP_N; seed++) {
+        const bot = bots[(seed - 1) % 2]!;
+        const asA = runCombat({ kind: 'duel', a: baseFighter(i), b: baseFighter(j) }, [bot, bot], seed);
+        const asB = runCombat({ kind: 'duel', a: baseFighter(j), b: baseFighter(i) }, [bot, bot], seed);
+        if (asA.result.winner === 'a') wins++;
+        if (asB.result.winner === 'b') wins++;
+      }
+      const r = wins / (MATCHUP_N * 2);
       rates.set(k, r);
       rates.set(`${j}:${i}`, 1 - r);
     }
     return rates.get(k)!;
   };
 
-  it('keeps every job near 50% across its four opponents and mirrors even', () => {
+  it('keeps all ten intended directions without a 70/30 cell', () => {
+    for (const job of JOBS) {
+      for (const edge of MATCHUPS[job]) {
+        const result = rate(job, edge.beats);
+        expect(result, `${job} > ${edge.beats}`).toBeGreaterThan(0.5);
+        expect(result, `${job} > ${edge.beats}`).toBeLessThan(0.7);
+      }
+    }
+  }, 120_000);
+
+  it('keeps each job near 50% across four opponents and mirrors even', () => {
     for (const i of JOBS) {
       const avg = mean(JOBS.filter((j) => j !== i).map((j) => rate(i, j)));
-      expect(avg, i).toBeGreaterThan(0.38);
-      expect(avg, i).toBeLessThan(0.62);
+      expect(avg, i).toBeGreaterThan(0.47);
+      expect(avg, i).toBeLessThan(0.53);
       const mirror = duelSeries(baseFighter(i), baseFighter(i), N, 7);
       expect(mirror.winsA / mirror.n, `${i} mirror`).toBeGreaterThan(0.3);
       expect(mirror.winsA / mirror.n, `${i} mirror`).toBeLessThan(0.7);
     }
-  });
-
-  it('no designed favourite collapses (soft-counter chart, tolerance 15 points below even)', () => {
-    for (const i of JOBS)
-      for (const e of MATCHUPS[i])
-        expect(rate(i, e.beats), `${i} > ${e.beats}`).toBeGreaterThan(0.35);
-  });
+  }, 120_000);
 
   it('fights stay inside the time limit and usually end by KO', () => {
     const r = duelSeries(baseFighter('swordsman'), baseFighter('berserker'), 30, 3);

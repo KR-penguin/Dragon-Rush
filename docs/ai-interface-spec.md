@@ -154,7 +154,7 @@
 **검산**: 1+1+1+3+3+24+3+3+2+3+3 = **47 = `ACTION_DIM`** (마지막 index 46).
 - `abs(k) = (mySeat + k) mod n` (§3과 같은 상대 좌석 규칙). 엔진 `Action`은 절대 좌석을 쓰고, 변환은 `packages/ai` 코덱이 한다.
 - 텔레포트는 **절대 칸** 인코딩이다. 자기 기준 오프셋 인코딩도 검토했지만, 칸 효과(상점 6·18, 여관 12 등)가 절대 위치에 고정되어 있어 "여관으로 텔레포트" 같은 의미가 한 인덱스에 고정되는 쪽이 학습에 유리하다. 현재 칸 인덱스는 항상 마스크된다(기획서 §12 텔레포트 목적지).
-- 코덱 API(예정, `packages/ai/src/codec/`): `encodeAction(view, seat, action): number`, `decodeAction(view, seat, index): Action`, `maskFromLegal(view, seat, legal): Uint8Array`, `ACTION_NAMES: readonly string[]`.
+- 코덱 API(`packages/ai/src/codec/actions.ts`): `encodeAction(view, seat, action): number`, `decodeAction(view, seat, index): Action`, `maskFromLegal(view, seat, legal): Uint8Array`, `ACTION_NAMES: readonly string[]`.
 
 ## 5. 마스크 규칙
 
@@ -262,14 +262,14 @@ env별 결과 객체(`result.envs[i]`, reset도 같은 형식):
 
 **오류 코드**: `BAD_REQUEST`(JSON·스키마 오류), `UNKNOWN_CMD`, `NOT_INITIALIZED`(reset 전 step), `BAD_CONFIG`, `VERSION_MISMATCH`, `ILLEGAL_ACTION`(상태 변화 없음), `EPISODE_OVER`(`auto_reset=false`에서 종료 후 step), `INTERNAL`(서버 상태 불명 → 클라이언트가 프로세스 재시작). `close` 후 서버는 종료한다. stdin EOF도 종료로 처리한다.
 
-**결정성**: 같은 빌드·같은 `(seed, config, actions 열)` → 바이트 단위로 같은 응답 열. 게임 RNG는 엔진 state 안(소비 순서는 기획서 §9), 봇은 별도 정책 RNG(`DecisionContext.random`)를 쓰며 둘 다 에피소드 시드에서 파생된다. 서버는 wall-clock·`Math.random`을 쓰지 않는다.
+**결정성**: 같은 빌드·같은 `(seed, config, actions 열)` → 바이트 단위로 같은 응답 열. 게임 RNG는 엔진 state 안(소비 순서는 기획서 §9), 봇은 별도 정책 RNG(`DecisionContext.random`)를 쓰며 둘 다 에피소드 시드에서 파생된다. `seed`를 생략하면 서버가 시간과 난수로 시드를 만들고 reset 응답에 돌려준다.
 
 ## 8. Python 클라이언트 API (`python/rpgboard_env`, numpy만)
 
 ```python
 RPGBoardEnv(mode="single", num_players=4, agent_seat="random", controlled_seats="all",
             jobs="random", opponents="heuristic", max_rounds=100, rules="default",
-            reward_shaping=None, return_events=False, server_cmd=None, cwd=None,
+            reward_shaping=None, return_events=False, combat_resolver="dice", server_cmd=None, cwd=None,
             expect_obs_version="obs_v1", expect_act_version="act_v1", timeout=60.0)
 RPGBoardVecEnv(num_envs=8, **위와 같은 인자)          # 항상 auto_reset
 ```
@@ -284,8 +284,9 @@ RPGBoardVecEnv(num_envs=8, **위와 같은 인자)          # 항상 auto_reset
 | `reward` | single: `float`(에이전트 좌석) / selfplay: `float32 (4,)` | single: `float32 (N,)` / selfplay: `float32 (N, 4)` |
 | `terminated`, `truncated` | `bool` | `bool (N,)` |
 | `info["action_mask"]` | `bool (47,)` (종료 응답에서는 전부 False) | `bool (N, 47)` |
-| `info["acting_seat"]`, `["turn_seat"]`, `["round"]` | `int` (종료 응답의 좌석 값은 `None`) | `int64 (N,)` |
-| `info["phase"]` | `str` | `list[str]` |
+| `info["acting_seat"]`, `["turn_seat"]` | `int` (종료 응답에서는 `None`) | `int64 (N,)` (자동 리셋된 다음 결정 기준) |
+| `info["round"]` | `int` | `int64 (N,)` |
+| `info["phase"]` | `str` (종료 응답에서는 `None`) | `list[str]` (자동 리셋된 다음 결정 기준) |
 | `info["seat_rewards"]` | `float32 (4,)` | `float32 (N, 4)` |
 | `info["eliminated"]`, `["outcome"]`, `["final_obs"]`, `["episode_start"]` | 값 그대로(`final_obs`: `dict[int, float32 (253,)]`) | 길이 N 리스트 |
 
@@ -324,8 +325,8 @@ env.close()
 ```ts
 interface Policy { readonly id: string; decide(ctx: DecisionContext): Action }
 interface DecisionContext { view: PublicGameState; seat: SeatId; legal: readonly Action[]; random: () => number }
-interface PolicyModel { readonly meta: ModelMeta; forward(obs: Float32Array): Float32Array }   // 길이 ACTION_DIM
-type WeightAdapter = (raw: unknown) => PolicyModel;                                            // 형식 오류 시 ModelFormatError
+interface PolicyModel { readonly meta: ModelMeta; forward(obs: Float32Array): Float32Array; value?(obs: Float32Array): number } // actor 길이 ACTION_DIM
+type WeightAdapter = (raw: unknown, id: string) => PolicyModel;                                // 형식 오류 시 ModelFormatError
 interface ModelMeta {
   id: string;                                   // 파일명 기반 ('models/my-agent.json' → 'my-agent')
   obsVersion: string | null; actVersion: string | null;   // 사용자 메타에 있으면 채움
@@ -340,9 +341,9 @@ createModelPolicy(model: PolicyModel, opts?: { mode?: 'argmax' | 'sample'; tempe
 3. `mask = maskFromLegal(view, seat, ctx.legal)`. 불법 인덱스는 −∞.
 4. `mode = 'argmax'`(기본, 온라인·평가) 또는 `'sample'`: `softmax(logits / temperature)`에서 `ctx.random`으로 추출(기본 temperature 1.0).
 5. `decodeAction` → 절대 좌석 `Action`.
-6. 출력 길이 불일치·NaN·마스크 후 유효값 없음 → 그 결정 1회만 HeuristicBot으로 대체하고 경고 로그. 게임은 멈추지 않는다.
-- critic 출력은 게임 플레이에 쓰지 않는다(패리티 테스트에서만 확인).
-- 로드 검증: `obsDim = 253`, `actionDim = 47`, 영벡터 forward 결과 길이 47. 메타 버전이 있으면 `obs_v1`/`act_v1`과 일치해야 하며, 없으면 경고만 하고 허용한다(강제는 사용자 포맷 확정 후).
+6. 출력 길이 불일치·NaN·마스크 후 유효값 없음 → 그 결정 1회만 HeuristicBot으로 대체한다. 호출자가 `onFallback`을 전달하면 이유를 받는다.
+- critic 출력은 게임 플레이에 쓰지 않는다. `checkParity`는 샘플에 `value`가 있고 모델도 `value()`를 제공할 때만 critic 값을 비교하므로, 어댑터 통합 검증에서는 둘 다 제공해야 한다.
+- 현재 검증: 서버 모델 레지스트리는 메타 버전이 있으면 `obs_v1`/`act_v1`과 비교한다. `createModelPolicy`는 `obsDim = 253`, `actionDim = 47`을 확인하고, 실제 결정에서 `forward` 출력 길이 47을 확인한다. 사용자 포맷 어댑터는 아직 `null`이다.
 
 **사용자에게 요청할 정보** (어댑터 구현 전 필요)
 1. 네트워크 구조: 층 수·크기, actor/critic 공유 여부(공유 trunk + 두 head 등), bias 유무.
@@ -382,15 +383,12 @@ createModelPolicy(model: PolicyModel, opts?: { mode?: 'argmax' | 'sample'; tempe
 
 - 기준선 지표(밸런스 결과, `rush-1`): 4인에서 무작위 정책 좌석 승률 2.7%(공정 25%), 2인 16.3%(공정 50%). 온라인 대리 플레이(연결 끊김·연속 시간 초과, 기획서 §13 재접속)는 `heuristic:growth`.
 
-## 11. 테스트 계획 (TDD, Vitest + fast-check, Python은 pytest)
+## 11. 계약 검증 (Vitest, Python은 pytest)
 
-| 테스트 | 위치(예정) | 내용 |
+| 테스트 | 현재 위치 | 내용 |
 |---|---|---|
-| 레이아웃 | `packages/ai/test/obs.layout.test.ts` | `OBS_V1_LAYOUT` offset 연속성, 마지막 offset + length = 253, `ACTION_NAMES.length = 47`, 모든 값 ∈ [0, 2], 원-핫 합 ∈ {0, 1} |
-| obs 골든 | `packages/ai/test/obs.golden.test.ts` + `fixtures/obs_v1/*.json` | 고정 시드 + 행동 스크립트(4인·3인·2인, 탈락·방어자 결정·닌자 보정·수련장 포함)의 관측 벡터 스냅샷. 버전 상수 변경 없이 바뀌면 실패 |
-| 마스크 ↔ 합법 | `packages/ai/test/mask.property.test.ts` | 임의 시드·인원·직업 + 임의 합법 행동 열: §5 불변식 1·2, `encode∘decode = id`, 마스크가 §5 표의 조건과 일치(코인 경계, canBuy, 도둑 대상 0코인, 주사위 1의 −1, 현재 칸 텔레포트) |
-| 결정성 | `packages/ai`, `packages/sim` | 같은 시드 + 같은 행동 열 → 같은 obs 바이트 열. env 서버 프로세스 2개에서 같은 응답 열 |
-| env 프로토콜 계약 | `packages/sim/test/env-server.contract.test.ts` | spawn → info/reset/step/close 왕복, 스키마 검증, `ILLEGAL_ACTION` 원자성(상태 불변), 자동 리셋 필드, 탈락 시 `rewards`/`final_obs`, truncation, 오류 코드, stdout에 로그 없음 |
+| 관측·골든 | `packages/ai/test/obs.test.ts`, `obs.golden.test.ts` | 레이아웃·범위·고정 관측 스냅샷 |
+| 코덱·마스크 | `packages/ai/test/codec.test.ts` | 합법 행동 인덱스·마스크·왕복 |
+| env 프로토콜 | `packages/sim/test/env.test.ts` | info/reset/step/close, 자동 리셋, 오류·결정성, stdio spawn |
 | Python 클라이언트 | `python/tests/test_client.py` | shape·dtype(§8 표), b64 디코딩, 버전 불일치 예외, 예제 루프 1판 완주 |
-| 모델 패리티 | `packages/ai/test/model.parity.test.ts` | 사용자 샘플(`models/parity/<name>.json`)에 대해 TS 어댑터 forward(actor 원출력·critic)와 numpy 결과 비교: `abs(ts − ref) ≤ 1e-5 + 1e-5·abs(ref)`(패리티 허용 오차의 정본, 사용자와 합의해 조정), 샘플 마스크 적용 후 argmax 일치. 어댑터 구현 시 추가 |
-| 봇 회귀 | `packages/sim` | RandomBot 좌석 승률·HeuristicBot 대전 지표가 기획서 §15 지표 범위 안(시드 고정, CI용 소규모) |
+| 패리티 도구 | `packages/ai/test/parity.test.ts` | 합성 모델로 actor·critic 비교. 사용자 가중치 JSON을 읽는 검사는 어댑터 구현 후 필요. 허용 오차는 `abs(ts − ref) ≤ 1e-5 + 1e-5·abs(ref)`이고 마스크 후 argmax도 비교 |

@@ -20,7 +20,11 @@ export const ERROR_CODES = [
 
 export type ErrorCode = (typeof ERROR_CODES)[number];
 
-export type Ack<T> = { ok: true; data: T } | { ok: false; error: { code: ErrorCode; message: string } };
+export type Ack<T> =
+  { ok: true; data: T } | { ok: false; error: { code: ErrorCode; message: string } };
 
 export const ok = <T>(data: T): Ack<T> => ({ ok: true, data });
-export const fail = (code: ErrorCode, message: string = code): Ack<never> => ({ ok: false, error: { code, message } });
+export const fail = (code: ErrorCode, message: string = code): Ack<never> => ({
+  ok: false,
+  error: { code, message },
+});

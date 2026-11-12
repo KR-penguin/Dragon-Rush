@@ -168,7 +168,7 @@ describe('online lobby store against a real server', () => {
     expect(route.session.restart).toBeNull();
     expect(route.session.store.getState().client?.mode).toBe('online');
 
-    await until(() => gameOver(alice) && gameOver(bob));
+    await until(() => gameOver(alice) && gameOver(bob), 60_000);
     const latest = route.session.store.getState().latest!;
     expect(latest.seats).toHaveLength(3);
     expect(latest.controllableSeats).toHaveLength(1);
@@ -193,7 +193,7 @@ describe('online lobby store against a real server', () => {
     a.disconnect();
     b.disconnect();
     expect(alice.lobby.getState().connection).toBe('idle');
-  });
+  }, 75_000);
 
   it('keeps the session and seat when the socket reconnects on its own', async () => {
     const carol = player('Carol');

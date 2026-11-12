@@ -6,6 +6,7 @@ import type {
   FighterInput,
   Side,
 } from '@dragon-rush/combat';
+import type { FightNetStats } from '@dragon-rush/netcode';
 import type { FightSide } from '../gameClient';
 
 /**
@@ -62,6 +63,7 @@ export interface FightSession {
   onFrame(listener: FrameListener): () => void;
   onEnd(listener: (result: CombatResult) => void): () => void;
   result(): CombatResult | null;
+  stats?(): FightNetStats | null;
   /** Manual pause; the session also pauses by itself while the tab is hidden. */
   setPaused(paused: boolean): void;
   isPaused(): boolean;

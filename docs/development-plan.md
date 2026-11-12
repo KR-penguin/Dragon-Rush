@@ -1,6 +1,6 @@
 # 개발 계획서 — 드래곤 러쉬 (Dragon Rush)
 
-> 상태: **1차 P0~P7 구현 완료 (2026-11-11)**, **2차 개발 진행 중 (2026-11-12, §5)**. 사용자 입력 대기: D4·D13(보드·전투 모델 가중치 포맷), D8·D12(에셋), D9(배포 대상), D14(전투 난이도), D16(outcome 적합 도구).
+> 상태: **1차 P0~P7 구현 완료 (2026-11-11)**, **2차 개발 진행 중 (2026-11-12, §5)**. 사용자 자료 대기: D4·D13(보드·전투 모델 가중치 포맷), D8·D12(에셋), D9(배포 대상). D14는 Normal 기본값을 적용했고 D16의 outcome 적합 도구는 구현 중이다.
 > 정본 분담: 규칙·수치 → [game-design.md](game-design.md) · 구조·프로토콜 → [architecture.md](architecture.md) · 보드 AI 계약 → [ai-interface-spec.md](ai-interface-spec.md) · 실시간 전투 → [combat-design.md](combat-design.md) · 전투 AI 계약 → [combat-ai-spec.md](combat-ai-spec.md) · 화면·연출·효과·오디오 → [art-direction.md](art-direction.md) · 코딩 규칙 → [coding_convention.md](../coding_convention.md) · 워크스페이스 안내 → [README.md](../README.md), [AI_README.md](../AI_README.md)
 
 ## 1. 전체 전략
@@ -210,6 +210,8 @@
 | R6 전투 학습 환경 | `cobs_v1`/`cact_v1`, `combat-env-server`, `CombatVecEnv`, `stat_dist_v1.json`, 보드 env `combat_resolver`, TS MLP 런타임·패리티 도구, 전투 데이터 생성 도구 | 마스크·코덱·미러 속성 테스트, cobs 골든, env 계약·pytest, 처리량 측정(목표 ≥ 30k 결정/s/프로세스). ★ D15 후 사용자 전투 학습 시작. **대부분 완료** (`feature/combat-ai-env`): 인코더·코덱·마스크·env·`CombatVecEnv`·`combat_resolver: dice\|sim`·`--log-fights`, 측정 약 7만 결정/s/프로세스. 남음: TS MLP 런타임·전투 패리티(D13 후), outcome 모델(D16), `stat_dist_v1.json`은 저장소에 넣지 않고 필요할 때 생성 |
 | R7 7~10분 밸런스 | `RulesConfig` 재조정(밸런스 담당), `pnpm sim`에 예상 게임 시간(턴 연출 + 전투 시간) 지표 | 4인 중앙값 7~10분, `RulesConfig.version` 증가, 기획서 §15 갱신 |
 | R8 아트·오디오 통합 | §4.2 파일 배치, `loops.json`, 크레딧 화면(game-icons CC BY 3.0), 이모지 폴백 유지 | 누락 파일은 플레이스홀더로 동작·오류 0, 라이선스 목록 |
+
+**구현 현황(2026-11-12):** R1 완료. R2는 보드·로비 재디자인과 좁은 화면 보정을 구현했고, R3는 화면 흔들림·VFX·절차적 효과음과 실제 파일 경로 별칭을 구현했다. R4는 결정적 전투 sim·로컬 탑다운 화면·전투 봇·분리된 학습 환경이 동작하며 5직업 상성 재보정 중이다. R5는 서버 권위 온라인 롤백·PvE 로컬 예측·관전 입력 재생이 연결됐다. 가상 TCP 시험에서 두 클라이언트와 서버의 최종 해시는 일치하지만 손실이 있는 150~250ms 구간의 롤백 깊이는 목표에 못 미친다([combat-design.md §9](combat-design.md)); 실제 네트워크 체감 검증도 남았다. R6의 `cobs_v1`/`cact_v1`과 Python `CombatEnv`는 동작한다. 사용자 모델의 가중치 파서·패리티 검사는 JSON 규격을 받은 뒤 연결하고, outcome 모델은 구현 중이다. R7은 상성·outcome 완성 뒤 재측정한다. R8의 실제 아트·오디오는 §4.2 파일을 받으면 교체한다.
 
 - 순서: R2·R3(보드 표현)은 R4와 병행 → R4 → R5, R4 → R6 → ★D15 → 사용자 전투 학습 → D13 수령 → 전투 어댑터. R7은 R5 이후 실측으로 확정, R8은 파일이 오는 대로.
 

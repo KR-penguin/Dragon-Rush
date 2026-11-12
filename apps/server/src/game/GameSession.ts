@@ -1,5 +1,6 @@
 import {
   applyAction,
+  applyCombatResult,
   createGameWithEvents,
   getLegalActions,
   isLegalAction,
@@ -12,8 +13,16 @@ import {
   type RulesConfig,
   type SeatId,
 } from '@dragon-rush/engine';
+import { randomInt } from 'node:crypto';
+import { boardCombatSetup } from '@dragon-rush/combat-ai';
+import type { CombatResult, CombatSetup } from '@dragon-rush/combat';
 import { createHeuristicBot, createPolicyRandom, type Policy } from '@dragon-rush/ai';
-import type { GameSnapshotMsg, GameUpdateMsg, OnlineSeatInfo, SeatStatusMsg } from '@dragon-rush/protocol';
+import type {
+  GameSnapshotMsg,
+  GameUpdateMsg,
+  OnlineSeatInfo,
+  SeatStatusMsg,
+} from '@dragon-rush/protocol';
 import { ProtocolError } from '../errors';
 import { timeoutAction } from './timeoutAction';
 import { TurnTimer } from './TurnTimer';
@@ -36,6 +45,7 @@ export interface GameSessionOptions {
   reconnectGraceMs: number;
   botActionDelayMs: number;
   maxConsecutiveTimeouts: number;
+  quickCombat?: boolean;
 }
 
 /** Side effects the session needs from the transport layer. */
@@ -43,15 +53,21 @@ export interface SessionNotifier {
   update(events: GameEvent[]): void;
   seatStatus(msg: SeatStatusMsg): void;
   ended(): void;
+  fightStarted?(fight: {
+    id: number;
+    seed: number;
+    setup: CombatSetup;
+    request: NonNullable<GameState['combat']>;
+  }): void;
 }
 
 export type SubmitSource = 'human' | 'timer' | 'policy';
 
-/**
- * TEMPORARY resolver until real-time combat (@dragon-rush/combat) lands: settles a pending COMBAT
- * with the dice rules inside the same submit, so clients see one update exactly like the old 'dice' mode.
- */
-function autoResolveCombat(r: { state: GameState; events: GameEvent[] }): { state: GameState; events: GameEvent[] } {
+/** Settle COMBAT with dice when the room explicitly chooses quick combat. */
+function autoResolveCombat(r: { state: GameState; events: GameEvent[] }): {
+  state: GameState;
+  events: GameEvent[];
+} {
   let { state, events } = r;
   while (state.pending?.phase === 'COMBAT') {
     const settled = resolveCombatWithDice(state);
@@ -74,7 +90,9 @@ interface SeatController {
 
 /** Authoritative game: every input (human, timer, policy) goes through `submit`. */
 export class GameSession {
+  private static nextFightId = 1;
   private state: GameState;
+  private activeFightId: number | null = null;
   private _version = 0;
   private readonly seats: SeatController[];
   private readonly timer: TurnTimer;
@@ -88,7 +106,11 @@ export class GameSession {
     private readonly opts: GameSessionOptions,
     private readonly notify: SessionNotifier,
   ) {
-    const created = createGameWithEvents({ seats: opts.seats.map((s) => ({ job: s.job })) }, opts.rules, opts.seed);
+    const created = createGameWithEvents(
+      { seats: opts.seats.map((s) => ({ job: s.job })) },
+      opts.rules,
+      opts.seed,
+    );
     this.state = created.state;
     this.initialEvents = created.events;
     this.random = createPolicyRandom((opts.seed ^ 0x6a09e667) >>> 0);
@@ -131,13 +153,41 @@ export class GameSession {
   }
 
   submit(seat: SeatId, action: Action, stateVersion: number, source: SubmitSource): number {
-    if (this.disposed || !this.state.pending) throw new ProtocolError('ILLEGAL_ACTION', 'game is over');
-    if (stateVersion !== this._version) throw new ProtocolError('STALE_VERSION', `version is ${this._version}`);
+    if (this.disposed || !this.state.pending)
+      throw new ProtocolError('ILLEGAL_ACTION', 'game is over');
+    if (stateVersion !== this._version)
+      throw new ProtocolError('STALE_VERSION', `version is ${this._version}`);
     if (this.state.pending.actor !== seat) throw new ProtocolError('NOT_YOUR_TURN');
     if (!isLegalAction(this.state, action)) throw new ProtocolError('ILLEGAL_ACTION');
     const ctl = this.seats[seat]!;
     if (source === 'human') ctl.timeouts = 0;
-    const r = autoResolveCombat(applyAction(this.state, action));
+    const r = this.opts.quickCombat
+      ? autoResolveCombat(applyAction(this.state, action))
+      : applyAction(this.state, action);
+    this.state = r.state;
+    this._version += 1;
+    this.notify.update(r.events);
+    if (this.state.pending?.phase === 'COMBAT' && this.state.combat && !this.opts.quickCombat) {
+      const id = GameSession.nextFightId++ >>> 0;
+      this.activeFightId = id;
+      this.notify.fightStarted?.({
+        id,
+        seed: randomInt(0, 0x100000000),
+        setup: boardCombatSetup(this.state),
+        request: this.state.combat,
+      });
+    }
+    this.scheduleNext();
+    if (this.state.outcome) this.notify.ended();
+    return this._version;
+  }
+
+  submitCombatResult(fightId: number, result: CombatResult): number {
+    if (this.disposed || this.activeFightId !== fightId || this.state.pending?.phase !== 'COMBAT') {
+      throw new ProtocolError('ILLEGAL_ACTION', 'fight is not active');
+    }
+    const r = applyCombatResult(this.state, result);
+    this.activeFightId = null;
     this.state = r.state;
     this._version += 1;
     this.notify.update(r.events);
@@ -190,7 +240,11 @@ export class GameSession {
   }
 
   private statusOf(ctl: SeatController): SeatStatusMsg {
-    return { seat: ctl.engineSeat, connected: ctl.connected, controlledBy: this.controlledByBot(ctl) ? 'bot' : 'human' };
+    return {
+      seat: ctl.engineSeat,
+      connected: ctl.connected,
+      controlledBy: this.controlledByBot(ctl) ? 'bot' : 'human',
+    };
   }
 
   private scheduleNext(): void {
@@ -201,6 +255,10 @@ export class GameSession {
       this.timer.cancel();
       return;
     }
+    if (pending.phase === 'COMBAT') {
+      this.timer.cancel();
+      return;
+    }
     const ctl = this.seats[pending.actor]!;
     if (this.controlledByBot(ctl)) {
       this.timer.cancel();
@@ -208,17 +266,28 @@ export class GameSession {
       this.policyTimer = setTimeout(() => this.runPolicy(ctl, version), this.opts.botActionDelayMs);
       return;
     }
-    this.timer.arm(`${pending.actor}:${pending.phase}:${this.state.current}:${this.state.round}`, () => this.onTimeout(ctl));
+    this.timer.arm(
+      `${pending.actor}:${pending.phase}:${this.state.current}:${this.state.round}`,
+      () => this.onTimeout(ctl),
+    );
   }
 
   private runPolicy(ctl: SeatController, version: number): void {
     this.policyTimer = null;
-    if (this.disposed || version !== this._version || this.state.pending?.actor !== ctl.engineSeat) return;
+    if (this.disposed || version !== this._version || this.state.pending?.actor !== ctl.engineSeat)
+      return;
     const legal = getLegalActions(this.state);
-    const ctx = { view: toPublicState(this.state), seat: ctl.engineSeat, legal, random: this.random };
+    const ctx = {
+      view: toPublicState(this.state),
+      seat: ctl.engineSeat,
+      legal,
+      random: this.random,
+    };
     let action: Action;
     try {
-      action = (ctl.setup.kind === 'human' ? this.proxyPolicy : ctl.policy ?? this.proxyPolicy).decide(ctx);
+      action = (
+        ctl.setup.kind === 'human' ? this.proxyPolicy : (ctl.policy ?? this.proxyPolicy)
+      ).decide(ctx);
       if (!isLegalAction(this.state, action)) throw new Error('policy returned an illegal action');
     } catch {
       action = this.proxyPolicy.decide(ctx);
@@ -260,14 +329,17 @@ export class GameSession {
         ? {
             actor: pending.actor,
             phase: pending.phase,
-            timeLeftMs: this.controlledByBot(this.seats[pending.actor]!) ? null : this.timer.timeLeftMs(),
+            timeLeftMs: this.controlledByBot(this.seats[pending.actor]!)
+              ? null
+              : this.timer.timeLeftMs(),
           }
         : null,
       seats: this.seatInfos(),
       yourSeat,
     };
     const ctl = yourSeat !== null ? this.seats[yourSeat] : undefined;
-    if (pending && yourSeat === pending.actor && ctl && !ctl.permanentBot) msg.legalActions = getLegalActions(this.state);
+    if (pending && yourSeat === pending.actor && ctl && !ctl.permanentBot)
+      msg.legalActions = getLegalActions(this.state);
     return msg;
   }
 

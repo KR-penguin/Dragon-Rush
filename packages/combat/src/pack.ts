@@ -20,7 +20,7 @@ import type {
  * key order). Used for the FNV-1a state hash (desync checks, golden replays) and as a compact JSON-safe
  * snapshot. Rules are not packed: pass the same rules to deserialize, compare `hashCombatRules` to check.
  */
-export const COMBAT_PACK_VERSION = 1;
+export const COMBAT_PACK_VERSION = 2;
 
 type Codec = 'int' | 'bool' | readonly (string | null)[];
 
@@ -76,6 +76,7 @@ const FIGHTER: readonly (readonly [keyof FighterState, Codec])[] = [
   ['facing', 'int'],
   ['aim', 'int'],
   ['hp', 'int'],
+  ['hpQ8', 'int'],
   ['maxHp', 'int'],
   ['atk', 'int'],
   ['def', 'int'],

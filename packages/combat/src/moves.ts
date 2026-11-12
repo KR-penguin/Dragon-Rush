@@ -134,8 +134,9 @@ export function moveTotal(spec: MoveSpec): number {
     case 'parry':
       return spec.startup + spec.active + spec.recovery;
     case 'shot':
-    case 'rune':
       return spec.startup + 1 + spec.recovery;
+    case 'rune':
+      return spec.startup + spec.holdTicks + 1 + spec.recovery;
     case 'draw':
       return Number.MAX_SAFE_INTEGER;
   }
@@ -189,8 +190,10 @@ export function startMove(
   f.superArmor = false;
   f.aim = spec.type === 'melee' ? assistAim(c, f, spec.reach) : f.facing;
   if (spec.type === 'draw') {
-    f.drawTicks = 0;
+    f.moveTick = f.drawTicks;
     f.drawReleased = (f.held & BTN_ATTACK) === 0;
+  } else if (id === 'quickShot' || id === 'fullShot') {
+    f.drawTicks = 0;
   }
   if (announce) {
     const key = `${f.side}:${id}`;
@@ -286,7 +289,20 @@ function advanceDash(c: Ctx, f: MFighter): boolean {
 
 function fireShot(c: Ctx, f: MFighter, id: MoveId, spec: ShotMoveSpec): void {
   const p = spec.projectile;
-  const aim = assistAim(c, f, p.range);
+  let aim = assistAim(c, f, p.range);
+  if (p.leadTicks && !c.s.dragon) {
+    const o = f.side === 'a' ? c.s.b : c.s.a;
+    if (o && o.mode !== 'ko') {
+      const dx = o.x - f.x;
+      const dy = o.y - f.y;
+      const flight = Math.min(
+        p.leadTicks,
+        idiv(Math.max(Math.abs(dx), Math.abs(dy)), speedPerTick(p.speed, c.r.tickHz)),
+      );
+      const predicted = atan2i(dy + o.vy * flight, dx + o.vx * flight);
+      if (angleDiff(predicted, f.facing) <= c.r.aimAssist.half) aim = predicted;
+    }
+  }
   f.aim = aim;
   const [atkNum, atkDen] = effectiveAtk(c.r, f);
   const defDiv = defDivisorOf(c.r, f.job);
@@ -425,14 +441,32 @@ function runMoveTick(c: Ctx, f: MFighter, id: MoveId, spec: MoveSpec): void {
       return;
     }
     case 'shot':
-    case 'rune':
       f.phase = t < spec.startup ? 'startup' : t === spec.startup ? 'active' : 'recovery';
       if (t === spec.startup) {
-        if (spec.type === 'shot') fireShot(c, f, id, spec);
-        else placeRune(c, f, spec);
+        fireShot(c, f, id, spec);
       }
       brake(c, f);
       if (f.phase === 'recovery' && f.moveInput !== 0) f.facing = MOVE_BAM[f.moveInput]!;
+      return;
+    case 'rune':
+      if (t <= spec.startup + spec.holdTicks && f.moveInput !== 0) {
+        f.facing = MOVE_BAM[f.moveInput]!;
+        f.aim = f.facing;
+      }
+      if (t >= spec.startup && t < spec.startup + spec.holdTicks && (f.held & BTN_SKILL) !== 0) {
+        f.phase = 'startup';
+        locomote(c, f, f.moveInput, 50);
+        return;
+      }
+      if (t >= spec.startup && t <= spec.startup + spec.holdTicks) {
+        placeRune(c, f, spec);
+        f.skillTimer -= spec.startup + spec.holdTicks - t;
+        f.moveTick = spec.startup + spec.holdTicks;
+        f.phase = 'active';
+      } else {
+        f.phase = t < spec.startup ? 'startup' : 'recovery';
+      }
+      brake(c, f);
       return;
     case 'parry':
       f.phase =
@@ -454,7 +488,7 @@ function advanceMove(c: Ctx, f: MFighter): boolean {
   // a bow draw can be dropped into a dash (no arrow is fired)
   if (spec.type === 'draw' && f.bufDash > 0 && f.dashCharges > 0) {
     f.bufDash = 0;
-    f.drawTicks = 0;
+    if (c.r.jobs[f.job].dash !== 'backstep') f.drawTicks = 0;
     f.drawReleased = false;
     if (f.moveInput !== 0) f.facing = MOVE_BAM[f.moveInput]!;
     startDash(c, f);

@@ -3,6 +3,15 @@ import { DEFAULT_RULES, withRules, type GameEvent } from '@dragon-rush/engine';
 import { createModelPolicy, createPolicyByName } from '@dragon-rush/ai';
 import {
   C2S,
+  FIGHT_C2S,
+  FightAwaySchema,
+  FightBackSchema,
+  FightReadySchema,
+  FightRequestSyncSchema,
+  FightStatsSchema,
+  decodeFightAck,
+  decodeFightInput,
+  decodeFightPing,
   fail,
   GameActionSchema,
   GameRequestSnapshotSchema,
@@ -25,6 +34,7 @@ import type { ZodType } from 'zod';
 import type { ModelRegistry } from '../ai/modelRegistry';
 import type { ServerConfig } from '../config';
 import { ProtocolError } from '../errors';
+import { FightRoom } from '../fight/FightRoom';
 import { GameSession, type SessionSeatSetup } from '../game/GameSession';
 import type { Room } from '../rooms/Room';
 import type { RoomManager } from '../rooms/RoomManager';
@@ -53,6 +63,34 @@ const BOT_LABEL: Record<string, string> = {
 export function registerGateway(io: Server, deps: GatewayDeps): { dispose(): void } {
   const { config, sessions, rooms, models, log } = deps;
   const lobbyGrace = new Map<string, ReturnType<typeof setTimeout>>();
+  const fights = new Map<string, FightRoom>();
+  let scheduler: ReturnType<typeof setTimeout> | null = null;
+  let planned = performance.now();
+  const schedule = () => {
+    if (fights.size === 0) {
+      scheduler = null;
+      return;
+    }
+    const delay = planned - performance.now();
+    scheduler = setTimeout(wake, Math.max(0, delay - 1));
+  };
+  const stepAll = () => {
+    const now = performance.now();
+    for (const [code, fight] of fights) {
+      fight.advance(now);
+      if (fight.isEnded) {
+        fight.dispose();
+        fights.delete(code);
+      }
+    }
+    planned = now + 1000 / 60;
+    schedule();
+  };
+  const wake = () => {
+    const late = performance.now() - planned > 1000 / 30;
+    if (late) setImmediate(stepAll);
+    else stepAll();
+  };
 
   const emitTo = (playerId: string, event: string, payload: unknown) => {
     const socketId = sessions.player(playerId)?.socketId;
@@ -67,19 +105,41 @@ export function registerGateway(io: Server, deps: GatewayDeps): { dispose(): voi
     const active = room.prepareStart(hostId, random);
     const seats: SessionSeatSetup[] = active.map((s) => {
       const base = { lobbySeat: s.seat, playerId: s.playerId, job: s.job! };
-      if (s.kind === 'human') return { ...base, kind: 'human', name: s.nickname ?? `P${s.seat + 1}` };
+      if (s.kind === 'human')
+        return { ...base, kind: 'human', name: s.nickname ?? `P${s.seat + 1}` };
       if (s.kind === 'model') {
         const model = models.get(s.modelId ?? '');
         if (!model) throw new ProtocolError('MODEL_NOT_FOUND');
-        return { ...base, kind: 'model', name: `모델 ${s.modelId}`, policy: createModelPolicy(model, { onFallback: (r) => log(`model ${s.modelId}: ${r}`) }) };
+        return {
+          ...base,
+          kind: 'model',
+          name: `모델 ${s.modelId}`,
+          policy: createModelPolicy(model, { onFallback: (r) => log(`model ${s.modelId}: ${r}`) }),
+        };
       }
       const botName = s.botName ?? 'heuristic';
-      return { ...base, kind: 'bot', name: BOT_LABEL[botName] ?? '봇', botName, policy: createPolicyByName(botName, random) };
+      return {
+        ...base,
+        kind: 'bot',
+        name: BOT_LABEL[botName] ?? '봇',
+        botName,
+        policy: createPolicyByName(botName, random),
+      };
     });
     const game = new GameSession(
       {
         seats,
-        rules: withRules({ maxRounds: room.options.maxRounds }, DEFAULT_RULES),
+        rules: withRules(
+          {
+            maxRounds: room.options.maxRounds,
+            combat: {
+              ...DEFAULT_RULES.combat,
+              mode: room.options.quickCombat ? 'dice' : 'external',
+            },
+          },
+          DEFAULT_RULES,
+        ),
+        quickCombat: room.options.quickCombat,
         seed: randomInt(0, 2 ** 47),
         turnTimeoutMs: config.turnTimeoutMs,
         reconnectGraceMs: config.reconnectGraceMs,
@@ -96,12 +156,24 @@ export function registerGateway(io: Server, deps: GatewayDeps): { dispose(): voi
           room.status = 'finished';
           broadcastRoom(room);
         },
+        fightStarted: (fight) => {
+          const live = new FightRoom(io, room, sessions, game, {
+            ...fight,
+            request: fight.request,
+          });
+          fights.set(room.code, live);
+          if (!scheduler) {
+            planned = performance.now();
+            schedule();
+          }
+        },
       },
     );
     room.game = game;
     room.status = 'playing';
     broadcastRoom(room);
-    for (const pid of room.members) emitTo(pid, S2C.gameUpdate, game.updateFor(pid, game.initialEvents));
+    for (const pid of room.members)
+      emitTo(pid, S2C.gameUpdate, game.updateFor(pid, game.initialEvents));
     game.start();
   };
 
@@ -133,7 +205,11 @@ export function registerGateway(io: Server, deps: GatewayDeps): { dispose(): voi
 
     let room = currentRoom();
     if (session.roomCode && !room) session.roomCode = null;
-    socket.emit(S2C.sessionWelcome, { sessionToken: session.token, playerId: session.playerId, resume: room ? { roomCode: room.code } : null });
+    socket.emit(S2C.sessionWelcome, {
+      sessionToken: session.token,
+      playerId: session.playerId,
+      resume: room ? { roomCode: room.code } : null,
+    });
     if (room) {
       const grace = lobbyGrace.get(session.playerId);
       if (grace) clearTimeout(grace);
@@ -143,6 +219,7 @@ export function registerGateway(io: Server, deps: GatewayDeps): { dispose(): voi
       room.game?.reconnect(session.playerId);
       broadcastRoom(room);
       if (room.game) socket.emit(S2C.gameSnapshot, room.game.snapshotFor(session.playerId));
+      fights.get(room.code)?.sendStart(session.playerId);
     }
 
     const on = <T>(event: string, schema: ZodType<T>, handler: (data: T) => unknown) => {
@@ -192,6 +269,7 @@ export function registerGateway(io: Server, deps: GatewayDeps): { dispose(): voi
       if (r.game) {
         r.game.reconnect(session.playerId);
         socket.emit(S2C.gameSnapshot, r.game.snapshotFor(session.playerId));
+        fights.get(r.code)?.sendStart(session.playerId);
       }
       return { roomCode: r.code, seat: seat.seat };
     });
@@ -200,9 +278,9 @@ export function registerGateway(io: Server, deps: GatewayDeps): { dispose(): voi
       leaveRoom(session, socket);
     });
 
-    on(C2S.roomConfigure, RoomConfigureSchema, ({ maxRounds }) => {
+    on(C2S.roomConfigure, RoomConfigureSchema, ({ maxRounds, quickCombat }) => {
       const r = requireRoom();
-      r.configure(session.playerId, maxRounds);
+      r.configure(session.playerId, maxRounds, quickCombat);
       broadcastRoom(r);
     });
 
@@ -241,12 +319,54 @@ export function registerGateway(io: Server, deps: GatewayDeps): { dispose(): voi
       if (game) socket.emit(S2C.gameSnapshot, game.snapshotFor(session.playerId));
     });
 
+    const fight = () => {
+      const r = currentRoom();
+      return r ? fights.get(r.code) : undefined;
+    };
+    const inputLimit = createRateLimiter(120, Date.now, 60);
+    const pingLimit = createRateLimiter(20);
+    const ackLimit = createRateLimiter(10);
+    const otherLimit = createRateLimiter(10);
+    socket.on(FIGHT_C2S.input, (raw: unknown) => {
+      if (inputLimit() && decodeFightInput(raw)) fight()?.input(session.playerId, raw);
+    });
+    socket.on(FIGHT_C2S.ping, (raw: unknown) => {
+      if (pingLimit() && decodeFightPing(raw)) fight()?.ping(session.playerId, raw);
+    });
+    socket.on(FIGHT_C2S.ack, (raw: unknown) => {
+      if (ackLimit() && decodeFightAck(raw)) fight()?.ackFrom(session.playerId, raw);
+    });
+    socket.on(FIGHT_C2S.ready, (raw: unknown) => {
+      const p = FightReadySchema.safeParse(raw);
+      if (otherLimit() && p.success && fight()?.authority.fightId === p.data.fightId)
+        fight()?.readyFrom(session.playerId);
+    });
+    socket.on(FIGHT_C2S.away, (raw: unknown) => {
+      const p = FightAwaySchema.safeParse(raw);
+      if (otherLimit() && p.success && fight()?.authority.fightId === p.data.fightId)
+        fight()?.away(session.playerId);
+    });
+    socket.on(FIGHT_C2S.back, (raw: unknown) => {
+      const p = FightBackSchema.safeParse(raw);
+      if (otherLimit() && p.success && fight()?.authority.fightId === p.data.fightId)
+        fight()?.back(session.playerId);
+    });
+    socket.on(FIGHT_C2S.requestSync, (raw: unknown) => {
+      const p = FightRequestSyncSchema.safeParse(raw);
+      if (otherLimit() && p.success && fight()?.authority.fightId === p.data.fightId)
+        fight()?.requestSync(session.playerId, p.data.reason);
+    });
+    socket.on(FIGHT_C2S.stats, (raw: unknown) => {
+      if (otherLimit()) FightStatsSchema.safeParse(raw);
+    });
+
     socket.on('disconnect', () => {
       const s = sessions.detach(socket.id);
       if (!s || s.socketId) return;
       room = currentRoom();
       if (!room) return;
       room.setConnected(s.playerId, false);
+      fights.get(room.code)?.away(s.playerId);
       if (room.game && !room.game.isOver) room.game.disconnect(s.playerId);
       else if (room.status === 'lobby') {
         const r = room;
@@ -265,13 +385,17 @@ export function registerGateway(io: Server, deps: GatewayDeps): { dispose(): voi
   });
 
   const sweeper = setInterval(() => {
-    rooms.sweep(config.roomTtlMs, (r) => [...r.members].some((pid) => sessions.player(pid)?.socketId));
+    rooms.sweep(config.roomTtlMs, (r) =>
+      [...r.members].some((pid) => sessions.player(pid)?.socketId),
+    );
   }, 60_000);
   sweeper.unref();
 
   return {
     dispose() {
       clearInterval(sweeper);
+      if (scheduler) clearTimeout(scheduler);
+      for (const fight of fights.values()) fight.dispose();
       for (const t of lobbyGrace.values()) clearTimeout(t);
     },
   };

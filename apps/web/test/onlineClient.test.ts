@@ -43,7 +43,7 @@ describe('OnlineGameClient against a real server', () => {
     if (!created.ok) throw new Error(created.error.code);
     expect((await bob.joinRoom(created.data.roomCode, 'Bob')).ok).toBe(true);
     await alice.configureSeat({ seat: 2, kind: 'bot', botName: 'heuristic:rush' });
-    await alice.configure(5);
+    await alice.configure(5, true);
     await alice.selectJob('mage');
     await bob.selectJob('ninja');
     await bob.setReady(true);
@@ -54,13 +54,16 @@ describe('OnlineGameClient against a real server', () => {
       client.subscribe((u) => {
         latest[i] = u;
         if (u.legalActions.length && u.pending) {
-          const action = u.legalActions.find((a) => a.type !== 'CHALLENGE_DRAGON') ?? u.legalActions[0]!;
+          const action =
+            u.legalActions.find((a) => a.type !== 'CHALLENGE_DRAGON') ?? u.legalActions[0]!;
           void client.submit(action, u.version);
         }
       });
     });
     expect((await alice.start()).ok).toBe(true);
-    await until(() => latest[0]?.publicState.outcome != null && latest[1]?.publicState.outcome != null);
+    await until(
+      () => latest[0]?.publicState.outcome != null && latest[1]?.publicState.outcome != null,
+    );
     expect(latest[0]!.seats).toHaveLength(3);
     expect(latest[0]!.controllableSeats).toHaveLength(1);
     expect(alice.room?.status).toBe('finished');
