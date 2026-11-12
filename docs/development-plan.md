@@ -155,12 +155,13 @@
 - 이전 이름 대응은 `apps/web/src/fx/audio/soundCatalog.ts`의 `soundFileCandidates()` 별칭으로 구현했다(2026-11-12). 파일을 `public/assets/` 아래 표의 경로에 놓으면 자동으로 절차 효과음을 대체한다. 예: `dice_roll` → `board/dice_land_01`, `move_step` → `board/pawn_hop_01`, `attack_hit` → `combat/hit_light_01`, `coin` → `board/coin_gain_01`, `upgrade` → `board/stat_up`, `item_use` → `board/item_use`, `shield` → `board/item_shield`, `dragon_breath` → `dragon/breath_loop`, `victory`·`defeat` → `bgm/stinger_victory`·`stinger_defeat`.
 
 **음악 8개 + 환경음 3개**
-현재 로비·보드·PvP 결투·용전은 제공받은 `audio/bgm/dragon_foothills.mp3` 한 파일(44.1 kHz 스테레오, 약 100.5초)을 공용 BGM으로 사용한다. 아래 장면별 음악은 향후 개별 곡을 받을 때의 선택적 교체 목록이다. 현재 공용 MP3는 첫 입력 이후 재생되고 장면 전환 때 다시 시작한다.
+현재 로비·보드·PvP 결투·용전은 제공받은 `audio/bgm/dragon_foothills.mp3` 한 파일(44.1 kHz 스테레오, 약 100.5초)을 공용 BGM으로 사용한다. 게임 결과 화면의 로컬 승리·패배·무승부에는 새로 제작한 `audio/bgm/result_victory.mp3`, `result_defeat.mp3`, `result_draw.mp3`를 각각 사용한다. 이 세 파일의 원본·CC0-1.0 라이선스·재생성 방법은 `apps/web/assets/audio/README.md`에 기록했다. 결과 곡은 음악 버스와 음소거 설정을 공유한다. 아래 장면별 음악은 개별 곡을 받을 때의 선택적 교체 목록이다.
 | 용도 | 경로·파일명 | 길이·규격 | 우선 |
 |---|---|---|---|
 | 보드 진행 루프 (따뜻한 선술집 판타지, 현악·가벼운 타악) | `audio/bgm/board.mp3` | 2~3분 이음매 없는 루프, 90~100 BPM | P0 |
 | PvP 결투 루프 (몰아치는 타악·금관) | `audio/bgm/duel.mp3` | 60~90초 루프, 140~160 BPM | P0 |
 | 용전 루프 (기존 이름) | `audio/bgm/dragon_battle.mp3` | 90~120초 루프 | P0 |
+| 결과 화면 승리·패배·무승부 루프 (구현) | `audio/bgm/result_victory.mp3` / `result_defeat.mp3` / `result_draw.mp3` | 원곡 16초 / 21.8초 / 18.5초, 44.1 kHz 스테레오 192 kbps | 완료 |
 | 게임 승리 / 패배·탈락 스팅어 (이전 `victory`/`defeat`) | `audio/bgm/stinger_victory.mp3` / `stinger_defeat.mp3` | 4~8초 / 3~5초 | P0 |
 | 루프 지점 (선택) | `audio/bgm/loops.json` — `{ "dragon_foothills.mp3": { "loopStart": 초, "loopEnd": 초 } }` | JSON; 제공받은 파일은 현재 전체 길이를 반복 | P0 |
 | 타이틀·로비 루프 (기존 이름) / 다른 플레이어 탈락 스팅어 | `audio/bgm/lobby.mp3` / `stinger_elimination.mp3` | 1.5~2.5분 루프 / 2~3초 | P1 |
