@@ -1,4 +1,4 @@
-import { advance, passesStart } from './board';
+import { advance, forwardDistance, passesStart } from './board';
 import { emit, playerAt, roll, type Ctx } from './ctx';
 import { opponentsOnTile } from './duel';
 import { PASSIVES } from './jobs';
@@ -8,7 +8,7 @@ import type { SeatId } from './types';
 export function rollDice(ctx: Ctx): void {
   const seat = ctx.s.current;
   const p = playerAt(ctx.s, seat);
-  const value = roll(ctx, ctx.s.rules.combat.dieSides);
+  const value = roll(ctx, ctx.s.rules.movement.rollSides);
   ctx.s.turn.rolled = true;
   ctx.s.turn.dice = value;
   emit(ctx, { type: 'DiceRolled', seat, value });
@@ -28,12 +28,12 @@ export function adjustMove(ctx: Ctx, delta: -1 | 0 | 1): void {
   moveBy(ctx, steps);
 }
 
-function moveBy(ctx: Ctx, steps: number): void {
+function moveBy(ctx: Ctx, steps: number, via: 'dice' | 'teleport' = 'dice'): void {
   const seat = ctx.s.current;
   const p = playerAt(ctx.s, seat);
   const from = p.position;
   const to = advance(from, steps);
-  emit(ctx, { type: 'Moved', seat, from, to, steps, via: 'dice' });
+  emit(ctx, { type: 'Moved', seat, from, to, steps, via });
   if (passesStart(from, steps)) {
     const bonus = ctx.s.rules.startBonus;
     p.coins += bonus.coins;
@@ -57,10 +57,7 @@ export function teleport(ctx: Ctx, tile: number): void {
   p.items.teleport -= 1;
   ctx.s.turn.teleportsUsed += 1;
   emit(ctx, { type: 'ItemUsed', seat, item: 'teleport', tile });
-  const from = p.position;
-  emit(ctx, { type: 'Moved', seat, from, to: tile, steps: 0, via: 'teleport' });
-  p.position = tile;
-  land(ctx, seat);
+  moveBy(ctx, forwardDistance(p.position, tile), 'teleport');
 }
 
 function land(ctx: Ctx, seat: SeatId): void {

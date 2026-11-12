@@ -31,6 +31,7 @@ describe('DEFAULT_RULES matches docs/game-design.md', () => {
   });
 
   it('dragon and combat (§9, §10)', () => {
+    expect(DEFAULT_RULES.movement).toEqual({ rollSides: 10 });
     expect(DEFAULT_RULES.dragon).toEqual({ hp: 88, atk: 10, def: 10, breathEvery: 3 });
     expect(DEFAULT_RULES.combat).toEqual({ maxExchanges: 100, dieSides: 6, mode: 'external' });
     expect(DEFAULT_RULES.passives.ninjaEvadeDie).toBe(8);
@@ -114,7 +115,7 @@ describe('DEFAULT_RULES matches docs/game-design.md', () => {
   });
 
   it('carries the balance version', () => {
-    expect(DEFAULT_RULES.version).toBe('rush-6');
+    expect(DEFAULT_RULES.version).toBe('rush-7');
   });
 
   it('is frozen and valid', () => {
@@ -128,5 +129,6 @@ describe('DEFAULT_RULES matches docs/game-design.md', () => {
     expect(() => validateRules(withRules({ combat: badMode }))).toThrow();
     expect(() => validateRules(withRules({ pvpWinBonusCoins: -1 }))).toThrow();
     expect(() => validateRules(withRules({ coinShortfallHpPerCoin: -1 }))).toThrow();
+    expect(() => validateRules(withRules({ movement: { rollSides: 25 } }))).toThrow();
   });
 });

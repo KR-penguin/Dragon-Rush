@@ -56,6 +56,15 @@ describe('game setup', () => {
 });
 
 describe('movement and tiles', () => {
+  it('spins a 1-to-10 movement roulette independently of the combat die', () => {
+    const values = Array.from({ length: 100 }, (_, seed) => {
+      const { events } = act(newGame(['swordsman', 'archer'], seed), { type: 'ROLL_DICE' });
+      return eventsOf(events, 'DiceRolled')[0]!.value;
+    });
+    expect(new Set(values)).toEqual(new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]));
+    expect(DEFAULT_RULES.combat.dieSides).toBe(6);
+  });
+
   it('pays the start bonus when dice movement passes tile 0', () => {
     let s = newGame(['swordsman', 'archer'], 5);
     s = setPlayer(s, 0, { position: 23 });
@@ -63,14 +72,38 @@ describe('movement and tiles', () => {
     expect(eventsOf(events, 'StartBonus')).toHaveLength(1);
   });
 
-  it('teleport has no start bonus and triggers the destination tile', () => {
+  it('teleport walks clockwise, awards the crossed START bonus, and resolves only its destination', () => {
     let s = withTeleport(newGame(['swordsman', 'archer'], 5));
-    s = setPlayer(s, 0, { position: 20 });
+    s = setPlayer(s, 0, { position: 20, hp: 20 });
     const { state, events } = act(s, { type: 'USE_TELEPORT', tile: 3 });
-    expect(eventsOf(events, 'StartBonus')).toHaveLength(0);
+    expect(eventsOf(events, 'Moved')).toEqual([
+      { type: 'Moved', seat: 0, from: 20, to: 3, steps: 7, via: 'teleport' },
+    ]);
+    expect(eventsOf(events, 'StartBonus')).toHaveLength(1);
+    expect(eventsOf(events, 'TileResolved')).toEqual([
+      { type: 'TileResolved', seat: 0, tile: 3, tileId: 'TREASURE' },
+    ]);
     expect(state.players[0]!.position).toBe(3);
-    expect(state.players[0]!.coins).toBe(10 + 12);
+    expect(state.players[0]!.coins).toBe(10 + 35 + 12);
+    expect(state.players[0]!.hp).toBe(26);
     expect(state.players[0]!.items.teleport).toBe(0);
+  });
+
+  it('teleport to START earns its bonus while a route that stays before START does not', () => {
+    const noCross = withTeleport(
+      setPlayer(newGame(['swordsman', 'archer'], 5), 0, { position: 2 }),
+    );
+    const a = act(noCross, { type: 'USE_TELEPORT', tile: 9 });
+    expect(eventsOf(a.events, 'StartBonus')).toHaveLength(0);
+    expect(eventsOf(a.events, 'Moved')[0]).toMatchObject({ steps: 7, via: 'teleport' });
+
+    const crossing = withTeleport(
+      setPlayer(newGame(['swordsman', 'archer'], 5), 0, { position: 23 }),
+    );
+    const b = act(crossing, { type: 'USE_TELEPORT', tile: 0 });
+    expect(eventsOf(b.events, 'StartBonus')).toHaveLength(1);
+    expect(eventsOf(b.events, 'Moved')[0]).toMatchObject({ steps: 1, via: 'teleport' });
+    expect(b.state.players[0]!.coins).toBe(45);
   });
 
   it('moves the herb heal to tile 9', () => {

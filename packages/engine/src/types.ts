@@ -115,6 +115,7 @@ export interface RulesConfig {
   readonly thiefStealAmount: number;
   readonly board: readonly TileDef[];
   readonly mysteryDeck: readonly MysteryCardDef[];
+  readonly movement: { readonly rollSides: number };
   readonly combat: {
     readonly maxExchanges: number;
     readonly dieSides: number;

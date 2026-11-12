@@ -24,6 +24,12 @@ export function validateRules(rules: RulesConfig): void {
     if (!up || up.baseCost < 0 || up.costStep < 0 || up.amount < 1) fail(`invalid upgrade ${stat}`);
   }
   if (rules.mysteryDeck.length === 0) fail('mystery deck must not be empty');
+  if (
+    !Number.isSafeInteger(rules.movement.rollSides) ||
+    rules.movement.rollSides < 2 ||
+    rules.movement.rollSides > BOARD_SIZE
+  )
+    fail(`movement.rollSides must be between 2 and ${BOARD_SIZE}`);
   for (const card of rules.mysteryDeck) {
     if (
       card.effects.some((e) => e.kind === 'training' || e.kind === 'shop' || e.kind === 'mystery')
