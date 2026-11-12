@@ -42,7 +42,7 @@
 
 ### 2.3 주의
 - 학습 코드와 가중치 포맷 정의는 **사용자 담당**이다. 우리는 env 서버, Python 클라이언트, 어댑터까지만 만든다.
-- **보드 모델과 전투 모델은 별개**다. 동시에 학습하지 않는다. 전투 모델을 다시 학습하면 outcome 모델을 다시 만들고 보드 모델을 미세 조정한다(combat-ai-spec §10.4).
+- **보드 모델과 전투 모델은 별개**다. 전투 정책을 바꾸면 실제 `sim` 전투로 보드 정책을 다시 평가하고 필요하면 보드 모델을 미세 조정한다([combat-ai-spec.md](combat-ai-spec.md) §10.4).
 - 수치가 바뀌면 `RulesConfig.version`·`combat_rules_version`으로 구분한다. 관측·행동 레이아웃은 그대로라 학습 코드는 그대로 쓸 수 있다.
 - 온라인은 인메모리 단일 인스턴스다(재시작 시 진행 중 게임 소실, MVP 허용). 서버 모델은 운영자가 `models/`(전투는 `models/combat/`)에 직접 둔다.
 
@@ -155,15 +155,15 @@
 - 이전 이름 대응은 `apps/web/src/fx/audio/soundCatalog.ts`의 `soundFileCandidates()` 별칭으로 구현했다(2026-11-12). 파일을 `public/assets/` 아래 표의 경로에 놓으면 자동으로 절차 효과음을 대체한다. 예: `dice_roll` → `board/dice_land_01`, `move_step` → `board/pawn_hop_01`, `attack_hit` → `combat/hit_light_01`, `coin` → `board/coin_gain_01`, `upgrade` → `board/stat_up`, `item_use` → `board/item_use`, `shield` → `board/item_shield`, `dragon_breath` → `dragon/breath_loop`, `victory`·`defeat` → `bgm/stinger_victory`·`stinger_defeat`.
 
 **음악 8개 + 환경음 3개**
-현재 로비·보드·PvP 결투·용전은 제공받은 `audio/bgm/dragon_foothills.mp3` 한 파일(44.1 kHz 스테레오, 약 100.5초)을 공용 BGM으로 사용한다. 게임 결과 화면의 로컬 승리·패배·무승부에는 새로 제작한 `audio/bgm/result_victory.mp3`, `result_defeat.mp3`, `result_draw.mp3`를 각각 사용한다. 이 세 파일의 원본·CC0-1.0 라이선스·재생성 방법은 `apps/web/assets/audio/README.md`에 기록했다. 결과 곡은 음악 버스와 음소거 설정을 공유한다. 아래 장면별 음악은 개별 곡을 받을 때의 선택적 교체 목록이다.
+현재 로비·보드는 제공받은 `audio/bgm/menu.mp3`, PvP·PvE·용전은 `battle.mp3`를 사용한다. 승리 결과에는 제공받은 `result_victory.mp3`(Triumph of the Hero), 패배·무승부에는 프로젝트에서 제작한 `result_defeat.mp3`·`result_draw.mp3`를 사용한다. 출처와 재생성 범위는 `apps/web/assets/audio/README.md`에 기록했다. 모두 음악 버스와 음소거 설정을 공유한다. 아래의 추가 장면별 음악은 선택적 교체 목록이다.
 | 용도 | 경로·파일명 | 길이·규격 | 우선 |
 |---|---|---|---|
 | 보드 진행 루프 (따뜻한 선술집 판타지, 현악·가벼운 타악) | `audio/bgm/board.mp3` | 2~3분 이음매 없는 루프, 90~100 BPM | P0 |
 | PvP 결투 루프 (몰아치는 타악·금관) | `audio/bgm/duel.mp3` | 60~90초 루프, 140~160 BPM | P0 |
 | 용전 루프 (기존 이름) | `audio/bgm/dragon_battle.mp3` | 90~120초 루프 | P0 |
-| 결과 화면 승리·패배·무승부 루프 (구현) | `audio/bgm/result_victory.mp3` / `result_defeat.mp3` / `result_draw.mp3` | 원곡 16초 / 21.8초 / 18.5초, 44.1 kHz 스테레오 192 kbps | 완료 |
+| 결과 화면 승리·패배·무승부 루프 (구현) | `audio/bgm/result_victory.mp3` / `result_defeat.mp3` / `result_draw.mp3` | 제공받은 승리곡 119.736초 / 자체 제작 패배곡 21.8초 / 무승부곡 18.5초 | 완료 |
 | 게임 승리 / 패배·탈락 스팅어 (이전 `victory`/`defeat`) | `audio/bgm/stinger_victory.mp3` / `stinger_defeat.mp3` | 4~8초 / 3~5초 | P0 |
-| 루프 지점 (선택) | `audio/bgm/loops.json` — `{ "dragon_foothills.mp3": { "loopStart": 초, "loopEnd": 초 } }` | JSON; 제공받은 파일은 현재 전체 길이를 반복 | P0 |
+| 루프 지점 (선택) | `audio/bgm/loops.json` — `{ "menu.mp3": { "loopStart": 초, "loopEnd": 초 } }` | JSON; 제공받은 파일은 현재 전체 길이를 반복 | P0 |
 | 타이틀·로비 루프 (기존 이름) / 다른 플레이어 탈락 스팅어 | `audio/bgm/lobby.mp3` / `stinger_elimination.mp3` | 1.5~2.5분 루프 / 2~3초 | P1 |
 | 용전 3페이즈 강화 스템 (박자 맞춤) | `audio/bgm/dragon_battle_p3.mp3` | `dragon_battle`과 같은 길이·템포 | P2 |
 | 보드 실내 환경음 (벽난로, 먼 바람) | `audio/ambience/hall_fire.mp3` | 30~60초 루프 | P1 |
@@ -209,11 +209,11 @@
 | R3 FX·오디오 | rAF FX 루프, trauma 흔들림, 파티클 풀, 피해 숫자, 코인 비행, FlashGovernor, 오디오 버스·더킹·변형, 접근성 설정, 주스 디버그 패널 | FX가 엔진·sim RNG 미사용(lint), juice off A/B, 프레임 독립, 섬광 제한 테스트 |
 | R4 실시간 전투 sim + 봇 | `packages/combat`(60Hz·Q8·BAM, 직업 키트, 결투 규칙, 용 스크립트, 히트스톱·넉백), `packages/combat-ai` 스크립트 봇, 로컬 핫시트 결투·용전 화면(도형 + 경기장 P0 FX), 키보드 테스트 | 골든 리플레이 해시 Node + Chromium·Firefox·WebKit 일치, 1만 판 퍼즈, 프레임 데이터·피해 표 테스트, 45초·75초 상한 |
 | R5 보드↔전투 통합 + 온라인 | 엔진 `COMBAT` phase(`combat.mode: 'external'`) 연결, 로컬·온라인 매치업, 서버 60Hz 전투 루프·`fight:*` 메시지·예측·재시뮬, AI 대행, 전투 리플레이, `PROTOCOL_VERSION` 2 | 소켓 통합 테스트(150ms RTT·20ms 지터·1% 손실), `FightSync` 재접속, 관전자 보간, `dice` 모드 골든 유지 |
-| R6 전투 학습 환경 | `cobs_v1`/`cact_v1`, 별도 `CombatVecEnv`, 보드 env의 `outcome`/`sim`/`dice` 리졸버, 20만 실제 전투 기반 `outcome_v1` | 전투 정책 가중치·패리티 어댑터(D13)는 사용자 포맷 대기. outcome 승률 4만 분리 검증 최대 10분위 오차 2.74%p 통과(혼합 보드 표본 한정). 모델은 봇·env 내부 전용 |
+| R6 전투 학습 환경 | `cobs_v1`/`cact_v1`, 별도 `CombatVecEnv`, 보드 env(`rpgboard-env/2`)의 기본 `sim`·선택형 `dice` 리졸버 | 전투 정책 가중치·패리티 어댑터(D13)는 사용자 포맷 대기. 과거 결과 예측기는 사용자 요청으로 제거됨 |
 | R7 7~10분 밸런스 | `rush-2` 실시간 4인 밸런스·전투 시간 측정 | 8,000판 중앙 8/p95 11라운드, 용 처치 종료 61.3%, 직업 승률 22.1~29.1%. 중앙 9~11 목표 미달. 턴당 10초 가정 5.19분·14초 가정 6.90분; 사람 턴 미계측. 3인·2인 한계는 game-design §15 |
 | R8 아트·오디오 통합 | §4.2 파일 배치, `loops.json`, 크레딧 화면(game-icons CC BY 3.0), 이모지 폴백 유지 | 누락 파일은 플레이스홀더로 동작·오류 0, 라이선스 목록 |
 
-**구현 현황(2026-11-12):** R1~R5의 보드·FX·실시간 전투·온라인 롤백 경로가 동작한다. `combat-2` balanced 봇의 반응 10f/16f 합산 상성 방향 10개는 매 틱 입력에서 통과했지만 목표 우세 강도와 5f 일부 방향은 미달이다. UI Easy/Hard는 별도 스타일이다. 가상 TCP 시험의 최종 해시는 일치하나 손실 있는 150~250ms에서 롤백 깊이 목표는 미달이다. R6의 분리된 보드/전투 env와 내장 `outcome_v1`이 동작하며 사용자 전투 정책 가중치·패리티 어댑터는 D13 대기다. R7의 4인 p95·용 처치·직업 공정 목표는 당시 실제 60Hz 전투 8,000판에서 통과했으나 중앙 길이는 8라운드로 9~11 목표에 미달했다. 이 보드 측정과 내장 결과 예측기의 과거 보정은 `combat-3` 용 밸런스 변경에 대해 재검증되지 않았다. 용전만은 balanced 봇 160시드/직업으로 조정 전후를 비교했다([combat-design.md](combat-design.md)). 인게임 승률 예측은 표시하지 않는다. R8의 실제 아트·오디오는 에셋을 받으면 교체한다.
+**구현 현황(2026-11-12):** R1~R5의 보드·FX·실시간 전투·온라인 롤백 경로가 동작한다. `combat-2` balanced 봇의 반응 10f/16f 합산 상성 방향 10개는 매 틱 입력에서 통과했지만 목표 우세 강도와 5f 일부 방향은 미달이다. UI Easy/Hard는 별도 스타일이다. 가상 TCP 시험의 최종 해시는 일치하나 손실 있는 150~250ms에서 롤백 깊이 목표는 미달이다. R6의 분리된 보드/전투 env는 동작하고 보드 env는 실제 60Hz 스크립트 전투 `sim`이 기본이다. 내부 결과 예측기는 제거됐으며 사용자 전투 정책 가중치·패리티 어댑터는 D13 대기다. R7의 4인 수치는 당시 예측기를 보드 봇 판단에 쓴 역사적 측정으로 현행 기준선이 아니다. 용전 balanced 봇 160시드/직업 비교는 [combat-design.md](combat-design.md)에 있다. 인게임 승률 예측은 표시하지 않는다.
 
 - 순서: R2·R3(보드 표현)은 R4와 병행 → R4 → R5, R4 → R6 → ★D15 → 사용자 전투 학습 → D13 수령 → 전투 어댑터. R7은 R5 이후 실측으로 확정, R8은 파일이 오는 대로.
 
@@ -224,4 +224,4 @@
 | D13 | 전투 모델 가중치 JSON 포맷 + 패리티 샘플 (combat-ai-spec §11) | 받기 전까지 모델 전투원 "준비 중", 봇 전투는 스크립트 봇 | R6 이후 언제든 |
 | D14 | 전투 봇 난이도 기본값 | Easy 16틱·T 1.3 / **Normal 10틱·T 1.0** / Hard 5틱·T 0.7, 기본 Normal, 온라인 AI 대행 Normal | R5 |
 | D15 | ★ `cobs_v1`/`cact_v1` 동결 검토 | combat-ai-spec 그대로 동결, 이후 변경은 `cobs_v2`로만 | R6 종료 |
-| D16 | outcome 모델 적합 도구·포맷 | TS 데이터 생성·피팅 CLI, `outcome_v1` JSON·보정 리포트를 제공(전투 정책 트레이너 아님). 내부 봇·보드 env에서 사용 | R6 완료 |
+| D16 | 내부 전투 결과 예측기 | 이전 `outcome_v1` JSON·적합 CLI는 사용자 요청으로 제거. 보드 env 기본은 실제 `sim` 전투 | 제거 완료 |

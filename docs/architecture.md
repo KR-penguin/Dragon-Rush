@@ -10,7 +10,7 @@
 | P2 | 보드 규칙 단일 출처 | 보드 행동·전투 결과 반영은 엔진의 `getLegalActions`·`applyAction`·`applyCombatResult` 경계를 통한다. 보드 밸런스는 `RulesConfig`, 실시간 전투 수치는 `DEFAULT_COMBAT_RULES`가 담당한다. |
 | P3 | 서버 권위 | 온라인 보드의 행동·룰렛 결과는 서버 엔진이 확정한다. 실시간 전투는 서버 `FightAuthority`가 양측 입력으로 진행·확정하며, 확정 결과만 보드 엔진에 적용한다. |
 | P4 | 단방향 의존 | 하위 패키지는 상위 패키지를 모른다(§2). 순환 의존은 workspace 의존 선언과 lint로 차단. |
-| P5 | 스펙 버전 관리 | 보드 `obs_v2`·`act_v1`, 전투 `cobs_v1`·`cact_v1`, `outcome_v1`, `PROTOCOL_VERSION`, 보드·전투 규칙 버전을 노출한다. 호환이 깨지는 변경은 해당 버전과 계약·골든 테스트 갱신을 동반한다. |
+| P5 | 스펙 버전 관리 | 보드 `rpgboard-env/2`·`obs_v2`·`act_v1`, 전투 `cobs_v1`·`cact_v1`, `PROTOCOL_VERSION`, 보드·전투 규칙 버전을 노출한다. 호환이 깨지는 변경은 해당 버전과 계약·골든 테스트 갱신을 동반한다. |
 | P6 | 함수형 코어 / 명령형 셸 | 계산(엔진·인코더·정책 forward)은 순수 함수, 부수효과(소켓·타이머·파일·렌더)는 가장자리(server/web/sim)에만. 클래스는 셸의 상태 보유 객체에만 쓴다. |
 
 ## 2. 모노레포 구조와 의존 방향
@@ -20,7 +20,7 @@
 |---|---|---|
 | `@dragon-rush/engine` | 상태 전이, 합법 행동, `DEFAULT_RULES`, PRNG | 없음 |
 | `@dragon-rush/protocol` | 보드·전투 메시지 타입·zod 스키마, 전투 입력 wire 코덱, `PROTOCOL_VERSION`, 오류 코드 | engine, combat, zod |
-| `@dragon-rush/ai` | 보드 `obs_v2`/`act_v1` 인코더·코덱·마스크, 정책, `outcome_v1` 결과 모델 | engine, zod |
+| `@dragon-rush/ai` | 보드 `obs_v2`/`act_v1` 인코더·코덱·마스크, 스크립트 봇, 보드 정책 모델 인터페이스 | engine, zod |
 | `@dragon-rush/combat` | 결정적 60Hz 실시간 전투와 결과 | engine |
 | `@dragon-rush/combat-ai` | 전투 `cobs_v1`/`cact_v1`, 스크립트 봇·모델 정책, 보드 스탯 → 전투 설정 | combat, engine |
 | `@dragon-rush/netcode` | 서버 전투 권위, 클라이언트 예측·롤백, 관전자 재생 | combat, protocol |
@@ -190,7 +190,7 @@ interface RulesConfig {
 | 가중치 JSON | Adapter | 사용자 포맷 → 내부 `PolicyModel`. 포맷이 바뀌면 어댑터만 교체 |
 | `GameClient` | 공통 인터페이스(Ports & Adapters, DIP) | 보드 제출·전투 표시를 같은 화면에서 다룬다. `LocalGameClient` / `OnlineGameClient` 교체 가능 |
 | `FightStateProvider`·`FightInputSource` | 전투 상태 공급·입력 소스 합성 | 로컬 sim·리플레이를 `FightLoop`에 연결하고 키보드·패드·봇 입력을 분리. 온라인은 별도 `OnlineFightSession`이 롤백을 구동 |
-| 보드 전투 resolver | 셸 Strategy | `COMBAT`에서 멈춘 엔진에 `dice`·실시간 sim·`outcome_v1` 결과를 주입 |
+| 보드 전투 resolver | 셸 Strategy | `COMBAT`에서 멈춘 엔진에 기본 60Hz 스크립트 `sim` 또는 선택형 `dice` 전투 결과를 주입 |
 | 프로토콜 | Schema-first (zod) | 런타임 검증과 TS 타입을 한 정의에서 생성 |
 | 서버 입력 | 서버 권위 + 버전 검사 (`GameSession.submit`, `stateVersion`) | 부정행위 방지, 경합 시 먼저 도착한 1건만 적용(§7) |
 | 좌석 제어 | Strategy (`SeatController`: human/bot/model) | 타임아웃·재접속 대리·AI 좌석을 같은 경로로 처리 |
@@ -235,7 +235,7 @@ interface GameUpdate {
 ```
 
 - 로컬 `reportFight`는 검증된 실시간 결과 또는 빠른 전투의 주사위 결과를 엔진에 적용한다. 온라인 결과는 서버 `FightRoom`만 확정한다. 웹의 `OnlineFightSession`은 `FightClient`/`SpectatorPlayback`을 화면에 연결하고, 온라인 `reportFight`는 전투 연출이 끝난 뒤 보류한 보드 갱신을 표시한다. `fight:start`의 전투 전용 시드는 전투 동기화에 쓰고 보드 `rng`는 계속 숨긴다.
-- **인게임 승률 예측 비노출 정책**: PvP 대상·방어막·용 도전 결정 창 등 게임 화면에는 승률, 확률 추정치, 모델 준비 상태를 표시하지 않는다. `outcome_v1`은 내부 AI 의사결정과 헤드리스 시뮬레이션 전용이다. `11c3150`의 `DecisionDialogs`·`WinChance`에는 아직 표시 코드가 있어 별도 UI 작업으로 제거 중이며, 이 문서 변경은 그 코드를 수정하지 않는다. 확정된 전투 결과와 게임 승패 표시는 이 정책의 대상이 아니다.
+- **인게임 승률 예측 비노출 정책**: PvP 대상·방어막·용 도전 결정 창 등 게임 화면에는 승률이나 확률 추정치를 표시하지 않는다. 휴리스틱 봇의 주사위 몬테카를로 추정은 내부 판단용이다. 확정된 전투 결과와 게임 승패는 표시한다.
 
 **이벤트 기반 애니메이션 큐**
 1. `GameUpdate` 수신 → `gameStore`의 권위 상태 즉시 갱신, `events`는 연출 큐에 push.
@@ -353,7 +353,7 @@ type WeightAdapter = (raw: unknown) => PolicyModel;                             
 - `ModelPolicy` = `encodeObservation` → `PolicyModel.forward` → 마스크 적용(불법 행동 제외) → argmax 또는 샘플링 → 코덱으로 `Action` 복원.
 - **가중치 JSON 포맷은 사용자가 정의**한다. 어댑터 자리는 `packages/ai/src/model/adapters/index.ts`(`USER_WEIGHT_ADAPTER`, 현재 `null`)이며 서버 `modelRegistry`와 `pnpm sim --bots model:<id>`가 이것을 쓴다. 포맷 수령 후 구현하며, 그 전까지 model 좌석은 UI에서 "준비 중"으로 비활성화한다. 통합에 필요한 정보(네트워크 구조, 활성화, 행렬 배치, 입력 정규화, actor 출력이 logits/확률 중 무엇인지, 패리티 샘플) 요청은 [ai-interface-spec.md](ai-interface-spec.md)에 정리한다.
 - `modelRegistry`: 서버 시작 시 `MODELS_DIR`만 스캔, 파일명 `^[a-z0-9_-]+\.json$`, 크기 상한, `JSON.parse`만 사용(eval 없음), 어댑터 검증 통과 + 메타에 `obs_v2`/`act_v1` 표기가 있으면 일치 확인 후 등록. 실패 파일은 제외하고 로그만 남긴다.
-- 모델 **업로드는 범위 밖(향후)**. 서버에 모델을 추가하려면 운영자가 `models/`에 파일을 둔다. 여기의 `PolicyModel`(보드 행동 모델)과 §10의 `outcome_v1`(전투 결과 예측 모델), `CombatPolicyModel`(전투 행동 모델)은 서로 다른 계약이다.
+- 모델 **업로드는 범위 밖(향후)**. 서버에 모델을 추가하려면 운영자가 `models/`에 파일을 둔다. `PolicyModel`은 보드 행동 모델, `CombatPolicyModel`은 전투 행동 모델의 계약이다. 제거된 내부 전투 결과 예측기는 두 정책 모델과 관계없다.
 
 ## 10. 보드·전투 학습 환경과 결과 모델 (`packages/sim`)
 ```
@@ -361,10 +361,10 @@ Python (사용자 트레이너) ─┬─ RPGBoardEnv/RPGBoardVecEnv ── stdi
                           └─ CombatEnv/CombatVecEnv ──── stdio JSONL ──▶ combat-env-server (전투)
 ```
 - 두 env 서버는 별도 Node 프로세스이며 각각 다중 인스턴스를 실행한다. stdout은 프로토콜 전용, 로그는 stderr다. Python 클라이언트는 numpy만 의존한다. 보드 정책 학습과 전투 정책 학습의 모델·관측·행동 계약도 별개다. 학습 코드(트레이너)는 저장소 범위 밖이며 사용자가 담당한다.
-- 보드 env는 `toPublicState` → `encodeObservation`(`obs_v2`/`act_v1`), `combat_resolver: 'dice' | 'sim' | 'outcome'`을 제공한다. `dice`는 보드 주사위 전투, `sim`은 스크립트 봇으로 60Hz 전투를 끝까지 실행, `outcome`은 `outcome_v1` 모델로 결과를 샘플링한다. `outcome`은 `outcome_model` 파일 경로가 필요하며 `rules_version`·`combat_rules_version`을 검사한다. `outcome_skill_noise`와 `expect.outcome_model_id`도 보드 env 계약에 있다. 자세한 관측·보상·배치 형식은 [ai-interface-spec.md](ai-interface-spec.md)가 정본이다.
+- 보드 env(`rpgboard-env/2`)는 `toPublicState` → `encodeObservation`(`obs_v2`/`act_v1`), `combat_resolver: 'sim' | 'dice'`를 제공한다. 기본 `sim`은 스크립트 봇으로 실제 60Hz 전투를 끝까지 실행하고, `dice`는 선택형 빠른 전투다. `expect.combat_resolver` 불일치는 `VERSION_MISMATCH`다. 자세한 관측·보상·배치 형식은 [ai-interface-spec.md](ai-interface-spec.md)가 정본이다.
 - 전투 env는 `cobs_v1`/`cact_v1`, `controlled: 'both' | 'p0'`, 반응 지연·action repeat·미러·스탯 샘플러를 제공한다. `CombatEnv`/`CombatVecEnv`의 프로토콜·보상은 [combat-ai-spec.md](combat-ai-spec.md)가 정본이다.
-- `pnpm sim`은 보드 대량 대전과 `--combat dice|sim|outcome`, `--outcome-model <path>`, `--log-fights <path>`를 지원한다. `pnpm outcome`은 `stat_dist_v1` 전투 스탯 분포에서 결정적 실시간 전투 표본을 생성하고, 승자 확률·승자 조건부 잔여 HP 구간·불굴 사용 확률을 학습하며 홀드아웃 보정 보고서를 낸다.
-- **결과 모델의 경계**: `GameState.outcome`/`GameEnded`는 확정된 게임 승패이고, `CombatResult`는 확정된 한 전투의 결과다. `packages/ai/src/outcome`의 `outcome_v1`은 26개 입력 특성으로 승자 확률·승자 조건부 HP·불굴 사용을 추정하는 **예측·샘플링 모델**이다. 모델을 주입한 내부 보드 AI 정책과 헤드리스 시뮬·학습 env에만 사용하고 인게임 승률 표시에 사용하지 않는다(§5). 서버의 온라인 실시간 전투는 모델 예측값이 아니라 `FightAuthority`가 확정한 결과를 적용한다.
+- `pnpm sim`은 보드 대량 대전과 `--combat dice|sim`, `--log-fights <path>`를 지원한다. 내부 결과 예측기와 `pnpm outcome`, `--outcome-model`은 제거됐다.
+- **결과의 경계**: `GameState.outcome`/`GameEnded`는 확정된 게임 승패이고, `CombatResult`는 확정된 한 전투의 결과다. 온라인 실시간 전투는 서버 `FightAuthority`가 확정한 결과를 적용한다. 보드 학습 env의 기본 `sim`은 60Hz 스크립트 전투 결과를 적용한다. 인게임에는 승률 예측을 표시하지 않는다.
 
 ## 11. 보안·배포·테스트
 **보안·부정행위 방지**
@@ -393,7 +393,7 @@ Python (사용자 트레이너) ─┬─ RPGBoardEnv/RPGBoardVecEnv ── stdi
 | `@dragon-rush/combat` | 결정적 60Hz 전투 sim: `createCombat(setup, seed, rules)`, `stepCombat(state, inputs)`, `hashCombatState`, `DEFAULT_COMBAT_RULES`, 직업 키트·용 스크립트·결과 | engine |
 | `@dragon-rush/combat-ai` (**구현됨**) | `cobs_v1` 인코더·미러 증강, `cact_v1` 코덱·마스크, `StateHistory`(반응 지연), 이름으로 만드는 스크립트 봇(`scripted:balanced·aggressive·cautious·idle·random·pool`), `CombatModelPolicy`·`USER_COMBAT_WEIGHT_ADAPTER`(null), `boardCombatSetup`(엔진 `CombatRequest` → 전투 setup). TS MLP 런타임·전투 패리티는 사용자 포맷 수령 후 | combat, engine |
 | `@dragon-rush/netcode` | `FightAuthority`(서버 확정), `FightClient`·`RollbackSession`(입력 예측·링·재시뮬), `SpectatorPlayback`, 시계·입력 지연·가상 TCP 시험 | combat, protocol |
-| `@dragon-rush/sim` (확장, **구현됨**) | `combat-env-server`(stdio JSONL, 보드 env와 별도 프로세스), `combatResolver`(`dice`·`sim`·`outcome`), `--log-fights`의 `stat_dist_v1`, `pnpm outcome`의 결과 모델 학습·보정 | + combat, combat-ai, ai |
+| `@dragon-rush/sim` (확장, **구현됨**) | `combat-env-server`(stdio JSONL, 보드 env와 별도 프로세스), `combatResolver`(`sim` 기본·`dice` 선택), `--log-fights`의 `stat_dist_v1` | + combat, combat-ai, ai |
 | `python/rpgboard_env` (확장, **구현됨**) | `CombatEnv`, `CombatVecEnv` | numpy만 |
 
 - 의존: `engine` ← `combat` ← `combat-ai` ← `sim`·`server`; `combat`·`protocol` ← `netcode` ← `server`·`web`. `web`은 `combat`도 직접 사용한다. `engine`은 여전히 아무것도 import하지 않는다. 엔진은 전투 sim을 호출하지 않고, 셸(서버·`LocalGameClient`·env)이 `CombatRequest`로 전투를 실행한 뒤 결과를 `applyCombatResult`로 넣는다.
@@ -421,5 +421,5 @@ Python (사용자 트레이너) ─┬─ RPGBoardEnv/RPGBoardVecEnv ── stdi
 - 경계 검증: 객체 메시지는 zod, 빈번한 정수 배열 메시지는 길이·범위 디코더로 검증한다. Socket.IO는 WebSocket만 사용하고 압축을 끈다. 재접속·갭·디싱크는 `fight:sync`로 복구한다. 가상 TCP 시험은 최종 상태 수렴을 보였으나 손실 구간 p95 예측 깊이는 설계 목표보다 크다([combat-design.md §9.5](combat-design.md)).
 
 ### 12.4 전투 resolver와 학습 연결
-- §10의 보드·전투 env는 별도 프로세스다. `createCombatResolver`는 보드 env·대량 시뮬의 `COMBAT` 대기를 `dice`(엔진 주사위), `sim`(`boardCombatSetup` → 스크립트 봇 `runCombat` → `applyCombatResult`), `outcome`(`outcome_v1` 예측 → 시드 기반 결과 샘플링 → `applyCombatResult`) 중 하나로 해결한다. `sim`은 현재 전투 가중치 모델을 로드하지 않는다.
-- `outcome_v1` 파일은 보드 AI·시뮬·보드 env의 내부 용도다. 온라인 `FightRoom`과 로컬 플레이어 전투의 결과 출처는 각각 확정된 전투 sim이며, 인게임 승률 예측은 노출하지 않는다(§5·§10).
+- §10의 보드·전투 env는 별도 프로세스다. `createCombatResolver`는 보드 env·대량 시뮬의 `COMBAT` 대기를 기본 `sim`(`boardCombatSetup` → 스크립트 봇 `runCombat` → `applyCombatResult`) 또는 선택형 `dice`(엔진 주사위)로 해결한다. 보드 `sim`은 현재 사용자 전투 가중치 모델을 로드하지 않는다.
+- 내부 결과 예측기 파일은 제거됐다. 온라인 `FightRoom`과 로컬 플레이어 전투의 결과 출처는 각각 확정된 전투 sim이며, 인게임 승률 예측은 노출하지 않는다(§5·§10).

@@ -1,6 +1,6 @@
 # AI 학습 환경 시작 가이드
 
-보드 정책, 1v1 결투 정책, 용전 정책은 별도 에피소드로 학습한다. 보드는 `rpgboard-env/1`, 두 전투 과제는 `rpgboard-combat-env/1` 서버를 쓴다. 전투의 PvP/용전은 같은 `cobs_v1`/`cact_v1` 계약을 공유하므로 두 과제를 하나의 전투 모델로 학습할 수도 있다. 정확한 인덱스 정의는 [보드 AI 명세](ai-interface-spec.md)와 [전투 AI 명세](combat-ai-spec.md)를 따른다.
+보드 정책, 1v1 결투 정책, 용전 정책은 별도 에피소드로 학습한다. 보드는 `rpgboard-env/2`, 두 전투 과제는 `rpgboard-combat-env/1` 서버를 쓴다. 전투의 PvP/용전은 같은 `cobs_v1`/`cact_v1` 계약을 공유하므로 두 과제를 하나의 전투 모델로 학습할 수도 있다. 정확한 인덱스 정의는 [보드 AI 명세](ai-interface-spec.md)와 [전투 AI 명세](combat-ai-spec.md)를 따른다.
 
 ## 실행
 
@@ -15,7 +15,7 @@ python python/examples/random_combat_agent.py --mode pvp --p0 --opponent scripte
 python python/examples/random_combat_agent.py --mode dragon --envs 2 --steps 40
 ```
 
-보드 예제의 `sim`은 실제 전투를 스크립트 봇으로 해결한다. `outcome`은 현재 보드·전투 규칙 버전과 호환되는 결과 예측 JSON이 있을 때 선택한다. 이 예측 JSON은 전투 **정책** 가중치가 아니다.
+보드 예제와 보드 env 기본값 `sim`은 실제 60Hz 전투를 스크립트 봇으로 해결한다. 빠른 판정이 필요하면 `--combat-resolver dice`를 선택한다. 내부 전투 결과 예측기는 제거됐다.
 
 현재 보드 규칙은 `rush-7`이다. 이동 룰렛은 1~10이고 텔레포트는 출발 칸을 통과·도착하면 보너스를 받는다. 빠른 전투 판정은 여전히 1d6이다. 보드 관측은 `obs_v2`(257), 행동은 `act_v1`(47)이며 `g.graceLeft`/`g.pvpEnabled`는 시작부터 0/1이다. 기존 `obs_v1` 모델은 입력 차원이 달라 재학습 또는 명시적 변환이 필요하다. PvP/용전 전투를 과거 보드 스탯 분포로 학습하려면 `stat_sampler="file:packages/sim/data/rush4_stat_dist_v1.json"`을 전달할 수 있다. 이 파일은 **과거 `rush-4` 수집본**이며 현행 이동·경제·대전 상대 분포를 대표하지 않는다. `rush-7` 분포는 아직 수집하지 않았다. 기본 `uniform_board`는 더 넓은 범위의 스탯을 균등하게 뽑는다.
 

@@ -25,7 +25,7 @@
 |---|---|---|
 | `OBS_VERSION` / `OBS_DIM` | `"obs_v2"` / **257** | 관측 레이아웃·정규화 상수·특징 의미 |
 | `ACT_VERSION` / `ACTION_DIM` | `"act_v1"` / **47** | 행동 인덱스 ↔ 엔진 `Action` 매핑 |
-| `ENV_PROTOCOL` | `"rpgboard-env/1"` | env 서버 메시지 형식 |
+| `ENV_PROTOCOL` | `"rpgboard-env/2"` | env 서버 메시지 형식 (`obs_v2`/`act_v1` 유지) |
 
 - 인덱스 위치·길이, 정규화 상수, 인코딩 방식, 특징 의미 중 하나라도 바뀌면 버전을 올린다. **기존 인덱스의 의미를 다른 의미로 재사용하지 않는다.** `obs_v2`는 `g.dice`를 6칸에서 10칸으로 늘려 이후 필드 시작 인덱스를 4칸 이동하고, 두 도달 가능 플래그를 1~10 이동 기준으로 바꾼다. `obs_v1` 모델과 호환되지 않는다.
 - `RulesConfig` 수치 변경(밸런스 조정)은 obs/act 버전을 바꾸지 않는다(값만 바뀜). 다만 정책 성능이 달라질 수 있으므로 env `info`가 `rules_version`을 함께 알려 주고, 모델 메타데이터에도 기록을 권장한다.
@@ -204,7 +204,7 @@
 **info** — 버전·차원·레이아웃 조회 (reset 전에도 가능)
 ```json
 {"id":1,"cmd":"info"}
-{"id":1,"ok":true,"result":{"protocol":"rpgboard-env/1","obs_version":"obs_v2","act_version":"act_v1",
+{"id":1,"ok":true,"result":{"protocol":"rpgboard-env/2","obs_version":"obs_v2","act_version":"act_v1",
  "obs_dim":257,"action_dim":47,"rules_version":"rush-7","action_names":["ROLL_DICE","END_TURN","CHALLENGE_DRAGON","..."],
  "obs_layout":[{"name":"self.job","offset":0,"length":5},{"name":"self.pos","offset":5,"length":24},"..."],
  "bots":["random","random:uniform","heuristic","heuristic:aggro","heuristic:growth","heuristic:rush"]}}
@@ -229,7 +229,7 @@
 | `config.rules` | `"default"` 또는 `RulesConfig` 부분 덮어쓰기, `"default"` | `validateRules` 실패 시 `BAD_CONFIG` |
 | `config.reward_shaping` | object \| null, null | §6 |
 | `config.return_events` | bool, false | 응답에 GameEvent 목록 포함(디버그·리플레이) |
-| `config.combat_resolver` | `"outcome"` / `"sim"` / `"dice"`, 기본 `"outcome"` | 실제 60Hz 전투 결과로 보정한 내부 `outcome_v1` 샘플 / 실제 sim / 선택형 빠른 전투. `config.outcome_model`로 JSON 경로를 지정하거나 내장 모델을 쓴다. reset 결과와 `expect` 검사는 [combat-ai-spec.md §12](combat-ai-spec.md) |
+| `config.combat_resolver` | `"sim"` / `"dice"`, 기본 `"sim"` | 실제 60Hz 스크립트 전투 / 선택형 빠른 주사위 판정. reset 결과의 `combat_resolver`와 `expect.combat_resolver`를 비교한다. [combat-ai-spec.md §12](combat-ai-spec.md) |
 
 **step** — `{"actions": [int, ...]}` (길이 = `num_envs`). 모든 행동을 먼저 검증하고 하나라도 불법이면 **어느 env도 진행하지 않고** `ILLEGAL_ACTION`(원자적). 정상이면 각 env에 행동을 적용한 뒤 다음 외부 제어 결정이 나올 때까지 봇 좌석·자동 구간을 진행한다.
 
@@ -270,7 +270,7 @@ env별 결과 객체(`result.envs[i]`, reset도 같은 형식):
 ```python
 RPGBoardEnv(mode="single", num_players=4, agent_seat="random", controlled_seats="all",
             jobs="random", opponents="heuristic", max_rounds=100, rules="default",
-            reward_shaping=None, return_events=False, combat_resolver="dice", server_cmd=None, cwd=None,
+            reward_shaping=None, return_events=False, combat_resolver="sim", server_cmd=None, cwd=None,
             expect_obs_version="obs_v2", expect_act_version="act_v1", timeout=60.0)
 RPGBoardVecEnv(num_envs=8, **위와 같은 인자)          # 항상 auto_reset
 ```
@@ -368,7 +368,7 @@ createModelPolicy(model: PolicyModel, opts?: { mode?: 'argmax' | 'sample'; tempe
 | HeuristicBot | `heuristic`(좌석별 성향 무작위), `heuristic:{aggro,growth,rush}` | **아래 요약이 정본**이다. 설계 단계 Python 프로토타입(`hero_sim.py` "Heuristic bots")을 옮긴 것이며, 프로토타입은 저장소 밖 참고 자료다(보관 여부는 개발 계획서 D11) | 학습 상대, 평가 기준선, 온라인 대리 플레이 |
 
 **HeuristicBot 요약** (규칙 수치는 모두 `RulesConfig`에서 읽는다. `wp` = 추정 승률)
-- 승률 추정: 내장 `outcome_v1`이 있으면 실제 60Hz 전투 데이터로 보정한 모델을 사용한다. 모델이 없을 때는 빠른 전투의 주사위 몬테카를로(PvP 192회, 용 320회)로 폴백한다. 이 값은 봇 내부 판단용이며 인게임에 표시하지 않는다.
+- 승률 추정: 휴리스틱 봇은 빠른 전투의 주사위 몬테카를로(PvP 192회, 용 320회)를 내부 판단에 사용한다. 실제 `sim` 전투 결과와 같다는 뜻은 아니다. 인게임에는 이 추정치를 표시하지 않는다.
 - 전투력 지표 `race(A, B) = ln(hA / eB) − ln(hB / eA)`(> 0이면 A 우세). `eX` = X의 1회 기대 피해 = `mean_{d=1..6} max(1, atk − def' + d)`(빠른 전투 주사위는 여전히 6면; def' = 마법사면 `floor(def/2)`). 광전사는 0.6·보통 + 0.4·광폭화 값, 용은 `((k−1)·보통 + def 0 값) / k`(k = `breathEvery`), 피격자가 닌자면 ×(1 − 회피 확률), 하한 0.05. `hX = maxHp + 상대 e × 불굴 잔여`, 상대가 궁수면 −3. "타격 수"는 올림 없는 연속값 `h / e`다.
 - 강화: `score = wd·race(나, 용) + wp·mean race(나, 생존 상대)`. 예산(코인 − 저축) 안에서 Δscore/비용이 최대(> 0)인 스탯을 반복 구매. 저축 = 방어막이 없으면 방어막 가격 + (aggro만) 텔레포트가 없으면 텔레포트 가격.
 - 칸 가치 `V(t)`: 코인 증감(손실은 보유 코인까지) + HP(회복 `min(Δ, 잃은 HP)`×0.45, 피해 `min(Δ, hp−1)`×0.35, hp ≥ maxHp/2이면 둘 다 ×0.2) + 무료 스탯 `3 + 해당 레벨` + 아이템 5 − 쉼 4 + 수련장 `2 + 최소 레벨` + 상점 3(coins ≥ 최저 가격 ∧ (저축 > 0 ∨ 도둑 0개)) + 동굴 = 카드 10장 평균 + 출발 보너스(통과 시) + PvP 기대값 `wp·(상대 코인/2 + 상대 아이템 가격 합 + 12) − (1−wp)·(60 + 내 코인)`(점유자 중 wp 최대 상대. 초반 보호·안전지대 제외. 상대 방어막 ∧ wp > 0.5면 0, 내 방어막 ∧ wp < 0.5면 −방어막 가격).

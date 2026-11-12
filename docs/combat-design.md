@@ -120,7 +120,7 @@ flat    = +3   (궁수가 처음 맞힌 공격, 감쇠 후 더함)
 
 `combat-2` 규칙과 balanced 스크립트 봇, 양쪽 위치 교환, 위치당 2,000판으로 측정했다. 대각선은 도착자 승률이다. 일반 칸은 양쪽 합계 4,000판, Normal 반응 10f와 Easy 16f를 절반씩 합쳤다. 10개 의도한 상성 방향 모두 95% Wilson 구간 하한이 50%를 넘고 70/30 칸은 없다. **대·소 상성 목표 승률의 허용 범위는 아직 달성하지 못했다.**
 
-이 행렬은 `DEFAULT_RULES.jobs`의 5직업 **시작 스탯**과 `runCombat`의 매 틱 스크립트 봇 입력(`decisionInterval=1`)으로 측정했다. 로컬·온라인 스크립트 봇과 보드 `sim`, `outcome_v1` 학습도 같은 입력 주기를 쓴다. 전투 **학습 env**의 에이전트 행동 반복 4틱은 별도 계약이다. `pnpm exec tsx packages/sim/scripts/auditCadence.ts 300 4`로 각 방향·좌석당 300판을 탐색 측정하면 스크립트 봇 입력을 4틱 유지할 때 의도한 10개 방향 중 4개가 역전되어 이 행렬을 적용할 수 없다.
+이 행렬은 `DEFAULT_RULES.jobs`의 5직업 **시작 스탯**과 `runCombat`의 매 틱 스크립트 봇 입력(`decisionInterval=1`)으로 측정했다. 로컬·온라인 스크립트 봇과 보드 `sim`도 같은 입력 주기를 쓴다. 전투 **학습 env**의 에이전트 행동 반복 4틱은 별도 계약이다. `pnpm exec tsx packages/sim/scripts/auditCadence.ts 300 4`로 각 방향·좌석당 300판을 탐색 측정하면 스크립트 봇 입력을 4틱 유지할 때 의도한 10개 방향 중 4개가 역전되어 이 행렬을 적용할 수 없다.
 
 표의 Easy/Hard는 **balanced 봇의 반응 지연 16f/5f 시험 조건**이다. 로컬 UI의 Easy는 `cautious` 18f, Hard는 `aggressive` 6f이므로 해당 UI 난이도의 상성 통과를 이 표만으로 주장하지 않는다. 로컬 Normal과 온라인 봇은 `balanced` 10f로 표의 Normal 조건과 맞는다.
 
@@ -224,7 +224,7 @@ flat    = +3   (궁수가 처음 맞힌 공격, 감쇠 후 더함)
 - 전투 모델(사용자 가중치)이 없으면 봇 좌석은 스크립트 전투 봇을 쓴다([combat-ai-spec.md](combat-ai-spec.md) §1).
 
 ### 8.4 내부 전투 결과 추정
-- HeuristicBot의 도전 판단과 대량 시뮬레이션은 실제 전투 데이터로 적합한 outcome 모델([combat-ai-spec.md](combat-ai-spec.md) §12)을 사용할 수 있다. 이 추정치는 봇·학습 환경·밸런스 분석 전용이며 게임 화면에는 표시하지 않는다.
+- HeuristicBot의 도전 판단은 내부 주사위 몬테카를로 추정을 쓴다([ai-interface-spec.md](ai-interface-spec.md) §10). 대량 밸런스 측정은 실제 `--combat sim`으로 진행한다. 추정치는 게임 화면에 표시하지 않는다.
 
 ## 9. 온라인 넷코드 (구현됨; 핫시트·오프라인은 로컬 sim)
 
