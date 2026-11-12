@@ -137,6 +137,10 @@ describe('online lobby store against a real server', () => {
     expect(await b.configureSeat(3, 'bot:heuristic')).toBe(false);
     expect(bob.lobby.getState().errorCode).toBe('NOT_HOST');
     expect(await a.setMaxRounds(3)).toBe(true);
+    // This test exercises lobby navigation and board completion. Real-time online PvP has
+    // its own integration test; settle incidental collisions immediately in this one.
+    expect((await alice.sessions[0]!.configure(3, true)).ok).toBe(true);
+    await until(() => alice.lobby.getState().room?.options.quickCombat === true);
     expect(await a.selectJob('mage')).toBe(true);
     expect(await b.selectJob('mage')).toBe(false);
     expect(bob.lobby.getState().error).toBe(errorText('JOB_TAKEN'));
