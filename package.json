@@ -16,7 +16,6 @@
     "typecheck": "pnpm -r run typecheck",
     "format": "prettier --write .",
     "sim": "tsx packages/sim/src/cli.ts",
-    "outcome": "tsx packages/sim/src/outcome/cli.ts",
     "env-server": "node packages/sim/dist/env-server.js",
     "combat-env-server": "node packages/sim/dist/combat-env-server.js"
   },

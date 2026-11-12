@@ -1,5 +1,3 @@
-import { dragonProfile, emptyOutcomeModel, profileOf, winProbability } from '@dragon-rush/ai';
-import { DEFAULT_COMBAT_RULES } from '@dragon-rush/combat';
 import {
   createGame,
   DEFAULT_RULES,
@@ -10,12 +8,6 @@ import {
 } from '@dragon-rush/engine';
 import { describe, expect, it } from 'vitest';
 import { moveOptions, opponentSummaries, shopRows, statOptions } from '../src/types/decisionView';
-import {
-  dragonWinChance,
-  duelWinChance,
-  formatPercent,
-  shieldDecisionChance,
-} from '../src/types/estimates';
 import {
   playerBadges,
   playerCards,
@@ -84,40 +76,6 @@ describe('decision view models', () => {
     const s = game();
     const [a] = opponentSummaries(s, [1]);
     expect(a).toMatchObject({ seat: 1, coins: DEFAULT_RULES.startingCoins, shields: 0 });
-  });
-});
-
-describe('estimates', () => {
-  it('uses an injected outcome model for real-time estimates', () => {
-    const s = game();
-    const model = emptyOutcomeModel('fixture', s.rules.version, DEFAULT_COMBAT_RULES.version, {
-      ...DEFAULT_COMBAT_RULES.damage,
-      mageDefDivisor: DEFAULT_COMBAT_RULES.passives.mageDefDivisor,
-    });
-    model.win[0] = 8;
-    expect(dragonWinChance(s, 0, 320, model)).toBeGreaterThan(0.99);
-    expect(duelWinChance(s, 0, 1, 320, model)).toBeGreaterThan(0.99);
-  });
-
-  it('uses the AI win probability helpers with 320 samples', () => {
-    const s = game();
-    const p = s.players[0]!;
-    expect(dragonWinChance(s, 0)).toBe(
-      winProbability(s.rules, profileOf(p, s.rules), dragonProfile(s.rules), 320),
-    );
-    const d = duelWinChance(s, 0, 1);
-    expect(d).toBeGreaterThanOrEqual(0);
-    expect(d).toBeLessThanOrEqual(1);
-    expect(formatPercent(0.456)).toBe('46%');
-  });
-
-  it('gives the shield decider their own duel odds', () => {
-    let s = game();
-    expect(shieldDecisionChance(s, 0)).toBeNull();
-    s = { ...s, pvp: { arriver: 0, candidates: [1], target: 1, stage: 'defender' } };
-    const arriverWins = duelWinChance(s, 0, 1);
-    expect(shieldDecisionChance(s, 0)).toBe(arriverWins);
-    expect(shieldDecisionChance(s, 1)).toBeCloseTo(1 - arriverWins, 10);
   });
 });
 

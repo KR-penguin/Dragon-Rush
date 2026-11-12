@@ -32,13 +32,3 @@ export {
   UNIFORM_BOARD,
   CombatEnvError,
 } from './combat-env/sampler';
-export {
-  generateOutcomeRows,
-  fitOutcomeModel,
-  outcomeCalibration,
-  sampleOutcomeResult,
-  outcomeDamage,
-  type OutcomeRow,
-  type CalibrationReport,
-} from './outcome';
-export { loadOutcomeModel } from './outcome/load';

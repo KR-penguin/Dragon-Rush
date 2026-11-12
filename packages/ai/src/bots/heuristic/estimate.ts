@@ -9,7 +9,6 @@ import {
   type RulesConfig,
 } from '@dragon-rush/engine';
 import { hashString } from '../../policy';
-import { predictOutcome, type OutcomeModel, type OutcomeSetup } from '../../outcome';
 
 /** Compact combat profile: what matters for estimating a fight. */
 export interface Profile {
@@ -64,30 +63,7 @@ export function winProbability(
   a: Profile,
   b: Profile,
   samples: number,
-  outcomeModel?: OutcomeModel,
 ): number {
-  if (outcomeModel) {
-    if (outcomeModel.rules_version !== rules.version)
-      throw new RangeError('outcome model rules version mismatch');
-    const fighter = (p: Profile) => ({
-      job: p.job as Exclude<Profile['job'], 'dragon'>,
-      hp: p.hp,
-      maxHp: p.maxHp,
-      atk: p.atk,
-      def: p.def,
-      indomitableAvailable: p.indomitable > 0,
-    });
-    const setup: OutcomeSetup =
-      b.job === 'dragon'
-        ? {
-            kind: 'dragonFight',
-            a: fighter(a),
-            b: null,
-            dragon: { hp: b.hp, atk: b.atk, def: b.def },
-          }
-        : { kind: 'duel', a: fighter(a), b: fighter(b) };
-    return predictOutcome(outcomeModel, setup).winA;
-  }
   const k = `${rules.version}|${key(a)}|${key(b)}|${samples}`;
   const hit = cache.get(k);
   if (hit !== undefined) return hit;

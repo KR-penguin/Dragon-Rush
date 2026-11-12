@@ -5,18 +5,14 @@ import {
   type CombatSetup,
 } from '@dragon-rush/combat';
 import { boardCombatSetup, createCombatBotByName } from '@dragon-rush/combat-ai';
-import { assertOutcomeCompatible, type OutcomeModel } from '@dragon-rush/ai';
 import {
   applyCombatResult,
   resolveCombatWithDice,
   type GameEvent,
   type GameState,
-  createRng,
-  nextFloat,
 } from '@dragon-rush/engine';
-import { outcomeModelSetup, sampleOutcomeResult } from './outcome';
 
-export const COMBAT_RESOLVERS = ['dice', 'sim', 'outcome'] as const;
+export const COMBAT_RESOLVERS = ['dice', 'sim'] as const;
 export type CombatResolverName = (typeof COMBAT_RESOLVERS)[number];
 
 /** Settles every fight the engine is waiting on (phase COMBAT) and continues to the next board decision. */
@@ -38,9 +34,6 @@ export interface CombatResolverOptions {
   readonly seed: number;
   /** Scripted bot for both fighters (sim resolver), default `scripted:balanced`. */
   readonly bot?: string;
-  readonly outcomeModel?: OutcomeModel;
-  /** Per-seat episode skill dispersion on the win logit (0 disables it). */
-  readonly outcomeSkillNoise?: number;
   readonly onFight?: (fight: FightLog) => void;
 }
 
@@ -60,19 +53,6 @@ export function createCombatResolver(
 ): CombatResolver {
   let fights = 0;
   const bot = opts.bot ?? 'scripted:balanced';
-  let skillRng = createRng(opts.seed);
-  const uniform = () => {
-    const [v, next] = nextFloat(skillRng);
-    skillRng = next;
-    return v;
-  };
-  const skills = Array.from({ length: 4 }, () => {
-    const u = Math.max(1e-9, uniform());
-    const v = uniform();
-    return (opts.outcomeSkillNoise ?? 0) * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
-  });
-  if (name === 'outcome' && !opts.outcomeModel)
-    throw new RangeError('outcome resolver needs an outcome_v1 model');
   return (r) => {
     let { state, events } = r;
     while (state.pending?.phase === 'COMBAT') {
@@ -81,19 +61,7 @@ export function createCombatResolver(
       let settled: { state: GameState; events: GameEvent[] };
       let winner: 'a' | 'b';
       let ticks: number | null = null;
-      if (name === 'outcome') {
-        const model = opts.outcomeModel!;
-        assertOutcomeCompatible(model, state.rules.version, DEFAULT_COMBAT_RULES.version);
-        const req = state.combat!;
-        const [result, rng] = sampleOutcomeResult(
-          model,
-          outcomeModelSetup(setup!),
-          state.rng,
-          skills[req.a]! - (req.b === null ? 0 : skills[req.b]!),
-        );
-        settled = applyCombatResult({ ...state, rng }, result);
-        winner = result.winner;
-      } else if (name === 'sim') {
+      if (name === 'sim') {
         const seed = fightSeed(opts.seed, fights);
         const random = policyRandom(seed, 3);
         const out = runCombat(

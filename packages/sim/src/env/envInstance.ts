@@ -22,7 +22,6 @@ import {
   legalIndices,
   type Policy,
 } from '@dragon-rush/ai';
-import type { OutcomeModel } from '@dragon-rush/ai';
 import { createCombatResolver, type CombatResolver } from '../combatResolver';
 import { deriveSeed, randomJobs } from '../runner';
 import type { EnvConfig } from './config';
@@ -92,7 +91,6 @@ export class EnvInstance {
     private readonly baseSeed: number,
     private readonly config: EnvConfig,
     private readonly rules: RulesConfig,
-    private readonly outcomeModel?: OutcomeModel,
   ) {}
 
   get isDone(): boolean {
@@ -115,8 +113,6 @@ export class EnvInstance {
     const c = this.config;
     this.resolveCombat = createCombatResolver(c.combat_resolver, {
       seed: deriveSeed(seed, 9, 9),
-      ...(this.outcomeModel ? { outcomeModel: this.outcomeModel } : {}),
-      outcomeSkillNoise: c.outcome_skill_noise,
     });
     const n = Array.isArray(c.num_players)
       ? c.num_players[Math.floor(this.random() * c.num_players.length)]!
@@ -151,7 +147,7 @@ export class EnvInstance {
       if (!this.controlled.has(seat))
         this.bots.set(
           seat,
-          createPolicyByName(names[seat % names.length]!, this.random, this.outcomeModel),
+          createPolicyByName(names[seat % names.length]!, this.random),
         );
     }
     this.done = false;

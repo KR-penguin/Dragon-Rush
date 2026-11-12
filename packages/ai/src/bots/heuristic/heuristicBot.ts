@@ -13,7 +13,6 @@ import {
   type UpgradeStat,
 } from '@dragon-rush/engine';
 import type { DecisionContext, Policy } from '../../policy';
-import type { OutcomeModel } from '../../outcome';
 import { dragonProfile, profileOf, race, winProbability, type Profile } from './estimate';
 
 export type HeuristicStyle = 'aggro' | 'growth' | 'rush';
@@ -90,7 +89,6 @@ class Planner {
     private readonly view: PublicGameState,
     private readonly seat: SeatId,
     style: HeuristicStyle,
-    private readonly outcomeModel?: OutcomeModel,
   ) {
     this.rules = view.rules;
     this.me = view.players[seat]!;
@@ -107,7 +105,6 @@ class Planner {
       profileOf(att, this.rules),
       profileOf(def, this.rules),
       PVP_SAMPLES,
-      this.outcomeModel,
     );
   }
 
@@ -162,16 +159,9 @@ class Planner {
       p = this.upgraded(p, stat);
       ups.push(stat);
     }
-    if (!this.outcomeModel && race(this.rules, p, dragonProfile(this.rules)) < -0.9)
-      return { wp: 0, ups };
+    if (race(this.rules, p, dragonProfile(this.rules)) < -0.9) return { wp: 0, ups };
     return {
-      wp: winProbability(
-        this.rules,
-        p,
-        dragonProfile(this.rules),
-        DRAGON_SAMPLES,
-        this.outcomeModel,
-      ),
+      wp: winProbability(this.rules, p, dragonProfile(this.rules), DRAGON_SAMPLES),
       ups,
     };
   }
@@ -454,13 +444,9 @@ class Planner {
   }
 }
 
-function choose(
-  ctx: DecisionContext,
-  style: HeuristicStyle,
-  outcomeModel?: OutcomeModel,
-): Action | null {
+function choose(ctx: DecisionContext, style: HeuristicStyle): Action | null {
   const { view, seat, legal } = ctx;
-  const plan = new Planner(view, seat, style, outcomeModel);
+  const plan = new Planner(view, seat, style);
   const phase = view.pending?.phase;
   switch (phase) {
     case 'MOVE_ADJUST':
@@ -505,14 +491,11 @@ function choose(
   }
 }
 
-export function createHeuristicBot(
-  style: HeuristicStyle = 'growth',
-  outcomeModel?: OutcomeModel,
-): Policy {
+export function createHeuristicBot(style: HeuristicStyle = 'growth'): Policy {
   return {
     id: `heuristic:${style}`,
     decide(ctx: DecisionContext): Action {
-      const wanted = choose(ctx, style, outcomeModel);
+      const wanted = choose(ctx, style);
       if (wanted) {
         const key = actionKey(wanted);
         const legal = ctx.legal.find((a) => actionKey(a) === key);

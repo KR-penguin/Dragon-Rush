@@ -15,14 +15,8 @@ import {
   type RulesConfig,
   type SeatId,
 } from '@dragon-rush/engine';
-import {
-  createPolicyByName,
-  createPolicyRandom,
-  type OutcomeModel,
-  type Policy,
-} from '@dragon-rush/ai';
+import { createPolicyByName, createPolicyRandom, type Policy } from '@dragon-rush/ai';
 import { createCombatResolver, type CombatResolverName, type FightLog } from './combatResolver';
-import { loadOutcomeModel } from './outcome/load';
 import { loadModelPolicy } from './modelLoader';
 
 export interface GameRecord {
@@ -56,8 +50,6 @@ export interface PlayGameOptions {
   combat?: CombatResolverName;
   /** Scripted combat bot for the sim resolver (default `scripted:balanced`). */
   combatBot?: string;
-  outcomeModel?: OutcomeModel;
-  outcomeSkillNoise?: number;
   logFights?: boolean;
 }
 
@@ -89,8 +81,6 @@ export function playGame(opts: PlayGameOptions): GameRecord {
   const resolve = createCombatResolver(opts.combat ?? 'dice', {
     seed: opts.seed,
     ...(opts.combatBot ? { bot: opts.combatBot } : {}),
-    ...(opts.outcomeModel ? { outcomeModel: opts.outcomeModel } : {}),
-    ...(opts.outcomeSkillNoise !== undefined ? { outcomeSkillNoise: opts.outcomeSkillNoise } : {}),
     onFight: (f) => fights.push(f),
   });
   const seatPolicies = state.seatOrigin.map((origin) => opts.policies[origin]!);
@@ -187,14 +177,11 @@ export interface BatchOptions {
   rules?: RulesConfig;
   combat?: CombatResolverName;
   combatBot?: string;
-  outcomeModelPath?: string;
-  outcomeSkillNoise?: number;
   logFights?: boolean;
 }
 
 export function runBatch(opts: BatchOptions): GameRecord[] {
   const out: GameRecord[] = [];
-  const outcomeModel = opts.outcomeModelPath ? loadOutcomeModel(opts.outcomeModelPath) : undefined;
   const start = opts.startIndex ?? 0;
   for (let g = start; g < start + opts.games; g++) {
     const seed = deriveSeed(opts.baseSeed, g, 0);
@@ -205,7 +192,7 @@ export function runBatch(opts: BatchOptions): GameRecord[] {
       const name = names[i % names.length]!;
       return name.startsWith('model:')
         ? loadModelPolicy(name.slice('model:'.length))
-        : createPolicyByName(name, random, outcomeModel);
+        : createPolicyByName(name, random);
     });
     out.push(
       playGame({
@@ -216,10 +203,6 @@ export function runBatch(opts: BatchOptions): GameRecord[] {
         ...(opts.rules ? { rules: opts.rules } : {}),
         ...(opts.combat ? { combat: opts.combat } : {}),
         ...(opts.combatBot ? { combatBot: opts.combatBot } : {}),
-        ...(outcomeModel ? { outcomeModel } : {}),
-        ...(opts.outcomeSkillNoise !== undefined
-          ? { outcomeSkillNoise: opts.outcomeSkillNoise }
-          : {}),
         ...(opts.logFights ? { logFights: true } : {}),
       }),
     );

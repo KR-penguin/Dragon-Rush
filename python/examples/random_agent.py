@@ -25,7 +25,7 @@ def main() -> None:
     parser.add_argument("--episodes", type=int, default=20)
     parser.add_argument("--players", type=int, default=4)
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--combat-resolver", choices=("outcome", "sim", "dice"), default="outcome")
+    parser.add_argument("--combat-resolver", choices=("sim", "dice"), default="sim")
     args = parser.parse_args()
 
     rng = np.random.default_rng(args.seed)

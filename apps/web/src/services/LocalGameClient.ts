@@ -1,4 +1,4 @@
-import { DEFAULT_COMBAT_RULES, type CombatResult } from '@dragon-rush/combat';
+import type { CombatResult } from '@dragon-rush/combat';
 import {
   applyAction,
   applyCombatResult,
@@ -17,12 +17,7 @@ import {
   type JobId,
   type SeatId,
 } from '@dragon-rush/engine';
-import {
-  bundledOutcomeModel,
-  createPolicyByName,
-  createPolicyRandom,
-  type Policy,
-} from '@dragon-rush/ai';
+import { createPolicyByName, createPolicyRandom, type Policy } from '@dragon-rush/ai';
 import { createFightBotSource } from './fight/botInput';
 import { buildFightSetup, createSeedStream, fightSides, isBotOnlyFight } from './fight/fightSetup';
 import { simulateFight } from './fight/simProvider';
@@ -121,15 +116,10 @@ export class LocalGameClient implements GameClient {
     this.random = createPolicyRandom((seed ^ 0x2545f491) >>> 0);
     // Fight seeds follow the game seed (reproducible games) without touching the bots' stream.
     this.fightSeed = createSeedStream(createPolicyRandom((seed ^ 0x51ed270b) >>> 0));
-    const outcomeModel =
-      bundledOutcomeModel(rules.version, DEFAULT_COMBAT_RULES.version) ?? undefined;
     this.seats = this.state.seatOrigin.map((origin, seat) => {
       const cfg = config.seats[origin]!;
       if (cfg.kind === 'bot')
-        this.policies.set(
-          seat,
-          createPolicyByName(cfg.botName ?? 'heuristic', this.random, outcomeModel),
-        );
+        this.policies.set(seat, createPolicyByName(cfg.botName ?? 'heuristic', this.random));
       return {
         seat,
         name: cfg.name,

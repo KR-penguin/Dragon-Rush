@@ -15,13 +15,8 @@ import {
 } from '@dragon-rush/engine';
 import { randomInt } from 'node:crypto';
 import { boardCombatSetup } from '@dragon-rush/combat-ai';
-import { DEFAULT_COMBAT_RULES, type CombatResult, type CombatSetup } from '@dragon-rush/combat';
-import {
-  bundledOutcomeModel,
-  createHeuristicBot,
-  createPolicyRandom,
-  type Policy,
-} from '@dragon-rush/ai';
+import type { CombatResult, CombatSetup } from '@dragon-rush/combat';
+import { createHeuristicBot, createPolicyRandom, type Policy } from '@dragon-rush/ai';
 import type {
   GameSnapshotMsg,
   GameUpdateMsg,
@@ -119,20 +114,14 @@ export class GameSession {
     this.state = created.state;
     this.initialEvents = created.events;
     this.random = createPolicyRandom((opts.seed ^ 0x6a09e667) >>> 0);
-    const outcomeModel = opts.quickCombat
-      ? undefined
-      : (bundledOutcomeModel(opts.rules.version, DEFAULT_COMBAT_RULES.version) ?? undefined);
-    this.proxyPolicy = createHeuristicBot('growth', outcomeModel);
+    this.proxyPolicy = createHeuristicBot('growth');
     this.timer = new TurnTimer(opts.turnTimeoutMs);
     this.seats = this.state.seatOrigin.map((origin, engineSeat) => {
       const setup = opts.seats[origin]!;
       return {
         engineSeat,
         setup,
-        policy:
-          setup.kind === 'human'
-            ? null
-            : (setup.policy ?? createHeuristicBot('growth', outcomeModel)),
+        policy: setup.kind === 'human' ? null : (setup.policy ?? createHeuristicBot('growth')),
         connected: true,
         proxied: false,
         permanentBot: false,

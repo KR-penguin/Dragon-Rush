@@ -17,7 +17,7 @@ describe('env server (in-process)', () => {
   it('reports versions and dims', () => {
     const r = call(new EnvServer(), 1, 'info');
     expect(r.result).toMatchObject({
-      protocol: 'rpgboard-env/1',
+      protocol: 'rpgboard-env/2',
       obs_dim: 257,
       action_dim: 47,
       obs_version: 'obs_v2',
@@ -155,12 +155,10 @@ describe('env server (in-process)', () => {
     };
     expect(run()).toEqual(run());
     expect(
-      call(new EnvServer(), 1, 'reset', { expect: { combat_resolver: 'sim' } }).error?.code,
+      call(new EnvServer(), 1, 'reset', { expect: { combat_resolver: 'dice' } }).error?.code,
     ).toBe('VERSION_MISMATCH');
-    expect(
-      call(new EnvServer(), 1, 'reset', { config: { combat_resolver: 'outcome' } }).result
-        ?.outcome_model_id,
-    ).toBe('outcome-v1-rush7-combat3-transfer');
+    expect(call(new EnvServer(), 1, 'reset', {}).result?.combat_resolver).toBe('sim');
+    expect(call(new EnvServer(), 1, 'reset', { config: { combat_resolver: 'outcome' } }).error?.code).toBe('BAD_CONFIG');
   });
 
   it('rejects bad configs', () => {

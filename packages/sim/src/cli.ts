@@ -15,7 +15,6 @@ interface CliArgs {
   json: boolean;
   combat: CombatResolverName;
   combatBot: string | undefined;
-  outcomeModelPath: string | undefined;
   logFights: string | undefined;
 }
 
@@ -29,7 +28,6 @@ function parseArgs(argv: string[]): CliArgs {
     json: false,
     combat: 'dice',
     combatBot: undefined,
-    outcomeModelPath: undefined,
     logFights: undefined,
   };
   for (let i = 0; i < argv.length; i++) {
@@ -44,7 +42,6 @@ function parseArgs(argv: string[]): CliArgs {
         throw new Error(`--combat must be one of ${COMBAT_RESOLVERS.join('|')}`);
       args.combat = value as CombatResolverName;
     } else if (flag === '--combat-bot') args.combatBot = String(value);
-    else if (flag === '--outcome-model') args.outcomeModelPath = String(value);
     else if (flag === '--log-fights') args.logFights = String(value);
     else if (flag === '--json') {
       args.json = true;
@@ -81,8 +78,6 @@ async function runParallel(
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  if (args.combat === 'outcome' && !args.outcomeModelPath)
-    throw new Error('--combat outcome requires --outcome-model <path>');
   const reports = [];
   const logged: GameRecord[] = [];
   for (const players of args.players) {
@@ -94,7 +89,6 @@ async function main() {
         baseSeed: args.seed * 1000 + players,
         combat: args.combat,
         ...(args.combatBot ? { combatBot: args.combatBot } : {}),
-        ...(args.outcomeModelPath ? { outcomeModelPath: args.outcomeModelPath } : {}),
         ...(args.logFights ? { logFights: true } : {}),
       },
       args.games,

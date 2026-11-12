@@ -29,10 +29,8 @@ export const EnvConfigSchema = z
       .nullable()
       .default(null),
     return_events: z.boolean().default(false),
-    /** How fights are settled; the shipped outcome_v1 model is the default. */
-    combat_resolver: z.enum(COMBAT_RESOLVERS).default('outcome'),
-    outcome_model: z.string().min(1).optional(),
-    outcome_skill_noise: z.number().finite().min(0).max(2).default(0.5),
+    /** Actual scripted 60Hz combat is the default; dice remains an opt-in shortcut. */
+    combat_resolver: z.enum(COMBAT_RESOLVERS).default('sim'),
   })
   .strict();
 
@@ -49,7 +47,6 @@ export const ResetParamsSchema = z
         obs_version: z.string().optional(),
         act_version: z.string().optional(),
         combat_resolver: z.string().optional(),
-        outcome_model_id: z.string().optional(),
       })
       .optional(),
     config: EnvConfigSchema.default(EnvConfigSchema.parse({})),

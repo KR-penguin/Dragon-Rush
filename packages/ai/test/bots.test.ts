@@ -12,9 +12,12 @@ import {
   createModelPolicy,
   createPolicyRandom,
   createRandomBot,
+  dragonProfile,
   HEURISTIC_STYLES,
   OBS_DIM,
   OBS_VERSION,
+  profileOf,
+  winProbability,
   type Policy,
 } from '../src/index';
 import { newGame } from './helpers';
@@ -42,6 +45,20 @@ const meta = (id: string) => ({
 });
 
 describe('built-in bots', () => {
+  it('uses seeded dice simulations for internal win estimates', () => {
+    const state = newGame(2, 17);
+    const first = profileOf(state.players[0]!, state.rules);
+    const opponent = profileOf(state.players[1]!, state.rules);
+    const duel = winProbability(state.rules, first, opponent, 192);
+    const dragon = winProbability(state.rules, first, dragonProfile(state.rules), 320);
+
+    expect(duel).toBeGreaterThanOrEqual(0);
+    expect(duel).toBeLessThanOrEqual(1);
+    expect(duel * 192).toBeCloseTo(Math.round(duel * 192), 10);
+    expect(dragon * 320).toBeCloseTo(Math.round(dragon * 320), 10);
+    expect(winProbability(state.rules, first, opponent, 192)).toBe(duel);
+  });
+
   it('heuristic bots of every style finish games with legal actions', () => {
     for (let seed = 1; seed <= 4; seed++) {
       const policies = [0, 1, 2, 3].map((i) =>

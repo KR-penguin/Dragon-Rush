@@ -119,6 +119,7 @@ describe('encodeCombatObservation', () => {
     expect(Array.from(aMirrored)).toEqual(Array.from(b));
   });
 
+  // Rule-value changes can alter this vector without changing the cobs_v1 layout.
   it('matches the golden tick-0 vectors (bump COBS_VERSION when this changes on purpose)', () => {
     const round = (o: Float32Array) => Array.from(o, (x) => Math.round(x * 1e5) / 1e5);
     expect(

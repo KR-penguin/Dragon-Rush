@@ -4,18 +4,14 @@ import {
   ACTION_DIM,
   ACTION_NAMES,
   BOT_NAMES,
-  bundledOutcomeModel,
   OBS_DIM,
   OBS_V2_LAYOUT,
   OBS_VERSION,
 } from '@dragon-rush/ai';
 import { RequestSchema, ResetParamsSchema, StepParamsSchema, type ResetParams } from './config';
 import { buildRules, EnvError, EnvInstance, type Transition } from './envInstance';
-import { loadOutcomeModel } from '../outcome/load';
-import { assertOutcomeCompatible, type OutcomeModel } from '@dragon-rush/ai';
-import { DEFAULT_COMBAT_RULES } from '@dragon-rush/combat';
 
-export const ENV_PROTOCOL = 'rpgboard-env/1';
+export const ENV_PROTOCOL = 'rpgboard-env/2';
 
 type Json = Record<string, unknown>;
 
@@ -94,30 +90,11 @@ export class EnvServer {
       throw new EnvError('BAD_CONFIG', 'auto_reset=false requires num_envs=1');
     const seed = p.seed ?? (Date.now() % 2 ** 31) * 1000 + Math.floor(Math.random() * 1000);
     const rules = buildRules(p.config);
-    let outcomeModel: OutcomeModel | undefined;
-    if (p.config.combat_resolver === 'outcome' || p.config.outcome_model) {
-      try {
-        outcomeModel = p.config.outcome_model
-          ? loadOutcomeModel(p.config.outcome_model)
-          : (bundledOutcomeModel(rules.version, DEFAULT_COMBAT_RULES.version) ?? undefined);
-        if (!outcomeModel) throw new Error('bundled outcome_v1 model is unavailable');
-        assertOutcomeCompatible(outcomeModel, rules.version, DEFAULT_COMBAT_RULES.version);
-      } catch (e) {
-        throw new EnvError('BAD_CONFIG', `outcome_model: ${(e as Error).message}`);
-      }
-    }
-    if (p.expect?.outcome_model_id && p.expect.outcome_model_id !== outcomeModel?.id) {
-      throw new EnvError('VERSION_MISMATCH', `outcome_model_id ${outcomeModel?.id ?? 'none'}`);
-    }
     this.params = { ...p, seed };
-    this.envs = Array.from(
-      { length: p.num_envs },
-      (_, i) => new EnvInstance(i, seed, p.config, rules, outcomeModel),
-    );
+    this.envs = Array.from({ length: p.num_envs }, (_, i) => new EnvInstance(i, seed, p.config, rules));
     return {
       seed,
       combat_resolver: p.config.combat_resolver,
-      outcome_model_id: outcomeModel?.id ?? null,
       envs: this.envs.map((env) => this.serialize(env.reset())),
     };
   }
