@@ -54,15 +54,13 @@ describe('duel balance (balanced bots, base stats)', () => {
     return rates.get(k)!;
   };
 
-  it('keeps all ten intended directions without a 70/30 cell', () => {
-    for (const job of JOBS) {
-      for (const edge of MATCHUPS[job]) {
-        const result = rate(job, edge.beats);
-        expect(result, `${job} > ${edge.beats}`).toBeGreaterThan(0.5);
-        expect(result, `${job} > ${edge.beats}`).toBeLessThan(0.7);
-      }
+  it.each(JOBS)('%s keeps its two intended directions without a 70/30 cell', (job) => {
+    for (const edge of MATCHUPS[job]) {
+      const result = rate(job, edge.beats);
+      expect(result, `${job} > ${edge.beats}`).toBeGreaterThan(0.5);
+      expect(result, `${job} > ${edge.beats}`).toBeLessThan(0.7);
     }
-  }, 120_000);
+  }, 50_000);
 
   it('keeps each job near 50% across four opponents and mirrors even', () => {
     for (const i of JOBS) {

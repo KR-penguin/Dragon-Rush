@@ -1,7 +1,6 @@
 import type { OpponentSummary } from '../../types/decisionView';
 import { Modal } from '../common/Modal';
 import { SeatChip } from '../common/SeatChip';
-import { WinChance } from '../common/WinChance';
 import { GameIcon } from '../icons/GameIcon';
 
 interface ShieldDialogProps {
@@ -10,15 +9,13 @@ interface ShieldDialogProps {
   me: OpponentSummary;
   opponentName: string;
   opponent: OpponentSummary;
-  chance: number | null;
-  method: 'dice' | 'realtime';
   locked: boolean;
   onDecide: (use: boolean) => void;
 }
 
 /** Challenge scroll with a choice: raise the shield or take the duel. */
 export function ShieldDialog(props: ShieldDialogProps) {
-  const { me, opponent, chance, locked, onDecide } = props;
+  const { me, opponent, locked, onDecide } = props;
   return (
     <Modal
       className="modal-scroll"
@@ -36,7 +33,6 @@ export function ShieldDialog(props: ShieldDialogProps) {
         <span className="versus-mark">VS</span>
         <SeatChip name={props.opponentName} summary={opponent} />
       </div>
-      <WinChance label="결투 예상 승리 확률" chance={chance} method={props.method} />
       <div className="choice-row">
         <button
           type="button"
