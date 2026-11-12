@@ -187,8 +187,11 @@ function encodeSelf(o: Float32Array, s: CombatState, f: FighterState): void {
   if (st >= 0) o[O.selfState + st] = 1;
   o[O.selfStateInfo] = fighterProgress(r, f);
   o[O.selfStateInfo + 1] = chainStep(r, f) / 2;
+  // the sim starts a skill's cooldown timer at use with the move's own length added
   o[O.selfCooldowns] =
-    f.skillCharges < kit.skillCharges ? ratio(f.skillTimer, kit.skillCooldown) : 0;
+    f.skillCharges < kit.skillCharges
+      ? ratio(f.skillTimer, kit.skillCooldown + moveTotal(r.moves[kit.skill]))
+      : 0;
   o[O.selfCooldowns + 1] =
     f.dashCharges < dash.charges ? ratio(f.dashTimer, dash.cooldown + dash.ticks) : 0;
   o[O.selfCooldowns + 2] = ratio(f.skillCharges, kit.skillCharges);

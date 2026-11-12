@@ -13,8 +13,10 @@ import {
   BUTTON_ATTACK,
   BUTTON_DASH,
   BUTTON_SKILL,
+  buttonReadyIn,
   combatActionMask,
   flatMask,
+  hitstunLeft,
   inactiveMask,
   isActionable,
   toFighterInput,
@@ -55,7 +57,11 @@ function probe(frames: Frame[], t: number, side: Side, button: number, liveTicks
       if (e.type === 'AttackStart' && e.who === side && e.move !== 'counter') starts.add('attack');
       else if (e.type === 'SkillUsed' && e.who === side) starts.add('skill');
       else if (e.type === 'Dash' && e.who === side) starts.add('dash');
-      else if ((e.type === 'Hit' && e.target === side) || (e.type === 'Parry' && e.who === side))
+      else if (
+        (e.type === 'Hit' && e.target === side) ||
+        // parrying refunds the skill; being parried staggers the attacker
+        (e.type === 'Parry' && (e.who === side || e.attacker === side))
+      )
         disturbed = true;
     }
     s = r.state;
@@ -82,7 +88,9 @@ describe('combatActionMask', () => {
     expect(Array.from(combatActionMask(ended, 'a').button)).toEqual([1, 0, 0, 0]);
   });
 
-  it('masks a press exactly when it could not start its action within the input buffer', () => {
+  // The mask assumes nothing hits the fighter: a light hit (4-8 ticks of hitstun) can cut a long move short,
+  // so both directions are checked on runs where the fighter's timeline was left alone.
+  it('masks a press exactly when it would expire before starting its action', () => {
     const setups = [
       duel('swordsman', 'ninja'),
       duel('archer', 'mage'),
@@ -92,7 +100,7 @@ describe('combatActionMask', () => {
       dragonFight('swordsman', { atk: 9, def: 8, maxHp: 70, hp: 70 }),
       dragonFight('ninja'),
     ];
-    const tally = { masked: 0, open: 0, effective: 0 };
+    const tally = { masked: 0, effective: 0, queued: 0 };
     for (const [i, setup] of setups.entries()) {
       const frames = playFight(setup, 900 + i, i % 2 ? 'aggressive' : 'cautious');
       for (let t = 0; t < frames.length - 1; t += 3) {
@@ -103,45 +111,57 @@ describe('combatActionMask', () => {
           if (f.mode === 'ko') continue;
           const mask = combatActionMask(s, side);
           const base = probe(frames, t, side, 0);
+          // a press already buffered by the bot would compete with the probe
+          if (base.disturbed || f.bufAttack > 0 || f.bufSkill > 0 || f.bufDash > 0) continue;
           for (const b of [BUTTON_ATTACK, BUTTON_SKILL, BUTTON_DASH] as Button[]) {
             if (f.held & BIT[b]) continue; // no edge: the button is already held
+            if (b === BUTTON_ATTACK && f.move === 'draw' && !f.drawReleased) continue; // a hold
             const run = probe(frames, t, side, b);
+            if (run.disturbed) continue;
             const effective = run.starts.has(KIND[b]) && !base.starts.has(KIND[b]);
             const where = `setup ${i} tick ${s.tick} side ${side} button ${KIND[b]} mode ${f.mode}/${f.move}/${f.moveTick}`;
             if (mask.button[b] === 0) {
               tally.masked++;
               if (effective) throw new Error(`masked press still acted: ${where}`);
             } else {
-              tally.open++;
-              const clean =
-                !run.disturbed && f.bufAttack === 0 && f.bufSkill === 0 && f.bufDash === 0;
-              const drawHold = b === BUTTON_ATTACK && f.move === 'draw' && !f.drawReleased;
-              if (clean && !drawHold) {
-                if (!effective) throw new Error(`allowed press did nothing: ${where}`);
-                tally.effective++;
-              }
+              if (!effective) throw new Error(`allowed press did nothing: ${where}`);
+              tally.effective++;
+              if (buttonReadyIn(s, side, b) > s.rules.inputBuffer) tally.queued++;
             }
           }
         }
       }
     }
-    expect(tally.masked).toBeGreaterThan(2000);
-    expect(tally.effective).toBeGreaterThan(1000);
+    expect(tally.masked).toBeGreaterThan(1500);
+    expect(tally.effective).toBeGreaterThan(1500);
+    // string presses queued past the buffer were exercised too
+    expect(tally.queued).toBeGreaterThan(0);
   });
 
   it('marks long hitstun and KO as not actionable', () => {
-    const frames = playFight(duel('berserker', 'mage'), 12);
     let stunned = 0;
-    for (const f of frames) {
-      const s = f.state;
-      const fa = s.a;
-      const actionable = isActionable(s, 'a', 4);
-      if (fa.mode === 'hitstun' && fa.hitstun + 1 > s.rules.inputBuffer) {
-        expect(actionable).toBe(false);
-        stunned++;
-      } else if (fa.mode !== 'ko' && !s.outcome) expect(actionable).toBe(true);
+    let ended = 0;
+    for (const [i, setup] of [
+      duel('berserker', 'mage'),
+      duel('mage', 'swordsman'),
+      duel('ninja', 'berserker'),
+    ].entries()) {
+      const frames = playFight(setup, 12 + i);
+      for (const f of frames) {
+        const s = f.state;
+        for (const side of ['a', 'b'] as const) {
+          const me = side === 'a' ? s.a : s.b!;
+          const actionable = isActionable(s, side, 4);
+          if (me.mode === 'hitstun' && hitstunLeft(s, me) + 1 > s.rules.inputBuffer) {
+            expect(actionable).toBe(false);
+            stunned++;
+          } else if (me.mode !== 'ko' && !s.outcome) expect(actionable).toBe(true);
+        }
+      }
+      expect(isActionable(frames.at(-1)!.state, 'a', 4)).toBe(false);
+      ended++;
     }
+    expect(ended).toBe(3);
     expect(stunned).toBeGreaterThan(0);
-    expect(isActionable(frames.at(-1)!.state, 'a', 4)).toBe(false);
   });
 });

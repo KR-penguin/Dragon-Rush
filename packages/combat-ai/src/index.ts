@@ -50,6 +50,7 @@ export {
   isActionable,
   buttonReadyIn,
   freeAt,
+  hitstunLeft,
   type CombatActionMask,
 } from './mask';
 export { StateHistory } from './runtime/history';
