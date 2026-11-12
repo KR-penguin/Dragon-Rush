@@ -12,22 +12,47 @@ import {
   sinQ14,
   speedPerTick,
 } from './math';
-import type { DashId, DashSpec, DrawMoveSpec, MoveId, MoveSpec, RuneMoveSpec, ShotMoveSpec } from './rules';
+import type {
+  DashId,
+  DashSpec,
+  DrawMoveSpec,
+  MoveId,
+  MoveSpec,
+  RuneMoveSpec,
+  ShotMoveSpec,
+} from './rules';
 import { BTN_ATTACK, BTN_DASH, BTN_SKILL, type FighterInput, type MoveDir } from './types';
-import { emit, entityId, pos, shapePx, SLOT_METEOR, SLOT_SHOT, type Ctx, type MFighter } from './work';
+import {
+  emit,
+  entityId,
+  pos,
+  shapePx,
+  SLOT_METEOR,
+  SLOT_SHOT,
+  type Ctx,
+  type MFighter,
+} from './work';
 
 function sanitizeMove(m: unknown): MoveDir {
   return typeof m === 'number' && Number.isInteger(m) && m >= 0 && m <= 8 ? (m as MoveDir) : 0;
 }
 
 /** Records levels and rising edges. Buffers age only on live (non-hitstop) ticks. */
-export function readInput(c: Ctx, f: MFighter, input: FighterInput | undefined, live: boolean): void {
+export function readInput(
+  c: Ctx,
+  f: MFighter,
+  input: FighterInput | undefined,
+  live: boolean,
+): void {
   if (f.mode === 'ko') return;
   const bits = input
-    ? (input.attack === true ? BTN_ATTACK : 0) | (input.skill === true ? BTN_SKILL : 0) | (input.dash === true ? BTN_DASH : 0)
+    ? (input.attack === true ? BTN_ATTACK : 0) |
+      (input.skill === true ? BTN_SKILL : 0) |
+      (input.dash === true ? BTN_DASH : 0)
     : 0;
   if (live) {
-    if (f.bufAttack > 0) f.bufAttack -= 1;
+    // a press during a string hit stays queued until the chain window (no expiry mid-move)
+    if (f.bufAttack > 0 && !inChainableMove(c, f)) f.bufAttack -= 1;
     if (f.bufSkill > 0) f.bufSkill -= 1;
     if (f.bufDash > 0) f.bufDash -= 1;
   }
@@ -38,6 +63,12 @@ export function readInput(c: Ctx, f: MFighter, input: FighterInput | undefined, 
   if (pressed & BTN_DASH) f.bufDash = buf;
   f.held = bits;
   f.moveInput = sanitizeMove(input?.move);
+}
+
+function inChainableMove(c: Ctx, f: MFighter): boolean {
+  if (f.mode !== 'attack' || f.move === null) return false;
+  const spec = c.r.moves[f.move as MoveId];
+  return spec.type === 'melee' && spec.next !== null;
 }
 
 function tickTimers(c: Ctx, f: MFighter): void {
@@ -118,7 +149,11 @@ export function aimTarget(c: Ctx, f: MFighter): { x: number; y: number; r: numbe
     if (d.hp <= 0 || d.airborne) return null;
     if (d.headLowered > 0) {
       const R = c.r.dragon;
-      return { x: offsetX(d.x, d.facing, R.head.forward), y: offsetY(d.y, d.facing, R.head.forward), r: R.head.r };
+      return {
+        x: offsetX(d.x, d.facing, R.head.forward),
+        y: offsetY(d.y, d.facing, R.head.forward),
+        r: R.head.r,
+      };
     }
     return { x: d.x, y: d.y, r: c.r.dragon.body[0]?.r ?? 0 };
   }
@@ -139,7 +174,13 @@ export function assistAim(c: Ctx, f: MFighter, range: number): number {
   return angleDiff(ang, f.facing) <= c.r.aimAssist.half ? ang : f.facing;
 }
 
-export function startMove(c: Ctx, f: MFighter, id: MoveId, mode: 'attack' | 'skill', announce = true): void {
+export function startMove(
+  c: Ctx,
+  f: MFighter,
+  id: MoveId,
+  mode: 'attack' | 'skill',
+  announce = true,
+): void {
   const spec = c.r.moves[id];
   f.mode = mode;
   f.move = id;
@@ -153,8 +194,10 @@ export function startMove(c: Ctx, f: MFighter, id: MoveId, mode: 'attack' | 'ski
   }
   if (announce) {
     const key = `${f.side}:${id}`;
-    if (mode === 'skill') emit(c, key, { type: 'SkillUsed', who: f.side, skill: id, dir: f.aim, pos: pos(f.x, f.y) });
-    else emit(c, key, { type: 'AttackStart', who: f.side, move: id, dir: f.aim, pos: pos(f.x, f.y) });
+    if (mode === 'skill')
+      emit(c, key, { type: 'SkillUsed', who: f.side, skill: id, dir: f.aim, pos: pos(f.x, f.y) });
+    else
+      emit(c, key, { type: 'AttackStart', who: f.side, move: id, dir: f.aim, pos: pos(f.x, f.y) });
   }
   runMoveTick(c, f, id, spec);
 }
@@ -173,7 +216,9 @@ function useAttack(c: Ctx, f: MFighter): void {
 
 function useSkill(c: Ctx, f: MFighter): void {
   const kit = c.r.jobs[f.job];
-  if (f.skillCharges === kit.skillCharges) f.skillTimer = kit.skillCooldown;
+  // cooldowns count from the end of the move
+  if (f.skillCharges === kit.skillCharges)
+    f.skillTimer = kit.skillCooldown + moveTotal(c.r.moves[kit.skill]);
   f.skillCharges -= 1;
   startMove(c, f, kit.skill, 'skill');
 }
@@ -230,6 +275,8 @@ function advanceDash(c: Ctx, f: MFighter): boolean {
   if (d.cancelFrom > 0 && f.moveTick + 1 >= d.cancelFrom && f.bufAttack > 0) {
     f.bufAttack = 0;
     f.superArmor = false;
+    // the cancel attack goes where the stick points, like an attack from neutral
+    if (f.moveInput !== 0) f.facing = MOVE_BAM[f.moveInput]!;
     useAttack(c, f);
     return false;
   }
@@ -299,7 +346,10 @@ function placeRune(c: Ctx, f: MFighter, spec: RuneMoveSpec): void {
     const dx = t.x - f.x;
     const dy = t.y - f.y;
     const maxR = (spec.assistRange + t.r) * Q;
-    if (dx * dx + dy * dy <= maxR * maxR && angleDiff(atan2i(dy, dx), f.facing) <= c.r.aimAssist.half) {
+    if (
+      dx * dx + dy * dy <= maxR * maxR &&
+      angleDiff(atan2i(dy, dx), f.facing) <= c.r.aimAssist.half
+    ) {
       x = t.x;
       y = t.y;
     }
@@ -368,7 +418,8 @@ function runMoveTick(c: Ctx, f: MFighter, id: MoveId, spec: MoveSpec): void {
         f.x += mulQ14(step, cosQ14(f.aim));
         f.y += mulQ14(step, sinQ14(f.aim));
       }
-      if (spec.moveSpeedPct > 0 && f.phase !== 'recovery') locomote(c, f, f.moveInput, spec.moveSpeedPct);
+      if (spec.moveSpeedPct > 0 && f.phase !== 'recovery')
+        locomote(c, f, f.moveInput, spec.moveSpeedPct);
       else brake(c, f);
       if (f.phase === 'recovery' && f.moveInput !== 0) f.facing = MOVE_BAM[f.moveInput]!;
       return;
@@ -384,7 +435,8 @@ function runMoveTick(c: Ctx, f: MFighter, id: MoveId, spec: MoveSpec): void {
       if (f.phase === 'recovery' && f.moveInput !== 0) f.facing = MOVE_BAM[f.moveInput]!;
       return;
     case 'parry':
-      f.phase = t < spec.startup ? 'startup' : t < spec.startup + spec.active ? 'active' : 'recovery';
+      f.phase =
+        t < spec.startup ? 'startup' : t < spec.startup + spec.active ? 'active' : 'recovery';
       brake(c, f);
       return;
     case 'draw':
@@ -399,8 +451,23 @@ function advanceMove(c: Ctx, f: MFighter): boolean {
   const spec = c.r.moves[id];
   f.moveTick += 1;
   if (f.moveTick >= moveTotal(spec)) return true;
-  if (spec.type === 'melee' && spec.next !== null && f.moveTick >= spec.chainFrom && f.bufAttack > 0) {
+  // a bow draw can be dropped into a dash (no arrow is fired)
+  if (spec.type === 'draw' && f.bufDash > 0 && f.dashCharges > 0) {
+    f.bufDash = 0;
+    f.drawTicks = 0;
+    f.drawReleased = false;
+    if (f.moveInput !== 0) f.facing = MOVE_BAM[f.moveInput]!;
+    startDash(c, f);
+    return false;
+  }
+  if (
+    spec.type === 'melee' &&
+    spec.next !== null &&
+    f.moveTick >= spec.chainFrom &&
+    f.bufAttack > 0
+  ) {
     f.bufAttack = 0;
+    if (f.moveInput !== 0) f.facing = MOVE_BAM[f.moveInput]!;
     startMove(c, f, spec.next, 'attack');
     return false;
   }

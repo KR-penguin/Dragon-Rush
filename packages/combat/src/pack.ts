@@ -1,6 +1,19 @@
 import { JOB_IDS } from '@dragon-rush/engine';
-import { DEFAULT_COMBAT_RULES, type CombatRules, type DashId, type ManeuverId, type MoveId } from './rules';
-import type { CombatState, DragonState, FighterState, ProjectileState, Shape, ZoneState } from './types';
+import {
+  DEFAULT_COMBAT_RULES,
+  type CombatRules,
+  type DashId,
+  type ManeuverId,
+  type MoveId,
+} from './rules';
+import type {
+  CombatState,
+  DragonState,
+  FighterState,
+  ProjectileState,
+  Shape,
+  ZoneState,
+} from './types';
 
 /**
  * Canonical packing of a CombatState into a flat array of integers, in an explicit field order (never object
@@ -16,49 +29,163 @@ const OWNERS = ['a', 'b', 'dragon'] as const;
 const MODES = ['idle', 'move', 'attack', 'skill', 'dash', 'hitstun', 'ko'] as const;
 const PHASES = ['startup', 'active', 'recovery', 'none'] as const;
 const MOVE_IDS: readonly MoveId[] = [
-  'slash1', 'slash2', 'thrust', 'parry', 'counter', 'draw', 'quickShot', 'fullShot', 'volley', 'bolt', 'meteor',
-  'dagger1', 'dagger2', 'kunai', 'greataxe', 'whirlwind',
+  'slash1',
+  'slash2',
+  'thrust',
+  'parry',
+  'counter',
+  'draw',
+  'quickShot',
+  'fullShot',
+  'volley',
+  'bolt',
+  'meteor',
+  'dagger1',
+  'dagger2',
+  'kunai',
+  'greataxe',
+  'whirlwind',
 ];
 const DASH_IDS: readonly DashId[] = ['dash', 'backstep', 'blink', 'shadowStep', 'shoulderCharge'];
 const ANY_MOVE: readonly (string | null)[] = [null, ...MOVE_IDS, ...DASH_IDS];
-const MANEUVERS: readonly (ManeuverId | null)[] = [null, 'claw', 'tail', 'volley', 'charge', 'gust', 'breath', 'dive'];
+const MANEUVERS: readonly (ManeuverId | null)[] = [
+  null,
+  'claw',
+  'tail',
+  'volley',
+  'charge',
+  'gust',
+  'breath',
+  'dive',
+];
 const STAGES = ['idle', 'telegraph', 'active', 'recovery', 'stunned', 'returning', 'roar'] as const;
 const ZONE_KINDS = ['meteor', 'fireball', 'burningFloor'] as const;
 const SHAPE_KINDS = ['circle', 'arc', 'line'] as const;
 
 const FIGHTER: readonly (readonly [keyof FighterState, Codec])[] = [
-  ['side', SIDES], ['job', JOB_IDS], ['x', 'int'], ['y', 'int'], ['vx', 'int'], ['vy', 'int'], ['kbx', 'int'],
-  ['kby', 'int'], ['kbLeft', 'int'], ['kbTotal', 'int'], ['facing', 'int'], ['aim', 'int'], ['hp', 'int'],
-  ['maxHp', 'int'], ['atk', 'int'], ['def', 'int'], ['mode', MODES], ['move', ANY_MOVE], ['moveTick', 'int'],
-  ['phase', PHASES], ['moveHits', 'int'], ['hitstun', 'int'], ['wallSlammed', 'bool'], ['iframes', 'int'],
-  ['iframeDelay', 'int'], ['invisible', 'bool'], ['superArmor', 'bool'], ['skillCharges', 'int'],
-  ['skillTimer', 'int'], ['dashCharges', 'int'], ['dashTimer', 'int'], ['dashStale', 'int'], ['sinceDash', 'int'],
-  ['bufAttack', 'int'], ['bufSkill', 'int'], ['bufDash', 'int'], ['held', 'int'], ['moveInput', 'int'],
-  ['drawTicks', 'int'], ['drawReleased', 'bool'], ['nocked', 'bool'], ['lastStandAvailable', 'bool'],
-  ['lastStandUsed', 'bool'], ['firstStrikePending', 'bool'], ['evadeCounter', 'int'], ['raging', 'bool'],
+  ['side', SIDES],
+  ['job', JOB_IDS],
+  ['x', 'int'],
+  ['y', 'int'],
+  ['vx', 'int'],
+  ['vy', 'int'],
+  ['kbx', 'int'],
+  ['kby', 'int'],
+  ['kbLeft', 'int'],
+  ['kbTotal', 'int'],
+  ['facing', 'int'],
+  ['aim', 'int'],
+  ['hp', 'int'],
+  ['maxHp', 'int'],
+  ['atk', 'int'],
+  ['def', 'int'],
+  ['mode', MODES],
+  ['move', ANY_MOVE],
+  ['moveTick', 'int'],
+  ['phase', PHASES],
+  ['moveHits', 'int'],
+  ['hitstun', 'int'],
+  ['wallSlammed', 'bool'],
+  ['iframes', 'int'],
+  ['iframeDelay', 'int'],
+  ['invisible', 'bool'],
+  ['superArmor', 'bool'],
+  ['skillCharges', 'int'],
+  ['skillTimer', 'int'],
+  ['dashCharges', 'int'],
+  ['dashTimer', 'int'],
+  ['dashStale', 'int'],
+  ['sinceDash', 'int'],
+  ['bufAttack', 'int'],
+  ['bufSkill', 'int'],
+  ['bufDash', 'int'],
+  ['held', 'int'],
+  ['moveInput', 'int'],
+  ['drawTicks', 'int'],
+  ['drawReleased', 'bool'],
+  ['nocked', 'bool'],
+  ['lastStandAvailable', 'bool'],
+  ['lastStandUsed', 'bool'],
+  ['firstStrikePending', 'bool'],
+  ['evadeCounter', 'int'],
+  ['raging', 'bool'],
   ['ringTimer', 'int'],
 ];
 
 const DRAGON: readonly (readonly [Exclude<keyof DragonState, 'telegraph'>, Codec])[] = [
-  ['x', 'int'], ['y', 'int'], ['facing', 'int'], ['hp', 'int'], ['maxHp', 'int'], ['atk', 'int'], ['def', 'int'],
-  ['phase', 'int'], ['stage', STAGES], ['stageTick', 'int'], ['stageLen', 'int'], ['maneuver', MANEUVERS],
-  ['aim', 'int'], ['tx', 'int'], ['ty', 'int'], ['sinceBreath', 'int'], ['headLowered', 'int'], ['airborne', 'bool'],
-  ['invulnerable', 'bool'], ['hitMask', 'int'], ['volleyLeft', 'int'], ['queued', MANEUVERS],
-  ['telegraphId', 'int'], ['softEnraged', 'bool'],
+  ['x', 'int'],
+  ['y', 'int'],
+  ['facing', 'int'],
+  ['hp', 'int'],
+  ['maxHp', 'int'],
+  ['atk', 'int'],
+  ['def', 'int'],
+  ['phase', 'int'],
+  ['stage', STAGES],
+  ['stageTick', 'int'],
+  ['stageLen', 'int'],
+  ['maneuver', MANEUVERS],
+  ['aim', 'int'],
+  ['tx', 'int'],
+  ['ty', 'int'],
+  ['sinceBreath', 'int'],
+  ['headLowered', 'int'],
+  ['airborne', 'bool'],
+  ['invulnerable', 'bool'],
+  ['hitMask', 'int'],
+  ['volleyLeft', 'int'],
+  ['queued', MANEUVERS],
+  ['telegraphId', 'int'],
+  ['softEnraged', 'bool'],
+  ['chip', 'int'],
 ];
 
 const PROJECTILE: readonly (readonly [keyof ProjectileState, Codec])[] = [
-  ['id', 'int'], ['owner', OWNERS], ['kind', MOVE_IDS], ['x', 'int'], ['y', 'int'], ['vx', 'int'], ['vy', 'int'],
-  ['angle', 'int'], ['speed', 'int'], ['radius', 'int'], ['ttl', 'int'], ['power', 'int'], ['atkNum', 'int'],
-  ['atkDen', 'int'], ['defDiv', 'int'], ['pierce', 'bool'], ['hitMask', 'int'], ['knockback', 'int'],
-  ['hitstun', 'int'], ['homingLeft', 'int'], ['homingPerTick', 'int'], ['rage', 'bool'], ['reflected', 'bool'],
+  ['id', 'int'],
+  ['owner', OWNERS],
+  ['kind', MOVE_IDS],
+  ['x', 'int'],
+  ['y', 'int'],
+  ['vx', 'int'],
+  ['vy', 'int'],
+  ['angle', 'int'],
+  ['speed', 'int'],
+  ['radius', 'int'],
+  ['ttl', 'int'],
+  ['power', 'int'],
+  ['atkNum', 'int'],
+  ['atkDen', 'int'],
+  ['defDiv', 'int'],
+  ['pierce', 'bool'],
+  ['hitMask', 'int'],
+  ['knockback', 'int'],
+  ['hitstun', 'int'],
+  ['homingLeft', 'int'],
+  ['homingPerTick', 'int'],
+  ['rage', 'bool'],
+  ['reflected', 'bool'],
 ];
 
 const ZONE: readonly (readonly [keyof ZoneState, Codec])[] = [
-  ['id', 'int'], ['owner', OWNERS], ['kind', ZONE_KINDS], ['x', 'int'], ['y', 'int'], ['radius', 'int'],
-  ['arm', 'int'], ['active', 'int'], ['every', 'int'], ['power', 'int'], ['atkNum', 'int'], ['atkDen', 'int'],
-  ['defDiv', 'int'], ['knockback', 'int'], ['hitstun', 'int'], ['hitstop', 'int'], ['parryable', 'bool'],
-  ['hitMask', 'int'], ['age', 'int'],
+  ['id', 'int'],
+  ['owner', OWNERS],
+  ['kind', ZONE_KINDS],
+  ['x', 'int'],
+  ['y', 'int'],
+  ['radius', 'int'],
+  ['arm', 'int'],
+  ['active', 'int'],
+  ['every', 'int'],
+  ['power', 'int'],
+  ['atkNum', 'int'],
+  ['atkDen', 'int'],
+  ['defDiv', 'int'],
+  ['knockback', 'int'],
+  ['hitstun', 'int'],
+  ['hitstop', 'int'],
+  ['parryable', 'bool'],
+  ['hitMask', 'int'],
+  ['age', 'int'],
 ];
 
 function enc(v: unknown, codec: Codec): number {
@@ -76,7 +203,11 @@ function dec(n: number, codec: Codec): unknown {
   return codec[n];
 }
 
-function packFields<T>(out: number[], obj: T, fields: readonly (readonly [keyof T, Codec])[]): void {
+function packFields<T>(
+  out: number[],
+  obj: T,
+  fields: readonly (readonly [keyof T, Codec])[],
+): void {
   for (const [k, codec] of fields) out.push(enc(obj[k], codec));
 }
 
@@ -107,7 +238,8 @@ export function serializeCombatState(s: CombatState): number[] {
     s.hitstop,
     s.ringRadius,
   ];
-  if (s.outcome) out.push(1, SIDES.indexOf(s.outcome.winner), s.outcome.timedOut ? 1 : 0, s.outcome.tick);
+  if (s.outcome)
+    out.push(1, SIDES.indexOf(s.outcome.winner), s.outcome.timedOut ? 1 : 0, s.outcome.tick);
   else out.push(0, 0, 0, 0);
   packFields(out, s.a, FIGHTER);
   out.push(s.b ? 1 : 0);
@@ -162,9 +294,13 @@ function unpackShape(rd: Reader): Shape | null {
 }
 
 /** Inverse of serializeCombatState; `rules` must be the rules the state was created with. */
-export function deserializeCombatState(data: readonly number[], rules: CombatRules = DEFAULT_COMBAT_RULES): CombatState {
+export function deserializeCombatState(
+  data: readonly number[],
+  rules: CombatRules = DEFAULT_COMBAT_RULES,
+): CombatState {
   const rd = new Reader(data);
-  if (rd.next() !== COMBAT_PACK_VERSION) throw new RangeError('unsupported combat snapshot version');
+  if (rd.next() !== COMBAT_PACK_VERSION)
+    throw new RangeError('unsupported combat snapshot version');
   const kind = rd.next() === 0 ? 'duel' : 'dragonFight';
   const tick = rd.next();
   const timeLimit = rd.next();
@@ -185,7 +321,8 @@ export function deserializeCombatState(data: readonly number[], rules: CombatRul
     dragon = { ...d, telegraph: unpackShape(rd) };
   }
   const projectiles: ProjectileState[] = [];
-  for (let n = rd.next(); n > 0; n--) projectiles.push(unpackFields<ProjectileState>(rd, PROJECTILE));
+  for (let n = rd.next(); n > 0; n--)
+    projectiles.push(unpackFields<ProjectileState>(rd, PROJECTILE));
   const zones: ZoneState[] = [];
   for (let n = rd.next(); n > 0; n--) zones.push(unpackFields<ZoneState>(rd, ZONE));
   if (!rd.done()) throw new RangeError('trailing data in combat snapshot');

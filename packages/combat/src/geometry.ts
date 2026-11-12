@@ -3,7 +3,14 @@ import type { CombatRules } from './rules';
 import type { DragonState, Shape } from './types';
 
 /** Circle vs circle; positions Q8, radii px. Squared distances only. */
-export function circleHit(ax: number, ay: number, ar: number, bx: number, by: number, br: number): boolean {
+export function circleHit(
+  ax: number,
+  ay: number,
+  ar: number,
+  bx: number,
+  by: number,
+  br: number,
+): boolean {
   const dx = bx - ax;
   const dy = by - ay;
   const rr = (ar + br) * Q;
@@ -92,7 +99,12 @@ export function dragonHurtCircles(r: CombatRules, d: DragonState): HurtCircle[] 
   if (d.airborne) return [];
   const R = r.dragon;
   const out: HurtCircle[] = [
-    { x: offsetX(d.x, d.facing, R.head.forward), y: offsetY(d.y, d.facing, R.head.forward), r: R.head.r, head: true },
+    {
+      x: offsetX(d.x, d.facing, R.head.forward),
+      y: offsetY(d.y, d.facing, R.head.forward),
+      r: R.head.r,
+      head: true,
+    },
   ];
   for (const b of R.body) out.push({ x: d.x + b.dx * Q, y: d.y + b.dy * Q, r: b.r, head: false });
   return out;

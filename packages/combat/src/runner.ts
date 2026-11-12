@@ -2,7 +2,15 @@ import { createRng, nextFloat } from '@dragon-rush/engine';
 import { combatResult } from './result';
 import { DEFAULT_COMBAT_RULES, type CombatRules } from './rules';
 import { advanceInPlace, createCombat } from './step';
-import { NO_INPUT, type CombatEvent, type CombatResult, type CombatSetup, type CombatState, type FighterInput, type Side } from './types';
+import {
+  NO_INPUT,
+  type CombatEvent,
+  type CombatResult,
+  type CombatSetup,
+  type CombatState,
+  type FighterInput,
+  type Side,
+} from './types';
 import { cloneWorking } from './work';
 
 /** Strategy shared by scripted bots and learned models; `random` is the policy's own seeded stream. */

@@ -21,7 +21,10 @@ export type MProjectile = Mutable<ProjectileState>;
 export type MZone = Mutable<ZoneState>;
 
 /** Copy-on-write working copy of a CombatState: every entity is a fresh object the step may edit. */
-export interface WState extends Omit<Mutable<CombatState>, 'a' | 'b' | 'dragon' | 'projectiles' | 'zones'> {
+export interface WState extends Omit<
+  Mutable<CombatState>,
+  'a' | 'b' | 'dragon' | 'projectiles' | 'zones'
+> {
   a: MFighter;
   b: MFighter | null;
   dragon: MDragon | null;

@@ -1,7 +1,7 @@
 import { defDivisorOf, effectiveAtk, fighterHitstop, isRaging } from './damage';
 import { arcHit, circleHit, dragonHurtCircles } from './geometry';
 import { hitDragon, hitFighter, type HitDesc } from './hits';
-import { atan2i } from './math';
+import { angleDiff, atan2i } from './math';
 import type { DashId, HitSpec, MoveId } from './rules';
 import type { HitKind } from './types';
 import type { Ctx, MFighter } from './work';
@@ -42,16 +42,34 @@ function intentOf(c: Ctx, f: MFighter): Intent | null {
     if (!dash.contact || f.moveHits & 1) return null;
     const reach = c.r.body.bodyRadius + dash.contactReach;
     const o = overlap(c, f, (tx, ty, tr) => circleHit(f.x, f.y, reach, tx, ty, tr));
-    return o.hit ? { f, bit: 1, kind: f.move as DashId, hit: dash.contact, multi: false, dragonCircle: o.circle } : null;
+    return o.hit
+      ? {
+          f,
+          bit: 1,
+          kind: f.move as DashId,
+          hit: dash.contact,
+          multi: false,
+          dragonCircle: o.circle,
+        }
+      : null;
   }
   if ((f.mode !== 'attack' && f.mode !== 'skill') || f.phase !== 'active') return null;
   const spec = c.r.moves[f.move as MoveId];
   if (spec.type !== 'melee') return null;
   const idx = Math.floor((f.moveTick - spec.startup) / spec.hitEvery);
   if (idx >= spec.hits || f.moveHits & (1 << idx)) return null;
-  const o = overlap(c, f, (tx, ty, tr) => arcHit(f.x, f.y, spec.reach, f.aim, spec.half, tx, ty, tr));
+  const o = overlap(c, f, (tx, ty, tr) =>
+    arcHit(f.x, f.y, spec.reach, f.aim, spec.half, tx, ty, tr),
+  );
   if (!o.hit) return null;
-  return { f, bit: 1 << idx, kind: f.move as MoveId, hit: spec.hit, multi: spec.hits > 1, dragonCircle: o.circle };
+  return {
+    f,
+    bit: 1 << idx,
+    kind: f.move as MoveId,
+    hit: spec.hit,
+    multi: spec.hits > 1,
+    dragonCircle: o.circle,
+  };
 }
 
 function apply(c: Ctx, it: Intent): void {
@@ -74,16 +92,29 @@ function apply(c: Ctx, it: Intent): void {
     srcX: f.x,
     srcY: f.y,
     rage,
+    backstab: false,
     projectile: null,
   };
   let out;
   if (it.dragonCircle && c.s.dragon) {
     const dc = it.dragonCircle;
-    out = hitDragon(c, c.s.dragon, { ...base, dir: atan2i(dc.y - f.y, dc.x - f.x) }, dc.head, dc.x, dc.y);
+    out = hitDragon(
+      c,
+      c.s.dragon,
+      { ...base, dir: atan2i(dc.y - f.y, dc.x - f.x) },
+      dc.head,
+      dc.x,
+      dc.y,
+    );
   } else {
     const o = f.side === 'a' ? c.s.b : c.s.a;
     if (!o) return;
-    out = hitFighter(c, o, { ...base, dir: atan2i(o.y - f.y, o.x - f.x) });
+    const dir = atan2i(o.y - f.y, o.x - f.x);
+    // backstab: the blow travels along the target's facing, i.e. it comes from behind
+    const pct = c.r.jobs[f.job].backstabPct;
+    const backstab = pct > 100 && angleDiff(dir, o.facing) <= c.r.backstabHalf;
+    const power = backstab ? Math.round((base.power * pct) / 100) : base.power;
+    out = hitFighter(c, o, { ...base, power, backstab, dir });
   }
   if (out !== 'immune') f.moveHits |= it.bit;
 }

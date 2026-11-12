@@ -8,7 +8,15 @@ import { readInput, updateFighter } from './moves';
 import { physics } from './physics';
 import { combatResult } from './result';
 import { DEFAULT_COMBAT_RULES, type CombatRules } from './rules';
-import type { CombatEvent, CombatSetup, CombatState, FighterInput, FighterSetup, FighterState, Side } from './types';
+import type {
+  CombatEvent,
+  CombatSetup,
+  CombatState,
+  FighterInput,
+  FighterSetup,
+  FighterState,
+  Side,
+} from './types';
 import { cloneWorking, emit, pos, type Ctx, type MFighter, type WState } from './work';
 
 const EAST = 0;
@@ -16,9 +24,11 @@ const WEST = 128;
 const NORTH = 192;
 
 function checkFighter(f: FighterSetup, label: string): void {
-  if (!(JOB_IDS as readonly string[]).includes(f.job)) throw new RangeError(`${label}.job is not a job id`);
+  if (!(JOB_IDS as readonly string[]).includes(f.job))
+    throw new RangeError(`${label}.job is not a job id`);
   for (const k of ['hp', 'maxHp', 'atk', 'def'] as const) {
-    if (!Number.isSafeInteger(f[k]) || f[k] < 0) throw new RangeError(`${label}.${k} must be a non-negative integer`);
+    if (!Number.isSafeInteger(f[k]) || f[k] < 0)
+      throw new RangeError(`${label}.${k} must be a non-negative integer`);
   }
   if (f.hp < 1 || f.hp > f.maxHp) throw new RangeError(`${label}.hp must be within 1..maxHp`);
 }
@@ -31,13 +41,26 @@ export function validateCombatSetup(setup: CombatSetup): void {
   } else {
     if (setup.b) throw new RangeError('a dragon fight has no fighter b');
     const d = setup.dragon;
-    if (!d || !Number.isSafeInteger(d.hp) || d.hp < 1 || !Number.isSafeInteger(d.atk) || !Number.isSafeInteger(d.def)) {
+    if (
+      !d ||
+      !Number.isSafeInteger(d.hp) ||
+      d.hp < 1 ||
+      !Number.isSafeInteger(d.atk) ||
+      !Number.isSafeInteger(d.def)
+    ) {
       throw new RangeError('a dragon fight needs integer dragon stats (hp >= 1)');
     }
   }
 }
 
-function createFighter(r: CombatRules, side: Side, f: FighterSetup, xPx: number, yPx: number, facing: number): FighterState {
+function createFighter(
+  r: CombatRules,
+  side: Side,
+  f: FighterSetup,
+  xPx: number,
+  yPx: number,
+  facing: number,
+): FighterState {
   const kit = r.jobs[f.job];
   const passive = COMBAT_PASSIVES[f.job];
   return {
@@ -95,17 +118,33 @@ function createFighter(r: CombatRules, side: Side, f: FighterSetup, xPx: number,
  * Builds tick 0 ("싸워라!"). Duel: the arriver (a) spawns left facing east, the defender right facing west,
  * `duelGap` px apart. Dragon fight: the dragon is anchored top-centre and the challenger spawns below it.
  */
-export function createCombat(setup: CombatSetup, seed: number, rules: CombatRules = DEFAULT_COMBAT_RULES): CombatState {
+export function createCombat(
+  setup: CombatSetup,
+  seed: number,
+  rules: CombatRules = DEFAULT_COMBAT_RULES,
+): CombatState {
   validateCombatSetup(setup);
   const duel = setup.kind === 'duel';
   const arena = duel ? rules.arena.duel : rules.arena.dragonFight;
   const cx = arena.w / 2;
   const a = duel
     ? createFighter(rules, 'a', setup.a, cx - rules.duelGap / 2, arena.h / 2, EAST)
-    : createFighter(rules, 'a', setup.a, cx, rules.dragon.anchorY + rules.dragon.playerDistance, NORTH);
-  const b = duel && setup.b ? createFighter(rules, 'b', setup.b, cx + rules.duelGap / 2, arena.h / 2, WEST) : null;
+    : createFighter(
+        rules,
+        'a',
+        setup.a,
+        cx,
+        rules.dragon.anchorY + rules.dragon.playerDistance,
+        NORTH,
+      );
+  const b =
+    duel && setup.b
+      ? createFighter(rules, 'b', setup.b, cx + rules.duelGap / 2, arena.h / 2, WEST)
+      : null;
   const dragon =
-    !duel && setup.dragon ? createDragonState(setup.dragon, arena.w, rules.dragon.anchorY, rules.dragon.firstIdle) : null;
+    !duel && setup.dragon
+      ? createDragonState(setup.dragon, arena.w, rules.dragon.anchorY, rules.dragon.firstIdle)
+      : null;
   return {
     kind: setup.kind,
     rules,
@@ -183,7 +222,11 @@ function resolveOutcome(c: Ctx): void {
 }
 
 /** Advances a working copy by one tick in place (the runner owns its copy; stepCombat clones first). */
-export function advanceInPlace(s: WState, inputs: readonly [FighterInput, FighterInput?], events: CombatEvent[]): void {
+export function advanceInPlace(
+  s: WState,
+  inputs: readonly [FighterInput, FighterInput?],
+  events: CombatEvent[],
+): void {
   if (s.outcome) return;
   const c: Ctx = { s, r: s.rules, ev: events, clearHazards: false };
   s.tick += 1;

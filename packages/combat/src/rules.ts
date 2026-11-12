@@ -65,6 +65,10 @@ export interface ProjectileSpec {
   readonly radius: number;
   readonly range: number;
   readonly pierce: boolean;
+  /** A parry stops it (arrows, kunai); magic bolts pass through the parry. */
+  readonly parryable: boolean;
+  /** A parried projectile flies back as the parrier's (otherwise it is only negated). */
+  readonly reflectable: boolean;
   /** Homing: BAM turned per tick toward the target, capped at `homingMax` in total. */
   readonly homingPerTick: number;
   readonly homingMax: number;
@@ -95,6 +99,10 @@ export interface ParryMoveSpec extends MoveBase {
   readonly half: number;
   readonly counter: MoveId;
   readonly reflectPower: number;
+  /** A successful parry gives the skill charge back (a duelist who reads every hit can keep parrying). */
+  readonly refundOnParry: boolean;
+  /** Hitstun put on a parried melee attacker that is not in super armor (the counter-slash then lands). */
+  readonly stagger: number;
 }
 
 /** Ground rune: after `startup` a mark appears `distance` px ahead (or on an aim-assisted target), explodes after `arm`. */
@@ -141,6 +149,8 @@ export interface JobKit {
   readonly skillCooldown: number;
   readonly skillCharges: number;
   readonly dash: DashId;
+  /** Melee damage from behind the target (within `backstabHalf` of its back), percent of P; 100 = none. */
+  readonly backstabPct: number;
 }
 
 export interface DragonHitSpec extends HitSpec {
@@ -157,7 +167,11 @@ export interface DragonRules {
   readonly playerDistance: number;
   readonly driftSpeed: number;
   readonly returnSpeed: number;
-  readonly idle: readonly [readonly [number, number], readonly [number, number], readonly [number, number]];
+  readonly idle: readonly [
+    readonly [number, number],
+    readonly [number, number],
+    readonly [number, number],
+  ];
   readonly firstIdle: number;
   readonly softEnrageTick: number;
   readonly softEnrageIdleNum: number;
@@ -173,7 +187,11 @@ export interface DragonRules {
   readonly breathEvery: number;
   readonly weakPointNum: number;
   readonly weakPointDen: number;
-  readonly bands: { readonly frontHalf: number; readonly frontRange: number; readonly sideRange: number };
+  readonly bands: {
+    readonly frontHalf: number;
+    readonly frontRange: number;
+    readonly sideRange: number;
+  };
   /** Maneuver weights per range band; gust needs phase 2, dive phase 3. */
   readonly weights: {
     readonly front: Readonly<Record<'claw' | 'volley' | 'charge' | 'gust' | 'dive', number>>;
@@ -218,7 +236,12 @@ export interface DragonRules {
     readonly stun: number;
     readonly hit: DragonHitSpec;
   };
-  readonly gust: { readonly telegraph: number; readonly active: number; readonly push: number; readonly reach: number };
+  readonly gust: {
+    readonly telegraph: number;
+    readonly active: number;
+    readonly push: number;
+    readonly reach: number;
+  };
   readonly breath: {
     readonly telegraph: readonly [number, number, number];
     readonly active: number;
@@ -244,7 +267,10 @@ export interface CombatRules {
   readonly version: string;
   readonly tickHz: number;
   /** Arena sizes in logical px (1 tile = 32 px). */
-  readonly arena: { readonly duel: { readonly w: number; readonly h: number }; readonly dragonFight: { readonly w: number; readonly h: number } };
+  readonly arena: {
+    readonly duel: { readonly w: number; readonly h: number };
+    readonly dragonFight: { readonly w: number; readonly h: number };
+  };
   /** Duel spawns sit on the horizontal centre line `duelGap` px apart. */
   readonly duelGap: number;
   readonly timeLimit: { readonly duel: number; readonly dragonFight: number };
@@ -282,6 +308,8 @@ export interface CombatRules {
   };
   readonly wallSlamStun: number;
   readonly dashStale: { readonly window: number; readonly delay: number; readonly max: number };
+  /** Half-angle (BAM) of the cone behind a fighter that counts as a backstab. */
+  readonly backstabHalf: number;
   readonly passives: {
     readonly archerFirstStrikeBonus: number;
     readonly mageDefDivisor: number;
@@ -321,7 +349,7 @@ export const DEFAULT_COMBAT_RULES: CombatRules = deepFreeze({
   accelTicks: 4,
   stopTicks: 3,
   aimAssist: { half: 18, rangePct: 150 },
-  damage: { sNum: 6, sDen: 5, k: 10, min: 1, dragonDamageTakenScale: 1 },
+  damage: { sNum: 8, sDen: 5, k: 10, min: 1, dragonDamageTakenScale: 0.17 },
   hitstop: {
     light: 3,
     multiHit: 2,
@@ -337,6 +365,7 @@ export const DEFAULT_COMBAT_RULES: CombatRules = deepFreeze({
   },
   wallSlamStun: 6,
   dashStale: { window: 60, delay: 3, max: 2 },
+  backstabHalf: 43,
   passives: {
     archerFirstStrikeBonus: DEFAULT_RULES.passives.archerFirstStrikeBonus,
     mageDefDivisor: DEFAULT_RULES.passives.mageDefDivisor,
@@ -345,103 +374,403 @@ export const DEFAULT_COMBAT_RULES: CombatRules = deepFreeze({
     berserkerRageDen: DEFAULT_RULES.passives.berserkerRageDen,
     lastStandIframes: 60,
   },
-  ring: { startTick: 1800, endTick: 2400, startRadius: 460, endRadius: 180, damage: 2, every: 30, push: 60 },
+  ring: {
+    startTick: 1800,
+    endTick: 2400,
+    startRadius: 460,
+    endRadius: 180,
+    damage: 2,
+    every: 30,
+    push: 60,
+  },
   jobs: {
-    swordsman: { speed: 190, attack: 'slash1', skill: 'parry', skillCooldown: 240, skillCharges: 1, dash: 'dash' },
-    archer: { speed: 200, attack: 'draw', skill: 'volley', skillCooldown: 210, skillCharges: 1, dash: 'backstep' },
-    mage: { speed: 180, attack: 'bolt', skill: 'meteor', skillCooldown: 240, skillCharges: 1, dash: 'blink' },
-    ninja: { speed: 230, attack: 'dagger1', skill: 'kunai', skillCooldown: 90, skillCharges: 2, dash: 'shadowStep' },
-    berserker: { speed: 175, attack: 'greataxe', skill: 'whirlwind', skillCooldown: 300, skillCharges: 1, dash: 'shoulderCharge' },
+    swordsman: {
+      speed: 190,
+      attack: 'slash1',
+      skill: 'parry',
+      skillCooldown: 240,
+      skillCharges: 1,
+      dash: 'dash',
+      backstabPct: 100,
+    },
+    archer: {
+      speed: 200,
+      attack: 'draw',
+      skill: 'volley',
+      skillCooldown: 210,
+      skillCharges: 1,
+      dash: 'backstep',
+      backstabPct: 100,
+    },
+    mage: {
+      speed: 180,
+      attack: 'bolt',
+      skill: 'meteor',
+      skillCooldown: 150,
+      skillCharges: 1,
+      dash: 'blink',
+      backstabPct: 100,
+    },
+    ninja: {
+      speed: 230,
+      attack: 'dagger1',
+      skill: 'kunai',
+      skillCooldown: 90,
+      skillCharges: 2,
+      dash: 'shadowStep',
+      backstabPct: 130,
+    },
+    berserker: {
+      speed: 175,
+      attack: 'greataxe',
+      skill: 'whirlwind',
+      skillCooldown: 300,
+      skillCharges: 1,
+      dash: 'shoulderCharge',
+      backstabPct: 100,
+    },
   },
   moves: {
     slash1: {
-      type: 'melee', startup: 6, active: 3, recovery: 12, moveSpeedPct: 0, reach: 60, half: 39,
-      hit: { power: 100, knockback: 20, hitstun: 14 }, hits: 1, hitEvery: 3, lunge: 12, ...NO_ARMOR,
-      next: 'slash2', chainFrom: 9,
+      type: 'melee',
+      startup: 6,
+      active: 3,
+      recovery: 12,
+      moveSpeedPct: 0,
+      reach: 60,
+      half: 39,
+      hit: { power: 76, knockback: 20, hitstun: 14 },
+      hits: 1,
+      hitEvery: 3,
+      lunge: 12,
+      ...NO_ARMOR,
+      next: 'slash2',
+      chainFrom: 9,
     },
     slash2: {
-      type: 'melee', startup: 5, active: 3, recovery: 12, moveSpeedPct: 0, reach: 60, half: 39,
-      hit: { power: 100, knockback: 20, hitstun: 14 }, hits: 1, hitEvery: 3, lunge: 12, ...NO_ARMOR,
-      next: 'thrust', chainFrom: 8,
+      type: 'melee',
+      startup: 5,
+      active: 3,
+      recovery: 12,
+      moveSpeedPct: 0,
+      reach: 60,
+      half: 39,
+      hit: { power: 76, knockback: 20, hitstun: 14 },
+      hits: 1,
+      hitEvery: 3,
+      lunge: 12,
+      ...NO_ARMOR,
+      next: 'thrust',
+      chainFrom: 8,
     },
     thrust: {
-      type: 'melee', startup: 9, active: 4, recovery: 22, moveSpeedPct: 0, reach: 64, half: 28,
-      hit: { power: 160, knockback: 64, hitstun: 22 }, hits: 1, hitEvery: 4, lunge: 12, ...NO_ARMOR,
-      next: null, chainFrom: 0,
+      type: 'melee',
+      startup: 9,
+      active: 4,
+      recovery: 22,
+      moveSpeedPct: 0,
+      reach: 64,
+      half: 28,
+      hit: { power: 127, knockback: 64, hitstun: 22 },
+      hits: 1,
+      hitEvery: 4,
+      lunge: 12,
+      ...NO_ARMOR,
+      next: null,
+      chainFrom: 0,
     },
-    parry: { type: 'parry', startup: 5, active: 18, recovery: 24, moveSpeedPct: 0, half: 64, counter: 'counter', reflectPower: 100 },
+    parry: {
+      type: 'parry',
+      startup: 5,
+      active: 18,
+      recovery: 24,
+      moveSpeedPct: 0,
+      half: 128,
+      counter: 'counter',
+      reflectPower: 100,
+      refundOnParry: true,
+      stagger: 24,
+    },
     counter: {
-      type: 'melee', startup: 3, active: 3, recovery: 14, moveSpeedPct: 0, reach: 68, half: 43,
-      hit: { power: 200, knockback: 64, hitstun: 22 }, hits: 1, hitEvery: 3, lunge: 12, ...NO_ARMOR,
-      next: null, chainFrom: 0,
+      type: 'melee',
+      startup: 3,
+      active: 3,
+      recovery: 14,
+      moveSpeedPct: 0,
+      reach: 68,
+      half: 43,
+      hit: { power: 151, knockback: 64, hitstun: 22 },
+      hits: 1,
+      hitEvery: 3,
+      lunge: 12,
+      ...NO_ARMOR,
+      next: null,
+      chainFrom: 0,
     },
-    draw: { type: 'draw', startup: 0, recovery: 0, moveSpeedPct: 50, quickAt: 8, fullAt: 36, quick: 'quickShot', full: 'fullShot' },
+    draw: {
+      type: 'draw',
+      startup: 0,
+      recovery: 0,
+      moveSpeedPct: 50,
+      quickAt: 8,
+      fullAt: 36,
+      quick: 'quickShot',
+      full: 'fullShot',
+    },
     quickShot: {
-      type: 'shot', startup: 0, recovery: 10, moveSpeedPct: 0, count: 1, spread: 0,
-      projectile: { speed: 720, radius: 4, range: 480, pierce: false, homingPerTick: 0, homingMax: 0, hit: { power: 70, knockback: 20, hitstun: 12 } },
+      type: 'shot',
+      startup: 0,
+      recovery: 10,
+      moveSpeedPct: 0,
+      count: 1,
+      spread: 0,
+      projectile: {
+        speed: 720,
+        radius: 4,
+        range: 480,
+        pierce: false,
+        parryable: true,
+        reflectable: true,
+        homingPerTick: 0,
+        homingMax: 0,
+        hit: { power: 94, knockback: 10, hitstun: 8 },
+      },
     },
     fullShot: {
-      type: 'shot', startup: 0, recovery: 14, moveSpeedPct: 0, count: 1, spread: 0,
-      projectile: { speed: 960, radius: 5, range: 900, pierce: true, homingPerTick: 0, homingMax: 0, hit: { power: 160, knockback: 48, hitstun: 20 } },
+      type: 'shot',
+      startup: 0,
+      recovery: 14,
+      moveSpeedPct: 0,
+      count: 1,
+      spread: 0,
+      projectile: {
+        speed: 960,
+        radius: 5,
+        range: 900,
+        pierce: true,
+        parryable: true,
+        reflectable: true,
+        homingPerTick: 0,
+        homingMax: 0,
+        hit: { power: 224, knockback: 40, hitstun: 14 },
+      },
     },
     volley: {
-      type: 'shot', startup: 14, recovery: 12, moveSpeedPct: 0, count: 3, spread: 11,
-      projectile: { speed: 720, radius: 4, range: 480, pierce: false, homingPerTick: 0, homingMax: 0, hit: { power: 60, knockback: 20, hitstun: 12 } },
+      type: 'shot',
+      startup: 14,
+      recovery: 12,
+      moveSpeedPct: 0,
+      count: 3,
+      spread: 11,
+      projectile: {
+        speed: 720,
+        radius: 4,
+        range: 480,
+        pierce: false,
+        parryable: true,
+        reflectable: true,
+        homingPerTick: 0,
+        homingMax: 0,
+        hit: { power: 84, knockback: 10, hitstun: 8 },
+      },
     },
     bolt: {
-      type: 'shot', startup: 10, recovery: 14, moveSpeedPct: 0, count: 1, spread: 0,
-      projectile: { speed: 480, radius: 8, range: 640, pierce: false, homingPerTick: 1, homingMax: 8, hit: { power: 90, knockback: 24, hitstun: 14 } },
+      type: 'shot',
+      startup: 10,
+      recovery: 14,
+      moveSpeedPct: 0,
+      count: 1,
+      spread: 0,
+      projectile: {
+        speed: 480,
+        radius: 8,
+        range: 640,
+        pierce: false,
+        parryable: false,
+        reflectable: false,
+        homingPerTick: 1,
+        homingMax: 14,
+        hit: { power: 118, knockback: 8, hitstun: 4 },
+      },
     },
     meteor: {
-      type: 'rune', startup: 12, recovery: 10, moveSpeedPct: 0, distance: 192, assistRange: 288, radius: 56, arm: 30, active: 4,
-      hit: { power: 220, knockback: 96, hitstun: 24 },
+      type: 'rune',
+      startup: 12,
+      recovery: 10,
+      moveSpeedPct: 0,
+      distance: 192,
+      assistRange: 288,
+      radius: 56,
+      arm: 30,
+      active: 4,
+      hit: { power: 293, knockback: 96, hitstun: 24 },
     },
     dagger1: {
-      type: 'melee', startup: 4, active: 2, recovery: 8, moveSpeedPct: 0, reach: 44, half: 32,
-      hit: { power: 70, knockback: 16, hitstun: 12 }, hits: 1, hitEvery: 2, lunge: 8, ...NO_ARMOR,
-      next: 'dagger2', chainFrom: 6,
+      type: 'melee',
+      startup: 4,
+      active: 2,
+      recovery: 8,
+      moveSpeedPct: 0,
+      reach: 50,
+      half: 32,
+      hit: { power: 54, knockback: 16, hitstun: 12 },
+      hits: 1,
+      hitEvery: 2,
+      lunge: 16,
+      ...NO_ARMOR,
+      next: 'dagger2',
+      chainFrom: 6,
     },
     dagger2: {
-      type: 'melee', startup: 4, active: 2, recovery: 8, moveSpeedPct: 0, reach: 44, half: 32,
-      hit: { power: 70, knockback: 40, hitstun: 14 }, hits: 1, hitEvery: 2, lunge: 8, ...NO_ARMOR,
-      next: null, chainFrom: 0,
+      type: 'melee',
+      startup: 4,
+      active: 2,
+      recovery: 8,
+      moveSpeedPct: 0,
+      reach: 50,
+      half: 32,
+      hit: { power: 54, knockback: 40, hitstun: 10 },
+      hits: 1,
+      hitEvery: 2,
+      lunge: 16,
+      ...NO_ARMOR,
+      next: null,
+      chainFrom: 0,
     },
     kunai: {
-      type: 'shot', startup: 6, recovery: 8, moveSpeedPct: 0, count: 1, spread: 0,
-      projectile: { speed: 900, radius: 4, range: 560, pierce: false, homingPerTick: 0, homingMax: 0, hit: { power: 60, knockback: 12, hitstun: 10 } },
+      type: 'shot',
+      startup: 6,
+      recovery: 8,
+      moveSpeedPct: 0,
+      count: 1,
+      spread: 0,
+      projectile: {
+        speed: 900,
+        radius: 4,
+        range: 560,
+        pierce: false,
+        parryable: true,
+        reflectable: true,
+        homingPerTick: 0,
+        homingMax: 0,
+        hit: { power: 38, knockback: 8, hitstun: 6 },
+      },
     },
     greataxe: {
-      type: 'melee', startup: 14, active: 5, recovery: 20, moveSpeedPct: 0, reach: 72, half: 53,
-      hit: { power: 180, knockback: 48, hitstun: 22 }, hits: 1, hitEvery: 5, lunge: 8, armorFrom: 5, armorTo: 13,
-      next: null, chainFrom: 0,
+      type: 'melee',
+      startup: 14,
+      active: 5,
+      recovery: 20,
+      moveSpeedPct: 0,
+      reach: 72,
+      half: 53,
+      hit: { power: 213, knockback: 48, hitstun: 22 },
+      hits: 1,
+      hitEvery: 5,
+      lunge: 8,
+      armorFrom: 10,
+      armorTo: 18,
+      next: null,
+      chainFrom: 0,
     },
     whirlwind: {
-      type: 'melee', startup: 4, active: 40, recovery: 12, moveSpeedPct: 60, reach: 72, half: 128,
-      hit: { power: 60, knockback: 20, hitstun: 12 }, hits: 4, hitEvery: 10, lunge: 0, ...NO_ARMOR,
-      next: null, chainFrom: 0,
+      type: 'melee',
+      startup: 12,
+      active: 30,
+      recovery: 12,
+      moveSpeedPct: 60,
+      reach: 72,
+      half: 128,
+      hit: { power: 56, knockback: 20, hitstun: 12 },
+      hits: 3,
+      hitEvery: 10,
+      lunge: 0,
+      armorFrom: 0,
+      armorTo: 41,
+      next: null,
+      chainFrom: 0,
     },
   },
   dashes: {
     dash: {
-      ticks: 16, fastTicks: 8, fastSpeed: 12, slowSpeed: 4, iframeFrom: 1, iframeTo: 10, cancelFrom: 11, cooldown: 40,
-      charges: 1, backward: false, superArmor: false, invisible: false, contact: null, contactReach: 0,
+      ticks: 16,
+      fastTicks: 8,
+      fastSpeed: 12,
+      slowSpeed: 4,
+      iframeFrom: 1,
+      iframeTo: 10,
+      cancelFrom: 11,
+      cooldown: 40,
+      charges: 1,
+      backward: false,
+      superArmor: false,
+      invisible: false,
+      contact: null,
+      contactReach: 0,
     },
     backstep: {
-      ticks: 12, fastTicks: 8, fastSpeed: 12, slowSpeed: 4, iframeFrom: 1, iframeTo: 8, cancelFrom: 9, cooldown: 45,
-      charges: 1, backward: true, superArmor: false, invisible: false, contact: null, contactReach: 0,
+      ticks: 12,
+      fastTicks: 8,
+      fastSpeed: 12,
+      slowSpeed: 4,
+      iframeFrom: 1,
+      iframeTo: 8,
+      cancelFrom: 9,
+      cooldown: 45,
+      charges: 1,
+      backward: true,
+      superArmor: false,
+      invisible: false,
+      contact: null,
+      contactReach: 0,
     },
     blink: {
-      ticks: 4, fastTicks: 4, fastSpeed: 40, slowSpeed: 0, iframeFrom: 1, iframeTo: 8, cancelFrom: 0, cooldown: 60,
-      charges: 1, backward: false, superArmor: false, invisible: true, contact: null, contactReach: 0,
+      ticks: 4,
+      fastTicks: 4,
+      fastSpeed: 40,
+      slowSpeed: 0,
+      iframeFrom: 1,
+      iframeTo: 8,
+      cancelFrom: 0,
+      cooldown: 60,
+      charges: 1,
+      backward: false,
+      superArmor: false,
+      invisible: true,
+      contact: null,
+      contactReach: 0,
     },
     shadowStep: {
-      ticks: 14, fastTicks: 8, fastSpeed: 12, slowSpeed: 8, iframeFrom: 1, iframeTo: 10, cancelFrom: 11, cooldown: 50,
-      charges: 2, backward: false, superArmor: false, invisible: false, contact: null, contactReach: 0,
+      ticks: 14,
+      fastTicks: 8,
+      fastSpeed: 12,
+      slowSpeed: 8,
+      iframeFrom: 1,
+      iframeTo: 10,
+      cancelFrom: 11,
+      cooldown: 50,
+      charges: 2,
+      backward: false,
+      superArmor: false,
+      invisible: false,
+      contact: null,
+      contactReach: 0,
     },
     shoulderCharge: {
-      ticks: 18, fastTicks: 8, fastSpeed: 10, slowSpeed: 4.8, iframeFrom: 1, iframeTo: 4, cancelFrom: 0, cooldown: 60,
-      charges: 1, backward: false, superArmor: true, invisible: false,
-      contact: { power: 60, knockback: 64, hitstun: 16 }, contactReach: 10,
+      ticks: 18,
+      fastTicks: 8,
+      fastSpeed: 10,
+      slowSpeed: 4.8,
+      iframeFrom: 1,
+      iframeTo: 4,
+      cancelFrom: 0,
+      cooldown: 60,
+      charges: 1,
+      backward: false,
+      superArmor: true,
+      invisible: false,
+      contact: { power: 73, knockback: 64, hitstun: 16 },
+      contactReach: 10,
     },
   },
   dragon: {
@@ -456,11 +785,11 @@ export const DEFAULT_COMBAT_RULES: CombatRules = deepFreeze({
     driftSpeed: 60,
     returnSpeed: 240,
     idle: [
-      [96, 132],
-      [78, 108],
-      [78, 108],
+      [40, 70],
+      [30, 55],
+      [30, 55],
     ],
-    firstIdle: 60,
+    firstIdle: 30,
     softEnrageTick: 3000,
     softEnrageIdleNum: 4,
     softEnrageIdleDen: 5,
@@ -480,27 +809,61 @@ export const DEFAULT_COMBAT_RULES: CombatRules = deepFreeze({
       far: { volley: 4, charge: 3, gust: 1, dive: 3 },
     },
     claw: {
-      telegraph: 30, active: 6, recovery: 30, reach: 140, half: 43,
-      hit: { power: 120, knockback: 64, hitstun: 18, hitstop: 6, parryable: true },
+      telegraph: 30,
+      active: 6,
+      recovery: 30,
+      reach: 140,
+      half: 43,
+      hit: { power: 96, knockback: 64, hitstun: 18, hitstop: 6, parryable: true },
     },
     tail: {
-      telegraph: 36, active: 8, recovery: 36, reach: 220, half: 78,
-      hit: { power: 100, knockback: 96, hitstun: 22, hitstop: 6, parryable: true },
+      telegraph: 36,
+      active: 8,
+      recovery: 36,
+      reach: 220,
+      half: 78,
+      hit: { power: 80, knockback: 96, hitstun: 22, hitstop: 6, parryable: true },
     },
     volley: {
-      interval: 12, count: [3, 5, 5], arm: 42, blast: 6, radius: 44, recovery: 24,
-      hit: { power: 100, knockback: 48, hitstun: 16, hitstop: 6, parryable: true },
-      floorFromPhase: 2, floorTicks: 120, floorEvery: 15, floorPower: 20,
+      interval: 12,
+      count: [3, 5, 5],
+      arm: 42,
+      blast: 6,
+      radius: 44,
+      recovery: 24,
+      hit: { power: 80, knockback: 48, hitstun: 16, hitstop: 6, parryable: true },
+      floorFromPhase: 2,
+      floorTicks: 120,
+      floorEvery: 15,
+      floorPower: 16,
     },
     charge: {
-      telegraph: 48, lockBefore: 18, halfWidth: 60, speed: 720, maxTicks: 90, stun: 90,
-      hit: { power: 180, knockback: 128, hitstun: 26, hitstop: 8, parryable: false },
+      telegraph: 48,
+      lockBefore: 18,
+      halfWidth: 60,
+      speed: 720,
+      maxTicks: 90,
+      stun: 90,
+      hit: { power: 144, knockback: 128, hitstun: 26, hitstop: 8, parryable: false },
     },
     gust: { telegraph: 30, active: 60, push: 150, reach: 520 },
-    breath: { telegraph: [48, 42, 36], active: 72, every: 12, reach: 360, half: 18, sweep: 21, recovery: 48, power: 40 },
+    breath: {
+      telegraph: [48, 42, 36],
+      active: 72,
+      every: 12,
+      reach: 360,
+      half: 18,
+      sweep: 21,
+      recovery: 48,
+      power: 32,
+    },
     dive: {
-      airborne: 60, lockBefore: 30, radius: 120, active: 6, recovery: 90,
-      hit: { power: 200, knockback: 96, hitstun: 22, hitstop: 8, parryable: false },
+      airborne: 60,
+      lockBefore: 30,
+      radius: 120,
+      active: 6,
+      recovery: 90,
+      hit: { power: 160, knockback: 96, hitstun: 22, hitstop: 8, parryable: false },
     },
   },
 });

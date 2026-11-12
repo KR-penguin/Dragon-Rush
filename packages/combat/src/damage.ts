@@ -30,8 +30,13 @@ export function isRaging(f: Pick<FighterState, 'job' | 'hp' | 'maxHp'>): boolean
 }
 
 /** Effective ATK as an integer ratio [num, den]. */
-export function effectiveAtk(r: CombatRules, f: Pick<FighterState, 'job' | 'hp' | 'maxHp' | 'atk'>): [number, number] {
-  return isRaging(f) ? [f.atk * r.passives.berserkerRageNum, r.passives.berserkerRageDen] : [f.atk, 1];
+export function effectiveAtk(
+  r: CombatRules,
+  f: Pick<FighterState, 'job' | 'hp' | 'maxHp' | 'atk'>,
+): [number, number] {
+  return isRaging(f)
+    ? [f.atk * r.passives.berserkerRageNum, r.passives.berserkerRageDen]
+    : [f.atk, 1];
 }
 
 /** DEF divisor used by this attacker's hits (0 is reserved for "ignore DEF"). */
@@ -66,9 +71,20 @@ export function computeDamage(
 }
 
 /** Hitstop for a fighter's hit: by power class, +rage bonus; the caller caps it. */
-export function fighterHitstop(r: CombatRules, power: number, multiHit: boolean, rage: boolean): number {
+export function fighterHitstop(
+  r: CombatRules,
+  power: number,
+  multiHit: boolean,
+  rage: boolean,
+): number {
   const h = r.hitstop;
-  const base = multiHit ? h.multiHit : power <= h.lightMaxPower ? h.light : power >= h.heavyMinPower ? h.heavy : h.normal;
+  const base = multiHit
+    ? h.multiHit
+    : power <= h.lightMaxPower
+      ? h.light
+      : power >= h.heavyMinPower
+        ? h.heavy
+        : h.normal;
   return base + (rage ? h.rageBonus : 0);
 }
 

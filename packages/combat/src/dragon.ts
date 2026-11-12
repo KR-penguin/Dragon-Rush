@@ -1,15 +1,48 @@
 import { nextFloat } from '@dragon-rush/engine';
-import { dragonHalfHeight, dragonHalfWidth, dragonHurtCircles, circleHit, offsetX, offsetY, shapeHit } from './geometry';
+import {
+  dragonHalfHeight,
+  dragonHalfWidth,
+  dragonHurtCircles,
+  circleHit,
+  offsetX,
+  offsetY,
+  shapeHit,
+} from './geometry';
 import { hitFighter, type HitDesc } from './hits';
-import { angleDiff, atan2i, cosQ14, divRound, isqrt, mulDivTrunc, mulQ14, Q, sinQ14, speedPerTick } from './math';
+import {
+  angleDiff,
+  atan2i,
+  cosQ14,
+  divRound,
+  isqrt,
+  mulDivTrunc,
+  mulQ14,
+  Q,
+  sinQ14,
+  speedPerTick,
+} from './math';
 import type { DragonHitSpec, ManeuverId } from './rules';
 import type { DragonSetup, DragonState, Shape } from './types';
-import { emit, entityId, pos, shapePx, SLOT_FIREBALL, SLOT_TELEGRAPH, type Ctx, type MDragon } from './work';
+import {
+  emit,
+  entityId,
+  pos,
+  shapePx,
+  SLOT_FIREBALL,
+  SLOT_TELEGRAPH,
+  type Ctx,
+  type MDragon,
+} from './work';
 
 const SOUTH = 64;
 const PICK_ORDER: readonly ManeuverId[] = ['claw', 'tail', 'volley', 'charge', 'gust', 'dive'];
 
-export function createDragonState(setup: DragonSetup, arenaW: number, anchorY: number, firstIdle: number): DragonState {
+export function createDragonState(
+  setup: DragonSetup,
+  arenaW: number,
+  anchorY: number,
+  firstIdle: number,
+): DragonState {
   return {
     x: (arenaW / 2) * Q,
     y: anchorY * Q,
@@ -36,6 +69,7 @@ export function createDragonState(setup: DragonSetup, arenaW: number, anchorY: n
     telegraph: null,
     telegraphId: 0,
     softEnraged: false,
+    chip: 0,
   };
 }
 
@@ -125,7 +159,14 @@ function arc(x: number, y: number, r: number, dir: number, half: number): Shape 
 }
 
 function chargeShape(c: Ctx, d: MDragon): Shape {
-  return { kind: 'line', x: d.x, y: d.y, dir: d.aim, length: c.s.arenaW + c.s.arenaH, halfWidth: c.r.dragon.charge.halfWidth };
+  return {
+    kind: 'line',
+    x: d.x,
+    y: d.y,
+    dir: d.aim,
+    length: c.s.arenaW + c.s.arenaH,
+    halfWidth: c.r.dragon.charge.halfWidth,
+  };
 }
 
 function breathHalf(c: Ctx, d: MDragon): number {
@@ -344,7 +385,10 @@ function sweepAim(c: Ctx, d: MDragon, base: number): number {
   if (d.phase === 2) return (base - amp + divRound(2 * amp * t, len)) & 255;
   // phase 3: there and back
   const half = Math.floor(len / 2);
-  const off = t < half ? -amp + divRound(2 * amp * t, half) : amp - divRound(2 * amp * (t - half), len - half);
+  const off =
+    t < half
+      ? -amp + divRound(2 * amp * t, half)
+      : amp - divRound(2 * amp * (t - half), len - half);
   return (base + off) & 255;
 }
 
@@ -377,7 +421,9 @@ export function updateDragon(c: Ctx): void {
       return;
     case 'telegraph': {
       if (m === null) return;
-      const live = d.stageTick < d.stageLen - (m === 'charge' ? R.charge.lockBefore : m === 'dive' ? R.dive.lockBefore : 0);
+      const live =
+        d.stageTick <
+        d.stageLen - (m === 'charge' ? R.charge.lockBefore : m === 'dive' ? R.dive.lockBefore : 0);
       if (m === 'charge' && live) {
         d.aim = atan2i(p.y - d.y, p.x - d.x);
         d.facing = d.aim;
@@ -448,7 +494,14 @@ export function updateDragon(c: Ctx): void {
   }
 }
 
-function dragonHit(c: Ctx, d: MDragon, kind: ManeuverId, spec: DragonHitSpec, dir: number, defDiv = 1): HitDesc {
+function dragonHit(
+  c: Ctx,
+  d: MDragon,
+  kind: ManeuverId,
+  spec: DragonHitSpec,
+  dir: number,
+  defDiv = 1,
+): HitDesc {
   return {
     attacker: 'dragon',
     kind,
@@ -466,6 +519,7 @@ function dragonHit(c: Ctx, d: MDragon, kind: ManeuverId, spec: DragonHitSpec, di
     srcX: headX(c, d),
     srcY: headY(c, d),
     rage: false,
+    backstab: false,
     projectile: null,
   };
 }
@@ -488,7 +542,10 @@ export function dragonHits(c: Ctx): void {
         d.maneuver === 'claw'
           ? arc(headX(c, d), headY(c, d), spec.reach, d.aim, spec.half)
           : arc(d.x, d.y, spec.reach, (SOUTH + 128) & 255, spec.half);
-      if (shapeHit(sh, p.x, p.y, hurt) && hitFighter(c, p, dragonHit(c, d, d.maneuver, spec.hit, away)) !== 'immune') {
+      if (
+        shapeHit(sh, p.x, p.y, hurt) &&
+        hitFighter(c, p, dragonHit(c, d, d.maneuver, spec.hit, away)) !== 'immune'
+      ) {
         d.hitMask |= 1;
       }
       return;
@@ -500,7 +557,13 @@ export function dragonHits(c: Ctx): void {
       const inside = shapeHit(sh, p.x, p.y, hurt);
       emit(c, 'dragon', { type: 'BreathTick', shape: shapePx(sh), hit: inside });
       if (inside) {
-        const spec: DragonHitSpec = { power: B.power, knockback: 0, hitstun: 0, hitstop: 0, parryable: false };
+        const spec: DragonHitSpec = {
+          power: B.power,
+          knockback: 0,
+          hitstun: 0,
+          hitstop: 0,
+          parryable: false,
+        };
         hitFighter(c, p, dragonHit(c, d, 'breath', spec, d.aim, 0));
       }
       return;
@@ -510,7 +573,8 @@ export function dragonHits(c: Ctx): void {
       for (const h of dragonHurtCircles(c.r, d)) {
         if (h.head) continue;
         if (circleHit(h.x, h.y, h.r + 8, p.x, p.y, hurt)) {
-          if (hitFighter(c, p, dragonHit(c, d, 'charge', R.charge.hit, away)) !== 'immune') d.hitMask |= 1;
+          if (hitFighter(c, p, dragonHit(c, d, 'charge', R.charge.hit, away)) !== 'immune')
+            d.hitMask |= 1;
           return;
         }
       }
@@ -519,7 +583,8 @@ export function dragonHits(c: Ctx): void {
     case 'dive': {
       if (d.hitMask & 1) return;
       if (circleHit(d.x, d.y, R.dive.radius, p.x, p.y, hurt)) {
-        if (hitFighter(c, p, dragonHit(c, d, 'dive', R.dive.hit, away)) !== 'immune') d.hitMask |= 1;
+        if (hitFighter(c, p, dragonHit(c, d, 'dive', R.dive.hit, away)) !== 'immune')
+          d.hitMask |= 1;
       }
       return;
     }

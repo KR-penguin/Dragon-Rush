@@ -3,7 +3,17 @@ import { circleHit, dragonHurtCircles } from './geometry';
 import { hitDragon, hitFighter, targetBit, type HitDesc, type HitOutcome } from './hits';
 import { angleDelta, atan2i, cosQ14, divRound, mulQ14, Q, sinQ14, speedPerTick } from './math';
 import type { CombatantId } from './types';
-import { emit, entityId, pos, shapePx, SLOT_FLOOR, type Ctx, type MFighter, type MProjectile, type MZone } from './work';
+import {
+  emit,
+  entityId,
+  pos,
+  shapePx,
+  SLOT_FLOOR,
+  type Ctx,
+  type MFighter,
+  type MProjectile,
+  type MZone,
+} from './work';
 
 /** Opponent fighter of an owner, if any (the dragon's opponent is always fighter a). */
 function opposingFighter(c: Ctx, owner: CombatantId): MFighter | null {
@@ -31,10 +41,11 @@ function projectileDesc(c: Ctx, p: MProjectile): HitDesc {
     hitstun: p.hitstun,
     dir: p.angle,
     hitstop: projectileHitstop(c, p),
-    parryable: true,
+    parryable: projectileParryable(c, p),
     srcX: p.x - p.vx,
     srcY: p.y - p.vy,
     rage: p.rage,
+    backstab: false,
     projectile: p,
   };
 }
@@ -42,7 +53,13 @@ function projectileDesc(c: Ctx, p: MProjectile): HitDesc {
 function projectileHitstop(c: Ctx, p: MProjectile): number {
   const h = c.r.hitstop;
   const multi = p.kind === 'volley';
-  const base = multi ? h.multiHit : p.power <= h.lightMaxPower ? h.light : p.power >= h.heavyMinPower ? h.heavy : h.normal;
+  const base = multi
+    ? h.multiHit
+    : p.power <= h.lightMaxPower
+      ? h.light
+      : p.power >= h.heavyMinPower
+        ? h.heavy
+        : h.normal;
   return base + (p.rage ? h.rageBonus : 0);
 }
 
@@ -62,6 +79,16 @@ function reflect(c: Ctx, p: MProjectile, by: MFighter): void {
   p.hitMask = targetBit(by.side);
   p.homingLeft = 0;
   p.reflected = true;
+}
+
+function projectileParryable(c: Ctx, p: MProjectile): boolean {
+  const spec = c.r.moves[p.kind];
+  return spec.type !== 'shot' || spec.projectile.parryable;
+}
+
+function projectileReflectable(c: Ctx, p: MProjectile): boolean {
+  const spec = c.r.moves[p.kind];
+  return spec.type !== 'shot' || spec.projectile.reflectable;
 }
 
 function homingTarget(c: Ctx, p: MProjectile): { x: number; y: number } | null {
@@ -93,11 +120,21 @@ function stepProjectile(c: Ctx, p: MProjectile): boolean {
   p.ttl -= 1;
   const s = c.s;
   if (p.x < 0 || p.y < 0 || p.x > s.arenaW * Q || p.y > s.arenaH * Q) {
-    emit(c, String(p.id), { type: 'ProjectileEnd', entity: p.id, reason: 'wall', pos: pos(p.x, p.y) });
+    emit(c, String(p.id), {
+      type: 'ProjectileEnd',
+      entity: p.id,
+      reason: 'wall',
+      pos: pos(p.x, p.y),
+    });
     return false;
   }
   if (p.ttl <= 0) {
-    emit(c, String(p.id), { type: 'ProjectileEnd', entity: p.id, reason: 'expired', pos: pos(p.x, p.y) });
+    emit(c, String(p.id), {
+      type: 'ProjectileEnd',
+      entity: p.id,
+      reason: 'expired',
+      pos: pos(p.x, p.y),
+    });
     return false;
   }
   let out: HitOutcome | null = null;
@@ -120,8 +157,17 @@ function stepProjectile(c: Ctx, p: MProjectile): boolean {
       if (!(p.hitMask & bit) && circleHit(p.x, p.y, p.radius, t.x, t.y, c.r.body.hurtRadius)) {
         out = hitFighter(c, t, projectileDesc(c, p));
         if (out === 'parried') {
-          reflect(c, p, t);
-          return true;
+          if (projectileReflectable(c, p)) {
+            reflect(c, p, t);
+            return true;
+          }
+          emit(c, String(p.id), {
+            type: 'ProjectileEnd',
+            entity: p.id,
+            reason: 'parried',
+            pos: pos(p.x, p.y),
+          });
+          return false;
         }
       }
     }
@@ -159,6 +205,7 @@ function zoneDesc(z: MZone, dir: number): HitDesc {
     srcX: z.x,
     srcY: z.y,
     rage: false,
+    backstab: false,
     projectile: null,
   };
 }
@@ -248,10 +295,13 @@ export function ringRadiusAt(c: Ctx, tick: number): number {
   const R = c.r.ring;
   if (tick <= R.startTick) return R.startRadius;
   if (tick >= R.endTick) return R.endRadius;
-  return R.startRadius - divRound((R.startRadius - R.endRadius) * (tick - R.startTick), R.endTick - R.startTick);
+  return (
+    R.startRadius -
+    divRound((R.startRadius - R.endRadius) * (tick - R.startTick), R.endTick - R.startTick)
+  );
 }
 
-/** Fire ring: outside it a fighter is pushed inward and takes fixed damage every `every` ticks (ignores DEF). */
+/** Fire ring: outside it a fighter is pushed inward and burns for fixed damage (ignores DEF) at most every `every` ticks. */
 export function ringTick(c: Ctx): void {
   const s = c.s;
   if (s.kind !== 'duel') return;
@@ -264,16 +314,19 @@ export function ringTick(c: Ctx): void {
     if (!f || f.mode === 'ko') continue;
     const dx = f.x - cx;
     const dy = f.y - cy;
+    // the burn cooldown keeps running inside the ring, so hugging the edge (pushed in, drifting out) still burns
     if (dx * dx + dy * dy <= rq * rq) {
-      f.ringTimer = 0;
+      if (f.ringTimer > 0) f.ringTimer -= 1;
       continue;
     }
     const inward = atan2i(-dy, -dx);
     f.x += mulQ14(push, cosQ14(inward));
     f.y += mulQ14(push, sinQ14(inward));
-    f.ringTimer += 1;
-    if (f.ringTimer < R.every) continue;
-    f.ringTimer = 0;
+    if (f.ringTimer > 0) {
+      f.ringTimer -= 1;
+      continue;
+    }
+    f.ringTimer = R.every;
     hitFighter(c, f, {
       attacker: 'ring',
       kind: 'ring',
@@ -291,6 +344,7 @@ export function ringTick(c: Ctx): void {
       srcX: cx,
       srcY: cy,
       rage: false,
+      backstab: false,
       projectile: null,
     });
   }
@@ -299,7 +353,12 @@ export function ringTick(c: Ctx): void {
 /** Dragon phase change: every projectile and ground hazard is cleared. */
 export function clearHazards(c: Ctx): void {
   for (const p of c.s.projectiles) {
-    emit(c, String(p.id), { type: 'ProjectileEnd', entity: p.id, reason: 'cleared', pos: pos(p.x, p.y) });
+    emit(c, String(p.id), {
+      type: 'ProjectileEnd',
+      entity: p.id,
+      reason: 'cleared',
+      pos: pos(p.x, p.y),
+    });
   }
   for (const z of c.s.zones) {
     if (z.arm > 0 && z.kind !== 'burningFloor') {

@@ -55,11 +55,19 @@ function insideArena(s: CombatState, x: number, y: number, pad: number): boolean
 }
 
 function landing(x: number, y: number, angle: number, px: number): [number, number] {
-  return [x + mulQ14(Math.round(px * Q), cosQ14(angle)), y + mulQ14(Math.round(px * Q), sinQ14(angle))];
+  return [
+    x + mulQ14(Math.round(px * Q), cosQ14(angle)),
+    y + mulQ14(Math.round(px * Q), sinQ14(angle)),
+  ];
 }
 
 /** Cheapest way out of a hazard shape that does not run into a wall; null when not inside it. */
-export function escapeShape(s: CombatState, sh: Shape, me: FighterState, pad: number): Escape | null {
+export function escapeShape(
+  s: CombatState,
+  sh: Shape,
+  me: FighterState,
+  pad: number,
+): Escape | null {
   const hurt = s.rules.body.hurtRadius + pad;
   if (!shapeHit(sh, me.x, me.y, hurt)) return null;
   const body = s.rules.body.bodyRadius;
@@ -73,7 +81,7 @@ export function escapeShape(s: CombatState, sh: Shape, me: FighterState, pad: nu
       const delta = angleDelta(sh.dir, away);
       const remaining = sh.half - Math.abs(delta);
       // arc length to the nearer edge ~ dist * remaining * 2*pi/256
-      const lateral = (dist * Math.max(0, remaining) * 0.0245) + hurt;
+      const lateral = dist * Math.max(0, remaining) * 0.0245 + hurt;
       const side = delta >= 0 ? 64 : -64;
       cands.push({ angle: (away + side) & 255, needed: lateral });
       cands.push({ angle: (away - side) & 255, needed: lateral + 2 * dist * sh.half * 0.0245 });

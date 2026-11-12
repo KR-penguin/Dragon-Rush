@@ -14,5 +14,11 @@ export function combatResult(state: CombatState): CombatResult | null {
         indomitableUsedB: b.lastStandUsed,
         timedOut,
       }
-    : { winner, hpA: Math.max(0, state.a.hp), hpB: null, indomitableUsedA: state.a.lastStandUsed, timedOut };
+    : {
+        winner,
+        hpA: Math.max(0, state.a.hp),
+        hpB: null,
+        indomitableUsedA: state.a.lastStandUsed,
+        timedOut,
+      };
 }

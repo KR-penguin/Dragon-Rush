@@ -1,4 +1,4 @@
-import type { JobId, RngState } from '@dragon-rush/engine';
+import type { CombatResult as EngineCombatResult, JobId, RngState } from '@dragon-rush/engine';
 import type { CombatRules, DashId, ManeuverId, MoveId } from './rules';
 
 export type Side = 'a' | 'b';
@@ -19,7 +19,12 @@ export interface FighterInput {
   readonly dash: boolean;
 }
 
-export const NO_INPUT: FighterInput = Object.freeze({ move: 0, attack: false, skill: false, dash: false });
+export const NO_INPUT: FighterInput = Object.freeze({
+  move: 0,
+  attack: false,
+  skill: false,
+  dash: false,
+});
 
 export interface FighterSetup {
   readonly job: JobId;
@@ -45,15 +50,11 @@ export interface CombatSetup {
   readonly dragon?: DragonSetup;
 }
 
-/** Same shape as the board engine's real-time combat contract. hpB is null for the dragon. */
-export interface CombatResult {
-  readonly winner: Side;
-  readonly hpA: number;
-  readonly hpB: number | null;
-  readonly indomitableUsedA?: boolean;
-  readonly indomitableUsedB?: boolean;
-  readonly timedOut?: boolean;
-}
+/**
+ * Board write-back contract, re-exported from the engine (`applyCombatResult`) so the shapes can never drift.
+ * a = arriver/challenger, b = defender or the dragon (hpB null).
+ */
+export type CombatResult = EngineCombatResult;
 
 export type FighterMode = 'idle' | 'move' | 'attack' | 'skill' | 'dash' | 'hitstun' | 'ko';
 export type MovePhase = 'startup' | 'active' | 'recovery' | 'none';
@@ -187,7 +188,14 @@ export interface ZoneState {
 /** Hazard shapes. Positions Q8 in state, px in events; sizes always px; angles BAM. */
 export type Shape =
   | { readonly kind: 'circle'; readonly x: number; readonly y: number; readonly r: number }
-  | { readonly kind: 'arc'; readonly x: number; readonly y: number; readonly r: number; readonly dir: number; readonly half: number }
+  | {
+      readonly kind: 'arc';
+      readonly x: number;
+      readonly y: number;
+      readonly r: number;
+      readonly dir: number;
+      readonly half: number;
+    }
   | {
       readonly kind: 'line';
       readonly x: number;
@@ -197,7 +205,8 @@ export type Shape =
       readonly halfWidth: number;
     };
 
-export type DragonStage = 'idle' | 'telegraph' | 'active' | 'recovery' | 'stunned' | 'returning' | 'roar';
+export type DragonStage =
+  'idle' | 'telegraph' | 'active' | 'recovery' | 'stunned' | 'returning' | 'roar';
 
 export interface DragonState {
   readonly x: number;
@@ -229,6 +238,8 @@ export interface DragonState {
   readonly telegraph: Shape | null;
   readonly telegraphId: number;
   readonly softEnraged: boolean;
+  /** Damage carried below 1 HP, in 1/1000 HP (dragonDamageTakenScale is applied exactly). */
+  readonly chip: number;
 }
 
 export interface CombatOutcome {
@@ -267,9 +278,27 @@ export type HitKind = MoveId | DashId | ManeuverId | 'fireball' | 'burningFloor'
 
 /** Events carry results and positions (px) so renderers, FX and SFX never recompute rules. */
 export type CombatEventBody =
-  | { readonly type: 'AttackStart'; readonly who: Side; readonly move: MoveId; readonly dir: number; readonly pos: Vec }
-  | { readonly type: 'SkillUsed'; readonly who: Side; readonly skill: MoveId; readonly dir: number; readonly pos: Vec }
-  | { readonly type: 'Dash'; readonly who: Side; readonly dash: DashId; readonly dir: number; readonly pos: Vec }
+  | {
+      readonly type: 'AttackStart';
+      readonly who: Side;
+      readonly move: MoveId;
+      readonly dir: number;
+      readonly pos: Vec;
+    }
+  | {
+      readonly type: 'SkillUsed';
+      readonly who: Side;
+      readonly skill: MoveId;
+      readonly dir: number;
+      readonly pos: Vec;
+    }
+  | {
+      readonly type: 'Dash';
+      readonly who: Side;
+      readonly dash: DashId;
+      readonly dir: number;
+      readonly pos: Vec;
+    }
   | {
       readonly type: 'ProjectileSpawn';
       /** Projectile entity id (stable across re-simulation: derived from tick, owner and slot). */
@@ -291,6 +320,7 @@ export type CombatEventBody =
       readonly type: 'Hit';
       readonly attacker: CombatantId | 'ring';
       readonly target: CombatantId;
+      /** HP removed (on the dragon it can be 0 while scaled damage accumulates as chip). */
       readonly dmg: number;
       readonly kind: HitKind;
       /** Knockback / impact direction (BAM). */
@@ -304,9 +334,24 @@ export type CombatEventBody =
       readonly firstStrike: boolean;
       readonly rage: boolean;
       readonly pierce: boolean;
+      /** Ninja hit from behind (backstabPct applied). */
+      readonly backstab: boolean;
     }
-  | { readonly type: 'Parry'; readonly who: Side; readonly attacker: CombatantId; readonly kind: HitKind; readonly pos: Vec; readonly reflected: boolean }
-  | { readonly type: 'Evade'; readonly who: Side; readonly attacker: CombatantId | 'ring'; readonly kind: HitKind; readonly pos: Vec }
+  | {
+      readonly type: 'Parry';
+      readonly who: Side;
+      readonly attacker: CombatantId;
+      readonly kind: HitKind;
+      readonly pos: Vec;
+      readonly reflected: boolean;
+    }
+  | {
+      readonly type: 'Evade';
+      readonly who: Side;
+      readonly attacker: CombatantId | 'ring';
+      readonly kind: HitKind;
+      readonly pos: Vec;
+    }
   | { readonly type: 'LastStand'; readonly who: Side; readonly pos: Vec }
   | { readonly type: 'RageOn'; readonly who: Side }
   | {

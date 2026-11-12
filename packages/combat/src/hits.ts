@@ -1,10 +1,28 @@
 import { COMBAT_PASSIVES, computeDamage, dragonScale, isRaging } from './damage';
 import { enterPhaseIfNeeded } from './dragonPhase';
-import { angleDiff, atan2i, bamToMove, cosQ14, divRound, MOVE_BAM, mulQ14, Q, sinQ14 } from './math';
+import {
+  angleDiff,
+  atan2i,
+  bamToMove,
+  cosQ14,
+  divRound,
+  MOVE_BAM,
+  mulQ14,
+  Q,
+  sinQ14,
+} from './math';
 import { startMove } from './moves';
 import type { ParryMoveSpec } from './rules';
 import type { CombatantId, HitKind } from './types';
-import { emit, fighterOf, pos, type Ctx, type MDragon, type MFighter, type MProjectile } from './work';
+import {
+  emit,
+  fighterOf,
+  pos,
+  type Ctx,
+  type MDragon,
+  type MFighter,
+  type MProjectile,
+} from './work';
 
 export interface HitDesc {
   readonly attacker: CombatantId | 'ring';
@@ -30,12 +48,17 @@ export interface HitDesc {
   readonly srcX: number;
   readonly srcY: number;
   readonly rage: boolean;
+  /** Power already includes the backstab bonus. */
+  readonly backstab: boolean;
   readonly projectile: MProjectile | null;
 }
 
 export type HitOutcome = 'hit' | 'parried' | 'evaded' | 'immune';
 
-export function isInvulnerable(f: { readonly iframeDelay: number; readonly iframes: number }): boolean {
+export function isInvulnerable(f: {
+  readonly iframeDelay: number;
+  readonly iframes: number;
+}): boolean {
   return f.iframeDelay === 0 && f.iframes > 0;
 }
 
@@ -93,6 +116,21 @@ function tryParry(c: Ctx, t: MFighter, h: HitDesc): boolean {
   addHitstop(c, Math.min(c.r.hitstop.parry, c.r.hitstop.cap));
   // the counter-slash turns toward whoever was parried (aim assist then snaps to the exact angle)
   t.facing = MOVE_BAM[bamToMove(toSrc)]!;
+  if (spec.refundOnParry && h.attacker !== 'dragon') {
+    t.skillCharges = c.r.jobs[t.job].skillCharges;
+    t.skillTimer = 0;
+  }
+  // a parried melee attacker reels unless it is in super armor (armor is how the berserker beats parry)
+  const a =
+    h.projectile === null && (h.attacker === 'a' || h.attacker === 'b')
+      ? fighterOf(c.s, h.attacker)
+      : null;
+  if (a && a.mode !== 'ko' && !a.superArmor && spec.stagger > 0) {
+    cancelMove(a);
+    a.mode = 'hitstun';
+    a.hitstun = spec.stagger;
+    a.kbLeft = 0;
+  }
   startMove(c, t, spec.counter, 'attack');
   return true;
 }
@@ -107,7 +145,13 @@ export function hitFighter(c: Ctx, t: MFighter, h: HitDesc): HitOutcome {
     t.evadeCounter += 1;
     if (t.evadeCounter >= r.passives.ninjaEvadeEvery) {
       t.evadeCounter = 0;
-      emit(c, key, { type: 'Evade', who: t.side, attacker: h.attacker, kind: h.kind, pos: pos(t.x, t.y) });
+      emit(c, key, {
+        type: 'Evade',
+        who: t.side,
+        attacker: h.attacker,
+        kind: h.kind,
+        pos: pos(t.x, t.y),
+      });
       return 'evaded';
     }
   }
@@ -127,7 +171,8 @@ export function hitFighter(c: Ctx, t: MFighter, h: HitDesc): HitOutcome {
   } else {
     t.hp -= dmg;
   }
-  const flinch = !t.superArmor && t.hp > 0 && h.hitstun > 0;
+  // a backstab breaks super armor: the rushdown's answer to armored brawlers
+  const flinch = (!t.superArmor || h.backstab) && t.hp > 0 && h.hitstun > 0;
   if (flinch) {
     cancelMove(t);
     t.mode = 'hitstun';
@@ -154,22 +199,41 @@ export function hitFighter(c: Ctx, t: MFighter, h: HitDesc): HitOutcome {
     firstStrike: flat > 0,
     rage: h.rage,
     pierce: h.defDiv > 1,
+    backstab: h.backstab,
   });
   addHitstop(c, hitstop);
   return 'hit';
 }
 
 /** Resolves one damage instance on the dragon (always super armor; head is a weak point while lowered). */
-export function hitDragon(c: Ctx, d: MDragon, h: HitDesc, head: boolean, x: number, y: number): HitOutcome {
+export function hitDragon(
+  c: Ctx,
+  d: MDragon,
+  h: HitDesc,
+  head: boolean,
+  x: number,
+  y: number,
+): HitOutcome {
   if (d.hp <= 0 || d.invulnerable || d.airborne) return 'immune';
   const r = c.r;
   const weak = head && d.headLowered > 0;
-  const [sn, sd] = dragonScale(r);
-  const extraNum = weak ? sn * r.dragon.weakPointNum : sn;
-  const extraDen = weak ? sd * r.dragon.weakPointDen : sd;
-  let dmg = computeDamage(r, h.power, h.atkNum, h.atkDen, d.def, h.defDiv, extraNum, extraDen);
+  // full-formula damage (min 1, weak point x3/2, flat bonus), then dragonDamageTakenScale in 1/1000 HP so a
+  // low scale keeps every stat point meaningful instead of rounding all small hits to the minimum
+  const base = computeDamage(
+    r,
+    h.power,
+    h.atkNum,
+    h.atkDen,
+    d.def,
+    h.defDiv,
+    weak ? r.dragon.weakPointNum : 1,
+    weak ? r.dragon.weakPointDen : 1,
+  );
   const flat = takeFirstStrike(c, h.attacker);
-  dmg += flat;
+  const [sn, sd] = dragonScale(r);
+  const chip = d.chip + divRound((base + flat) * 1000 * sn, sd);
+  const dmg = Math.floor(chip / 1000);
+  d.chip = chip - dmg * 1000;
   d.hp -= dmg;
   const hitstop = Math.min(h.hitstop + (weak ? r.hitstop.weakPointBonus : 0), r.hitstop.cap);
   emit(c, `${h.attacker}:dragon:${h.kind}:${h.srcId}`, {
@@ -188,6 +252,7 @@ export function hitDragon(c: Ctx, d: MDragon, h: HitDesc, head: boolean, x: numb
     firstStrike: flat > 0,
     rage: h.rage,
     pierce: h.defDiv > 1,
+    backstab: false,
   });
   addHitstop(c, hitstop);
   if (d.hp > 0) enterPhaseIfNeeded(c, d);
