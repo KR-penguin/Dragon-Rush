@@ -43,7 +43,9 @@ function assetManifest(): Plugin {
 export default defineConfig({
   plugins: [react(), assetManifest()],
   server: {
+    host: '0.0.0.0',
     port: 5173,
+    strictPort: true,
     allowedHosts: ['unmythologically-nondamaging-holli.ngrok-free.dev'],
     proxy: {
       '/socket.io': { target: 'http://localhost:3001', ws: true },

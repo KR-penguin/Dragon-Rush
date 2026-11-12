@@ -132,6 +132,8 @@ python -m pytest python/tests              # Python 클라이언트 테스트
 docker build -t dragon-rush . && docker run -p 3001:3001 dragon-rush   # 컨테이너 배포 (선택)
 ```
 
+같은 Wi-Fi의 다른 기기에서는 `http://<이 PC의 LAN IPv4 주소>:5173`으로 접속한다. Windows에서 주소는 `ipconfig`의 Wi-Fi IPv4 주소로 확인한다. 개발 서버는 LAN에서 수신하고, 웹소켓·API 요청은 Vite가 로컬 서버(:3001)로 전달한다. 접속이 계속 막히면 Windows 방화벽에서 개인 네트워크의 TCP 5173 인바운드가 허용되어 있는지 확인한다.
+
 서버 설정(환경변수): `PORT`(3001), `TURN_TIMEOUT_MS`(60000), `RECONNECT_GRACE_MS`(60000), `BOT_ACTION_DELAY_MS`(700), `MODELS_DIR`(`models/`).
 
 ## AI 모델·학습 환경
