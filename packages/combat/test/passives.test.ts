@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   combatResult,
   computeDamage,
+  computeDamageQ8,
   createCombat,
   DEFAULT_COMBAT_RULES,
   type CombatState,
@@ -68,7 +69,8 @@ describe('선제 사격 First Strike (archer)', () => {
     const hit = eventsOf(p.events, 'Hit')[0]!;
     expect(hit.firstStrike).toBe(true);
     expect(hit.dmg).toBe(
-      computeDamage(R, power('fullShot'), 6, 1, target.def, 1) + R.passives.archerFirstStrikeBonus,
+      computeDamageQ8(R, power('fullShot'), 6, 1, target.def, 1) / Q +
+        R.passives.archerFirstStrikeBonus,
     );
     expect(p.final.a.firstStrikePending).toBe(false);
   });
@@ -93,8 +95,24 @@ describe('마력 관통 Arcane Pierce (mage)', () => {
     const p = play(closeDuel(baseFighter('mage'), target, 200), [input(3, 'a')], [], 90);
     const hit = eventsOf(p.events, 'Hit')[0]!;
     expect(hit.pierce).toBe(true);
-    expect(hit.dmg).toBe(computeDamage(R, power('bolt'), 4, 1, 9, 2));
+    expect(hit.dmg).toBe(computeDamageQ8(R, power('bolt'), 4, 1, 9, 2) / Q);
     expect(hit.dmg).toBeGreaterThan(computeDamage(R, power('bolt'), 4, 1, 9, 1));
+  });
+});
+
+describe('fractional duel damage', () => {
+  it('accumulates Q8 damage across hits and writes the ceiling to board HP', () => {
+    const victim = baseFighter('berserker');
+    const script = Array.from({ length: 180 }, (_, t) => (t % 40 === 0 ? input(3, 'a') : idle));
+    const fight = play(closeDuel(baseFighter('mage'), victim, 160), script, [], 180);
+    const hits = eventsOf(fight.events, 'Hit')
+      .filter((e) => e.target === 'b')
+      .slice(0, 2);
+    expect(hits).toHaveLength(2);
+    const exact = victim.hp * Q - Math.round((hits[0]!.dmg + hits[1]!.dmg) * Q);
+    const after = fight.states.find((s) => s.tick === hits[1]!.tick)!;
+    expect(after.b!.hpQ8).toBe(exact);
+    expect(after.b!.hp).toBe(Math.ceil(exact / Q));
   });
 });
 
@@ -131,7 +149,7 @@ describe('광폭화 Rage (berserker)', () => {
     const q = play(closeDuel(raged, baseFighter('mage'), 60), [input(3, 'a')], [], 40);
     const hit = eventsOf(q.events, 'Hit')[0]!;
     expect(hit.rage).toBe(true);
-    expect(hit.dmg).toBe(computeDamage(R, power('greataxe'), 5 * 13, 10, 5, 1));
+    expect(hit.dmg).toBe(computeDamageQ8(R, power('greataxe'), 5 * 13, 10, 5, 1) / Q);
   });
 });
 
@@ -151,18 +169,25 @@ describe('kits', () => {
     );
   });
 
-  it('ninja backstab: a hit from behind is stronger and breaks super armor', () => {
+  it('ninja backstab: a hit from behind is stronger', () => {
     const s = closeDuel(baseFighter('ninja'), baseFighter('mage'), 40);
     // the mage faces east, away from the ninja on its west side
     const p = play({ ...s, b: { ...s.b!, facing: 0 } }, [input(3, 'a')], [], 20);
     const hit = eventsOf(p.events, 'Hit')[0]!;
     expect(hit.backstab).toBe(true);
     expect(hit.dmg).toBe(
-      computeDamage(R, Math.round((power('dagger1') * R.jobs.ninja.backstabPct) / 100), 4, 1, 5, 1),
+      computeDamageQ8(
+        R,
+        Math.round((power('dagger1') * R.jobs.ninja.backstabPct) / 100),
+        4,
+        1,
+        5,
+        1,
+      ) / Q,
     );
   });
 
-  it('mage bolts pass through a parry (magic) while arrows are reflected', () => {
+  it('mage bolts are absorbed by a timely parry while arrows are reflected', () => {
     // b fires west at a parrying swordsman 200 px away; the parry window covers each projectile's arrival
     const vs = (job: 'mage' | 'archer', parryAt: number) => {
       const s = closeDuel(baseFighter('swordsman'), baseFighter(job), 200);
@@ -174,10 +199,11 @@ describe('kits', () => {
     const arrow = vs('archer', 3);
     expect(eventsOf(arrow.events, 'Parry').map((e) => e.reflected)).toEqual([true]);
     const bolt = vs('mage', 22);
-    expect(eventsOf(bolt.events, 'Parry')).toHaveLength(0);
+    expect(eventsOf(bolt.events, 'Parry').map((e) => e.reflected)).toEqual([false]);
     expect(eventsOf(bolt.events, 'Hit').some((e) => e.target === 'a' && e.kind === 'bolt')).toBe(
-      true,
+      false,
     );
+    expect(eventsOf(bolt.events, 'Hit').some((e) => e.kind === 'counter')).toBe(false);
     expect(bolt.states.some((s) => s.a.move === 'parry' && s.a.phase === 'active')).toBe(true);
   });
 });

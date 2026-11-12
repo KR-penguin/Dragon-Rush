@@ -34,7 +34,15 @@ const sections = new Set((positional[0] ?? 'all').split(','));
 const want = (s: string): boolean => sections.has('all') || sections.has(s);
 const N = Number(flag('n', '200'));
 const style = flag('style', 'balanced') as BotStyle;
+const reaction = flag('reaction', 'pooled') as Task['reaction'];
 const pct = (x: number): string => `${(100 * x).toFixed(0)}%`;
+const wilson = (wins: number, n: number): string => {
+  const z2 = 3.841459;
+  const p = wins / n;
+  const centre = (p + z2 / (2 * n)) / (1 + z2 / n);
+  const half = (1.96 * Math.sqrt((p * (1 - p)) / n + z2 / (4 * n * n))) / (1 + z2 / n);
+  return `${(100 * p).toFixed(1)}% [${(100 * (centre - half)).toFixed(1)}, ${(100 * (centre + half)).toFixed(1)}]`;
+};
 const sec = (t: number): string => (t / 60).toFixed(1);
 const dragonStats = {
   hp: DEFAULT_RULES.dragon.hp,
@@ -52,7 +60,7 @@ const vsDragon = (a: FighterSetup): CombatSetup => ({
 
 const tasks: Task[] = [];
 const add = (key: string, setup: CombatSetup, n: number, seed0: number): void => {
-  tasks.push({ key, setup, n, seed0, styleA: style, styleB: style });
+  tasks.push({ key, setup, n, seed0, styleA: style, styleB: style, reaction });
 };
 
 const UPGRADES: readonly [string, Partial<Pick<FighterSetup, 'atk' | 'def' | 'maxHp'>>][] = [
@@ -168,7 +176,9 @@ function bench(): void {
 
 async function main(): Promise<void> {
   if (sets.length) console.log(`overrides: ${sets.join(' ')}`);
-  console.log(`rules ${DEFAULT_COMBAT_RULES.version}, bots ${style}, n=${N}`);
+  console.log(
+    `rules ${DEFAULT_COMBAT_RULES.version}, bots ${style}, reaction ${reaction}, n=${N} per orientation`,
+  );
   const t0 = performance.now();
   const r = tasks.length ? await runTasks() : new Map<string, TaskResult>();
   const W = (k: string): TaskResult => {
@@ -191,9 +201,9 @@ async function main(): Promise<void> {
         all.push(...ij.ticks);
         timeouts += ij.timeouts;
         fights += ij.ticks.length;
-        if (i === j) return `${pct(ij.winsA / ij.ticks.length)} (a)`;
+        if (i === j) return `${wilson(ij.winsA, ij.ticks.length)} (a)`;
         const ji = W(`p:${j}:${i}`);
-        return pct((ij.winsA + (ji.ticks.length - ji.winsA)) / (ij.ticks.length + ji.ticks.length));
+        return wilson(ij.winsA + (ji.ticks.length - ji.winsA), ij.ticks.length + ji.ticks.length);
       });
       console.log(`| ${i} | ${cells.join(' | ')} |`);
     }

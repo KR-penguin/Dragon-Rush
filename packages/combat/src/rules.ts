@@ -58,6 +58,8 @@ export interface MeleeMoveSpec extends MoveBase {
   /** String follow-up started by a buffered attack press from move tick `chainFrom` on. */
   readonly next: MoveId | null;
   readonly chainFrom: number;
+  readonly parry: 'counter' | 'crush';
+  readonly armorBreak?: boolean;
 }
 
 export interface ProjectileSpec {
@@ -73,6 +75,8 @@ export interface ProjectileSpec {
   readonly homingPerTick: number;
   readonly homingMax: number;
   readonly hit: HitSpec;
+  readonly leadTicks?: number;
+  readonly cancelsProjectiles?: boolean;
 }
 
 /** Fires `count` projectiles (fanned `spread` BAM apart) on move tick `startup`. */
@@ -114,6 +118,8 @@ export interface RuneMoveSpec extends MoveBase {
   readonly arm: number;
   readonly active: number;
   readonly hit: HitSpec;
+  readonly holdTicks: number;
+  readonly armorBreak: boolean;
 }
 
 export type MoveSpec = MeleeMoveSpec | ShotMoveSpec | DrawMoveSpec | ParryMoveSpec | RuneMoveSpec;
@@ -151,6 +157,7 @@ export interface JobKit {
   readonly dash: DashId;
   /** Melee damage from behind the target (within `backstabHalf` of its back), percent of P; 100 = none. */
   readonly backstabPct: number;
+  readonly poisePct: number;
 }
 
 export interface DragonHitSpec extends HitSpec {
@@ -339,7 +346,7 @@ const NO_ARMOR = { armorFrom: -1, armorTo: -1 } as const;
 
 /** Every combat number lives here (decision sheet v1 §3; board passives come from the engine's DEFAULT_RULES). */
 export const DEFAULT_COMBAT_RULES: CombatRules = deepFreeze({
-  version: 'combat-1',
+  version: 'combat-2',
   tickHz: COMBAT_TICK_HZ,
   arena: { duel: { w: 800, h: 448 }, dragonFight: { w: 896, h: 448 } },
   duelGap: 480,
@@ -375,41 +382,44 @@ export const DEFAULT_COMBAT_RULES: CombatRules = deepFreeze({
     lastStandIframes: 60,
   },
   ring: {
-    startTick: 1800,
-    endTick: 2400,
+    startTick: 1440,
+    endTick: 2040,
     startRadius: 460,
-    endRadius: 180,
+    endRadius: 160,
     damage: 2,
     every: 30,
     push: 60,
   },
   jobs: {
     swordsman: {
-      speed: 190,
+      speed: 195,
       attack: 'slash1',
       skill: 'parry',
       skillCooldown: 240,
       skillCharges: 1,
       dash: 'dash',
       backstabPct: 100,
+      poisePct: 100,
     },
     archer: {
-      speed: 200,
+      speed: 190,
       attack: 'draw',
       skill: 'volley',
       skillCooldown: 210,
       skillCharges: 1,
       dash: 'backstep',
       backstabPct: 100,
+      poisePct: 100,
     },
     mage: {
-      speed: 180,
+      speed: 175,
       attack: 'bolt',
       skill: 'meteor',
-      skillCooldown: 150,
+      skillCooldown: 210,
       skillCharges: 1,
       dash: 'blink',
       backstabPct: 100,
+      poisePct: 100,
     },
     ninja: {
       speed: 230,
@@ -418,16 +428,18 @@ export const DEFAULT_COMBAT_RULES: CombatRules = deepFreeze({
       skillCooldown: 90,
       skillCharges: 2,
       dash: 'shadowStep',
-      backstabPct: 130,
+      backstabPct: 150,
+      poisePct: 100,
     },
     berserker: {
-      speed: 175,
+      speed: 165,
       attack: 'greataxe',
       skill: 'whirlwind',
       skillCooldown: 300,
       skillCharges: 1,
       dash: 'shoulderCharge',
       backstabPct: 100,
+      poisePct: 50,
     },
   },
   moves: {
@@ -446,6 +458,7 @@ export const DEFAULT_COMBAT_RULES: CombatRules = deepFreeze({
       ...NO_ARMOR,
       next: 'slash2',
       chainFrom: 9,
+      parry: 'counter',
     },
     slash2: {
       type: 'melee',
@@ -462,6 +475,7 @@ export const DEFAULT_COMBAT_RULES: CombatRules = deepFreeze({
       ...NO_ARMOR,
       next: 'thrust',
       chainFrom: 8,
+      parry: 'counter',
     },
     thrust: {
       type: 'melee',
@@ -471,13 +485,14 @@ export const DEFAULT_COMBAT_RULES: CombatRules = deepFreeze({
       moveSpeedPct: 0,
       reach: 64,
       half: 28,
-      hit: { power: 127, knockback: 64, hitstun: 22 },
+      hit: { power: 119, knockback: 64, hitstun: 22 },
       hits: 1,
       hitEvery: 4,
       lunge: 12,
       ...NO_ARMOR,
       next: null,
       chainFrom: 0,
+      parry: 'counter',
     },
     parry: {
       type: 'parry',
@@ -487,8 +502,8 @@ export const DEFAULT_COMBAT_RULES: CombatRules = deepFreeze({
       moveSpeedPct: 0,
       half: 128,
       counter: 'counter',
-      reflectPower: 100,
-      refundOnParry: true,
+      reflectPower: 50,
+      refundOnParry: false,
       stagger: 24,
     },
     counter: {
@@ -506,6 +521,7 @@ export const DEFAULT_COMBAT_RULES: CombatRules = deepFreeze({
       ...NO_ARMOR,
       next: null,
       chainFrom: 0,
+      parry: 'counter',
     },
     draw: {
       type: 'draw',
@@ -513,7 +529,7 @@ export const DEFAULT_COMBAT_RULES: CombatRules = deepFreeze({
       recovery: 0,
       moveSpeedPct: 50,
       quickAt: 8,
-      fullAt: 36,
+      fullAt: 40,
       quick: 'quickShot',
       full: 'fullShot',
     },
@@ -534,6 +550,7 @@ export const DEFAULT_COMBAT_RULES: CombatRules = deepFreeze({
         homingPerTick: 0,
         homingMax: 0,
         hit: { power: 94, knockback: 10, hitstun: 8 },
+        leadTicks: 12,
       },
     },
     fullShot: {
@@ -552,7 +569,9 @@ export const DEFAULT_COMBAT_RULES: CombatRules = deepFreeze({
         reflectable: true,
         homingPerTick: 0,
         homingMax: 0,
-        hit: { power: 224, knockback: 40, hitstun: 14 },
+        hit: { power: 224, knockback: 40, hitstun: 10 },
+        leadTicks: 12,
+        cancelsProjectiles: true,
       },
     },
     volley: {
@@ -584,9 +603,9 @@ export const DEFAULT_COMBAT_RULES: CombatRules = deepFreeze({
       projectile: {
         speed: 480,
         radius: 8,
-        range: 640,
+        range: 360,
         pierce: false,
-        parryable: false,
+        parryable: true,
         reflectable: false,
         homingPerTick: 1,
         homingMax: 14,
@@ -604,6 +623,8 @@ export const DEFAULT_COMBAT_RULES: CombatRules = deepFreeze({
       arm: 30,
       active: 4,
       hit: { power: 293, knockback: 96, hitstun: 24 },
+      holdTicks: 24,
+      armorBreak: true,
     },
     dagger1: {
       type: 'melee',
@@ -613,13 +634,14 @@ export const DEFAULT_COMBAT_RULES: CombatRules = deepFreeze({
       moveSpeedPct: 0,
       reach: 50,
       half: 32,
-      hit: { power: 54, knockback: 16, hitstun: 12 },
+      hit: { power: 63, knockback: 16, hitstun: 12 },
       hits: 1,
       hitEvery: 2,
       lunge: 16,
       ...NO_ARMOR,
       next: 'dagger2',
       chainFrom: 6,
+      parry: 'counter',
     },
     dagger2: {
       type: 'melee',
@@ -629,13 +651,14 @@ export const DEFAULT_COMBAT_RULES: CombatRules = deepFreeze({
       moveSpeedPct: 0,
       reach: 50,
       half: 32,
-      hit: { power: 54, knockback: 40, hitstun: 10 },
+      hit: { power: 63, knockback: 40, hitstun: 10 },
       hits: 1,
       hitEvery: 2,
       lunge: 16,
       ...NO_ARMOR,
       next: null,
       chainFrom: 0,
+      parry: 'counter',
     },
     kunai: {
       type: 'shot',
@@ -647,7 +670,7 @@ export const DEFAULT_COMBAT_RULES: CombatRules = deepFreeze({
       projectile: {
         speed: 900,
         radius: 4,
-        range: 560,
+        range: 240,
         pierce: false,
         parryable: true,
         reflectable: true,
@@ -672,6 +695,7 @@ export const DEFAULT_COMBAT_RULES: CombatRules = deepFreeze({
       armorTo: 18,
       next: null,
       chainFrom: 0,
+      parry: 'crush',
     },
     whirlwind: {
       type: 'melee',
@@ -689,6 +713,7 @@ export const DEFAULT_COMBAT_RULES: CombatRules = deepFreeze({
       armorTo: 41,
       next: null,
       chainFrom: 0,
+      parry: 'crush',
     },
   },
   dashes: {

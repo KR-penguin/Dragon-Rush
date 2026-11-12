@@ -179,7 +179,7 @@ describe('input model', () => {
   it('moves 8 ways at walk speed, reaching top speed in 4 ticks', () => {
     const p = play(newDuel('swordsman', 'mage'), Array(10).fill(input(3)), [], 10);
     const v = p.states.map((s) => s.a.vx);
-    const top = Math.round((190 * Q) / 60);
+    const top = Math.round((DEFAULT_COMBAT_RULES.jobs.swordsman.speed * Q) / 60);
     expect(v[4]).toBe(top);
     expect(v[1]).toBeLessThan(top);
     const diag = play(newDuel('swordsman', 'mage'), Array(10).fill(input(4)), [], 10).final.a;
@@ -256,12 +256,12 @@ describe('result', () => {
     expect(combatResult(dragonOut)?.winner).toBe('b');
   });
 
-  it('the fire ring shrinks from 30 s to 40 s and burns fighters outside it', () => {
+  it('the fire ring shrinks from 24 s to 34 s and burns fighters outside it', () => {
     let s = newDuel('mage', 'mage');
     s = { ...s, a: { ...s.a, x: 20 * Q, y: 20 * Q } };
     const p = play(s, [], [], 2700);
-    expect(p.states.find((x) => x.tick === 1800)!.ringRadius).toBe(460);
-    expect(p.states.find((x) => x.tick === 2400)!.ringRadius).toBe(180);
+    expect(p.states.find((x) => x.tick === 1440)!.ringRadius).toBe(460);
+    expect(p.states.find((x) => x.tick === 2040)!.ringRadius).toBe(160);
     const burns = eventsOf(p.events, 'Hit').filter((e) => e.attacker === 'ring');
     expect(burns.length).toBeGreaterThan(0);
     expect(burns.every((e) => e.dmg === 2)).toBe(true);

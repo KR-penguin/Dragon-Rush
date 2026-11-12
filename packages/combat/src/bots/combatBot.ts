@@ -133,6 +133,7 @@ interface Threat extends Escape {
   readonly homing: boolean;
   /** Stable identity of the threat, so the bot commits to one dodge decision per threat. */
   readonly key: number;
+  readonly fullShot?: boolean;
 }
 
 interface Out {
@@ -203,6 +204,7 @@ function projectileThreats(
       kind: 'projectile',
       homing,
       key: pr.id,
+      fullShot: pr.kind === 'fullShot',
     });
   }
   return best;
@@ -302,7 +304,7 @@ function meleeThreat(
       atan2i(me.y - o.y, me.x - o.x),
       reach - dist,
       Math.max(0, spec.startup - o.moveTick),
-      true,
+      spec.parry === 'counter',
     ),
   );
 }
@@ -401,7 +403,13 @@ function isOpen(tg: Target, role: BotRole): boolean {
 function isCommitted(tg: Target): boolean {
   const o = tg.fighter;
   if (!o) return true;
-  return o.mode === 'attack' || o.mode === 'skill' || o.mode === 'hitstun' || o.move === 'draw';
+  return (
+    o.mode === 'attack' ||
+    o.mode === 'skill' ||
+    o.mode === 'hitstun' ||
+    o.mode === 'dash' ||
+    o.move === 'draw'
+  );
 }
 
 /** A melee attack or skill of `o` is in startup or active frames. */
@@ -455,15 +463,18 @@ function meleePlan(
 
   // duelist bait: an opponent stepping into reach eats a parry
   const opp = tg.fighter;
+  const oppAttack = opp ? s.rules.moves[s.rules.jobs[opp.job].attack] : null;
   if (
     role === 'duelist' &&
     opp &&
     canParry(s, me) &&
+    oppAttack?.type === 'melee' &&
+    oppAttack.parry === 'counter' &&
     surface <= Math.max(reach, theirReach) + 24 &&
     !open
   ) {
     const rushing = opp.mode === 'dash' || (opp.mode === 'attack' && opp.phase === 'startup');
-    if (random() < (rushing ? p.parryRead : p.parryRead * 0.12)) {
+    if (random() < (rushing ? p.parryRead : p.parryRead * 0.5)) {
       o.move = aimMove;
       o.skill = press(me, BTN_SKILL);
       return;
@@ -507,14 +518,14 @@ function meleePlan(
     o.skill = press(me, BTN_SKILL);
     return;
   }
-  const footsie = theirReach > 0 && surface <= Math.max(reach, theirReach) + spacing;
-  if (footsie && !open && random() >= poke * 3) {
-    o.move = strafe(s, me, aim);
-    return;
-  }
   // never walk into a swing that is coming out: wait at the edge and punish the whiff
   if (opp && swinging(s, opp) && surface <= theirReach + 2 * p.spacing) {
     o.move = surface <= theirReach + p.spacing ? bestAway(s, me, tg.x, tg.y) : strafe(s, me, aim);
+    return;
+  }
+  const footsie = theirReach > 0 && surface <= Math.max(reach, theirReach) + spacing;
+  if (footsie && !open && reach <= theirReach + 6 && random() >= poke * 3) {
+    o.move = strafe(s, me, aim);
     return;
   }
   o.move = aimMove;
@@ -579,7 +590,9 @@ function rangedPlan(
     o.attack = wantFull ? me.drawTicks < atk.fullAt : me.drawTicks < atk.quickAt;
     return;
   }
-  const close = tg.fighter !== null && surface < 110;
+  const close =
+    tg.fighter !== null &&
+    surface < (role === 'zoner' && s.rules.jobs[tg.fighter.job].speed > kit.speed ? 160 : 110);
   if (close && me.dashCharges > 0 && random() < p.panicDash) {
     const dash = s.rules.dashes[kit.dash];
     o.move = dash.backward ? aimMove : bestAway(s, me, tg.x, tg.y);
@@ -623,6 +636,18 @@ function decideBot(s: CombatState, side: Side, random: () => number, p: BotParam
   if (!me || me.mode === 'ko' || s.outcome) return NO_INPUT;
   const tg = targetOf(s, me);
   const o: Out = { move: 0, attack: false, skill: false, dash: false };
+  if (tg?.fighter?.move === 'whirlwind' && tg.fighter.phase !== 'recovery') {
+    const dist = distPx(me.x, me.y, tg.x, tg.y);
+    if (dist < 150) {
+      const away = bestAway(s, me, tg.x, tg.y);
+      return {
+        move: away as MoveDir,
+        attack: false,
+        skill: false,
+        dash: dist < 95 && me.dashCharges > 0 && press(me, BTN_DASH),
+      };
+    }
+  }
   let threat: Threat | null = null;
   threat = projectileThreats(s, me, p, threat);
   threat = zoneThreats(s, me, p, threat);
@@ -630,8 +655,7 @@ function decideBot(s: CombatState, side: Side, random: () => number, p: BotParam
   threat = meleeThreat(s, me, p, threat);
   const drawing = me.move === 'draw';
   // the brawler shrugs off light projectiles (walks through) more often than it sidesteps
-  const dodge =
-    JOB_ROLES[me.job] === 'brawler' && threat?.kind === 'projectile' ? p.dodge * 0.9 : p.dodge;
+  const dodge = JOB_ROLES[me.job] === 'brawler' && threat?.fullShot ? p.dodge * 0.5 : p.dodge;
   if (threat && commits(threat.key, side, dodge)) {
     respond(s, me, p, threat, random, o);
     // keep a held draw while sidestepping; a dodge dash drops it

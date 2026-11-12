@@ -77,6 +77,7 @@ function createFighter(
     facing,
     aim: facing,
     hp: f.hp,
+    hpQ8: f.hp * 256,
     maxHp: f.maxHp,
     atk: f.atk,
     def: f.def,
@@ -194,7 +195,10 @@ function resolveOutcome(c: Ctx): void {
     const aDead = a.hp <= 0;
     const bDead = b.hp <= 0;
     if (aDead || bDead) {
-      if (aDead && bDead) a.hp = 1;
+      if (aDead && bDead) {
+        a.hp = 1;
+        a.hpQ8 = 256;
+      }
       if (a.hp <= 0) knockOut(c, a);
       if (b.hp <= 0) knockOut(c, b);
       finish(c, a.hp > 0 ? 'a' : 'b', false);
@@ -203,7 +207,10 @@ function resolveOutcome(c: Ctx): void {
   } else if (s.dragon) {
     const d = s.dragon;
     if (d.hp <= 0) {
-      if (a.hp <= 0) a.hp = 1;
+      if (a.hp <= 0) {
+        a.hp = 1;
+        a.hpQ8 = 256;
+      }
       emit(c, 'dragon', { type: 'KO', who: 'dragon', pos: pos(d.x, d.y) });
       finish(c, 'a', false);
       return;
