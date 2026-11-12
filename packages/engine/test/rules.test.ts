@@ -14,9 +14,10 @@ describe('DEFAULT_RULES matches docs/game-design.md', () => {
 
   it('start, economy, items (§3, §7, §8)', () => {
     expect(DEFAULT_RULES.startingCoins).toBe(10);
-    expect(DEFAULT_RULES.startingItems).toEqual({ shield: 1 });
+    expect(DEFAULT_RULES.startingItems).toEqual({});
     expect(DEFAULT_RULES.startBonus).toEqual({ coins: 35, hp: 6 });
     expect(DEFAULT_RULES.pvpGraceRounds).toBe(2);
+    expect(DEFAULT_RULES.pvpWinBonusCoins).toBe(30);
     expect(DEFAULT_RULES.upgrades).toEqual({
       atk: { baseCost: 3, costStep: 1, amount: 1 },
       def: { baseCost: 2, costStep: 1, amount: 1 },
@@ -40,13 +41,13 @@ describe('DEFAULT_RULES matches docs/game-design.md', () => {
       'START',
       'GOBLIN',
       'POISON_SWAMP',
-      'HERB',
+      'TREASURE',
       'BANDIT',
       'TRAINING',
       'SHOP',
       'WOLF',
       'TRAP',
-      'TREASURE',
+      'HERB',
       'PICKPOCKET',
       'BLACKSMITH',
       'INN',
@@ -72,13 +73,13 @@ describe('DEFAULT_RULES matches docs/game-design.md', () => {
       '',
       'coins6',
       'hp-5',
-      'hp8',
+      'coins12',
       'coins-4',
       '',
       '',
       'coins10 hp-3',
       'hp-6',
-      'coins12',
+      'hp8',
       'coins-6',
       '',
       'hp20',
@@ -112,7 +113,7 @@ describe('DEFAULT_RULES matches docs/game-design.md', () => {
   });
 
   it('carries the balance version', () => {
-    expect(DEFAULT_RULES.version).toBe('rush-2');
+    expect(DEFAULT_RULES.version).toBe('rush-3');
   });
 
   it('is frozen and valid', () => {
@@ -124,5 +125,6 @@ describe('DEFAULT_RULES matches docs/game-design.md', () => {
       mode: 'auto',
     } as unknown as typeof DEFAULT_RULES.combat;
     expect(() => validateRules(withRules({ combat: badMode }))).toThrow();
+    expect(() => validateRules(withRules({ pvpWinBonusCoins: -1 }))).toThrow();
   });
 });
