@@ -258,6 +258,9 @@ export class FightClient {
    * Returns the render alpha (0..1) between session.previous and session.current.
    */
   frame(nowMs: number, sample: (state: CombatState) => number): number {
+    // The GO packet may arrive during the VS overlay, before this frame loop starts.
+    // Re-anchor to the current wall clock so the intro's elapsed time does not delay input.
+    if (this.lastFrameMs === null && this.epochServerMs !== null) this.reanchor(nowMs);
     const dt =
       this.lastFrameMs === null
         ? 0
