@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit -p ."
   },
   "dependencies": {
+    "@dragon-rush/combat": "workspace:*",
     "@dragon-rush/engine": "workspace:*",
     "zod": "^4.6.7"
   }
