@@ -76,6 +76,7 @@ export function CornerCard({
     dimmed ? 'is-dimmed' : '',
   ].join(' ');
   const style = { '--seat-color': card.color, '--seat-ink': seatInk(card.seat) } as CSSProperties;
+  const visibleBadges = card.badges.filter((badge) => badge.kind !== 'eliminated');
   const body = (
     <>
       <div className="cc-medallion">
@@ -105,17 +106,17 @@ export function CornerCard({
         <div className="cc-sub">
           <span>{JOB_LABEL[p.job]}</span>
           {card.kindLabel && <span>· {card.kindLabel}</span>}
-          <span className="cc-badges">
-            {card.badges
-              .filter((b) => b.kind !== 'eliminated')
-              .map((b) => (
-                <span key={b.kind} className={`cc-badge badge-${b.kind}`} title={b.label}>
-                  <GameIcon name={BADGE_ICON[b.kind]} label={b.label} />
-                  {b.kind === 'ninjaCooldown' && <small>보정 {p.passive.ninjaCooldown}턴</small>}
-                </span>
-              ))}
-          </span>
         </div>
+        {visibleBadges.length > 0 && (
+          <div className="cc-badges">
+            {visibleBadges.map((b) => (
+              <span key={b.kind} className={`cc-badge badge-${b.kind}`} title={b.label}>
+                <GameIcon name={BADGE_ICON[b.kind]} label={b.label} />
+                {b.kind === 'ninjaCooldown' && <small>보정 {p.passive.ninjaCooldown}턴</small>}
+              </span>
+            ))}
+          </div>
+        )}
         <div className="cc-hp">
           <GameIcon name="hp" className="cc-heart" />
           <HpBar

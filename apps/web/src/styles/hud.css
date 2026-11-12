@@ -306,22 +306,26 @@
 .cc-sub {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: calc(5 * var(--u));
   min-width: 0;
   font-size: max(12px, calc(13 * var(--u)));
   color: var(--bone-dim);
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .cc-badges {
-  display: inline-flex;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: calc(3 * var(--u));
-  margin-left: auto;
+  min-width: 0;
 }
 
 .cc-badge {
   display: inline-grid;
   place-items: center;
+  flex: none;
   width: max(16px, calc(20 * var(--u)));
   height: max(16px, calc(20 * var(--u)));
   border-radius: 50%;
