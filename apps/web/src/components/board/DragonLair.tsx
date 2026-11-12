@@ -1,58 +1,106 @@
-import type { ReactNode } from 'react';
-import { DRAGON_IMAGE_PATH } from '../../types/assetPaths';
-import { DRAGON_ICON } from '../../types/labels';
-import { AssetImage } from '../common/AssetImage';
-import { DiceFace } from './DiceFace';
+import type { CSSProperties } from 'react';
+import { fxAnchorProps } from '../../types/fxAnchor';
+import type { LairState } from '../../types/lairView';
+import { CATEGORIES, CATEGORY_LABEL, type TileCategory } from '../../types/tileView';
+import { DragonArt } from '../icons/Art';
+import { GameIcon } from '../icons/GameIcon';
 
 interface DragonLairProps {
-  dragon: { readonly hp: number; readonly atk: number; readonly def: number };
+  dragon: { readonly hp: number; readonly atk: number; readonly def: number; readonly breathEvery: number };
+  state: LairState;
   round: number;
-  maxRounds: number | null;
-  dice: { readonly value: number | null; readonly rolling: boolean };
-  decision: string;
-  countdown: number | null;
-  children?: ReactNode;
+  /** Breath runes lit in the current dragon fight (0 when no fight). */
+  breathLit: number;
+  legend: TileCategory | null;
+  onLegend: (category: TileCategory | null) => void;
 }
 
-/** Board centre: the dragon, round, last dice and who is deciding. */
-export function DragonLair({
-  dragon,
-  round,
-  maxRounds,
-  dice,
-  decision,
-  countdown,
-  children,
-}: DragonLairProps) {
+const EMBERS = 9;
+const HP_SEGMENTS = 10;
+
+/**
+ * Board centre, cosmetic only: a basalt crater with lava cracks and embers, the dragon (asleep,
+ * awake when a challenge is possible, roaring in a fight), its stat plate, breath runes and the
+ * tile legend.
+ */
+export function DragonLair({ dragon, state, round, breathLit, legend, onLegend }: DragonLairProps) {
+  // The lair glows a little hotter every round (+2 %, capped at +30 %).
+  const style = { '--ember-boost': Math.min(round * 0.02, 0.3) } as CSSProperties;
+  const label = state === 'asleep' ? '잠든 용' : state === 'awake' ? '깨어난 용' : '포효하는 용';
   return (
-    <div className="lair">
-      <div className="lair-title">용의 둥지</div>
-      <AssetImage
-        className="lair-dragon"
-        path={DRAGON_IMAGE_PATH}
-        fallback={DRAGON_ICON}
-        alt="용"
-      />
-      <div className="lair-stats">
-        <span title="체력">❤️ {dragon.hp}</span>
-        <span title="공격력">⚔️ {dragon.atk}</span>
-        <span title="방어력">🛡️ {dragon.def}</span>
+    <div className={`lair lair-${state}`} style={style}>
+      <div className="lair-floor">
+        <div className="lair-lava" />
+        <div className="lair-ring" />
       </div>
-      <div className="lair-row">
-        <div className="lair-round">
-          <span className="lair-label">라운드</span>
-          <strong>
-            {round}
-            {maxRounds !== null && <small> / {maxRounds}</small>}
-          </strong>
+
+      <div className="lair-runes" aria-label={`브레스: ${dragon.breathEvery}번째 공격마다`}>
+        {Array.from({ length: dragon.breathEvery }, (_, i) => (
+          <span key={i} className={`rune-stone${i < breathLit ? ' is-lit' : ''}`}>
+            <GameIcon name="rune" />
+          </span>
+        ))}
+      </div>
+
+      <div className="lair-stand">
+        <div className="lair-glow" />
+        <div className="lair-dragon" {...fxAnchorProps({ kind: 'lair' })} title={label}>
+          <DragonArt className="lair-dragon-art" />
+          {state === 'asleep' && (
+            <span className="lair-zz" aria-hidden="true">
+              <i>z</i>
+              <i>z</i>
+              <i>Z</i>
+            </span>
+          )}
         </div>
-        <DiceFace value={dice.value} rolling={dice.rolling} />
+        <div className="lair-embers" aria-hidden="true">
+          {Array.from({ length: EMBERS }, (_, i) => (
+            <i key={i} style={{ '--i': i } as CSSProperties} />
+          ))}
+        </div>
+        <div className="lair-plate">
+          <span className="lair-plate-name">
+            <GameIcon name="dragon" /> 드래곤
+          </span>
+          <span className="lair-scales" title={`체력 ${dragon.hp} (도전마다 회복)`}>
+            {Array.from({ length: HP_SEGMENTS }, (_, i) => (
+              <i key={i} />
+            ))}
+            <b className="num">{dragon.hp}</b>
+          </span>
+          <span className="lair-plate-stats">
+            <span className="stat-inline" title="공격력">
+              <GameIcon name="atk" />
+              <strong>{dragon.atk}</strong>
+            </span>
+            <span className="stat-inline" title="방어력">
+              <GameIcon name="def" />
+              <strong>{dragon.def}</strong>
+            </span>
+            <span className="stat-inline lair-breath" title={`${dragon.breathEvery}번째 공격마다 방어 무시 브레스`}>
+              <GameIcon name="breath" />
+              <strong>{dragon.breathEvery}</strong>
+            </span>
+          </span>
+        </div>
       </div>
-      <div className="lair-decision">
-        {decision}
-        {countdown !== null && <span className="lair-countdown"> · {countdown}초</span>}
+
+      <div className="lair-legend" role="group" aria-label="칸 범례" onPointerLeave={() => onLegend(null)}>
+        {CATEGORIES.map((c) => (
+          <button
+            key={c}
+            type="button"
+            className={`legend-chip${legend === c ? ' is-on' : ''}`}
+            onPointerEnter={() => onLegend(c)}
+            onFocus={() => onLegend(c)}
+            onBlur={() => onLegend(null)}
+          >
+            <span className={`tile-gem gem-${c}`} />
+            {CATEGORY_LABEL[c]}
+          </button>
+        ))}
       </div>
-      {children}
     </div>
   );
 }

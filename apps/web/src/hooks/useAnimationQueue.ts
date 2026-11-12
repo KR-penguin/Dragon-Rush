@@ -6,7 +6,9 @@ export function useAnimationQueue(store: GameStore): void {
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | null = null;
     let running = false;
+    let alive = true;
     const tick = () => {
+      if (!alive) return;
       const ms = store.getState().advance();
       if (ms === null) {
         running = false;
@@ -20,7 +22,7 @@ export function useAnimationQueue(store: GameStore): void {
       }, ms);
     };
     const pump = () => {
-      if (running) return;
+      if (running || !alive) return;
       const s = store.getState();
       if (s.queue.length === 0) {
         // A remount (e.g. StrictMode) cleared the timer that would have finished this event.
@@ -28,11 +30,14 @@ export function useAnimationQueue(store: GameStore): void {
         return;
       }
       running = true;
-      tick();
+      // Start outside the store's listener loop: a nested set there would hand later listeners
+      // the new `current` with the old `prev`, so they would see the first event of a batch twice.
+      queueMicrotask(tick);
     };
     const unsubscribe = store.subscribe(pump);
     pump();
     return () => {
+      alive = false;
       unsubscribe();
       if (timer) clearTimeout(timer);
     };

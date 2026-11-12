@@ -1,21 +1,25 @@
 import type { CSSProperties } from 'react';
+import type { CrestShape } from '../../types/labels';
 import { Modal } from '../common/Modal';
+import { Crest } from '../icons/Crest';
 
 interface HandoffDialogProps {
   name: string;
   color: string;
+  crest: CrestShape;
   phaseLabel: string;
   onConfirm: () => void;
 }
 
 /** Hot-seat hand-off: tells the table whose decision comes next. */
-export function HandoffDialog({ name, color, phaseLabel, onConfirm }: HandoffDialogProps) {
+export function HandoffDialog({ name, color, crest, phaseLabel, onConfirm }: HandoffDialogProps) {
   return (
     <Modal
-      className="handoff"
+      className="modal-scroll handoff"
+      kicker="자리를 넘겨 주세요"
       title={
         <span style={{ '--seat-color': color } as CSSProperties} className="handoff-name">
-          {name}님의 결정입니다
+          <Crest shape={crest} /> {name}님의 결정입니다
         </span>
       }
       footer={

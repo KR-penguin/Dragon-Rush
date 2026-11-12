@@ -1,8 +1,9 @@
 import type { CSSProperties } from 'react';
 import type { OpponentSummary } from '../../types/decisionView';
-import { jobImagePath } from '../../types/assetPaths';
-import { COIN_ICON, JOB_ICON, JOB_LABEL, seatColor } from '../../types/labels';
-import { AssetImage } from './AssetImage';
+import { seatColor, seatCrest } from '../../types/labels';
+import { JobArt } from '../icons/Art';
+import { Crest } from '../icons/Crest';
+import { GameIcon } from '../icons/GameIcon';
 import { HpBar } from './HpBar';
 
 interface SeatChipProps {
@@ -14,17 +15,32 @@ interface SeatChipProps {
 export function SeatChip({ name, summary }: SeatChipProps) {
   return (
     <div className="seat-chip" style={{ '--seat-color': seatColor(summary.seat) } as CSSProperties}>
-      <AssetImage
-        className="seat-chip-job"
-        path={jobImagePath(summary.job)}
-        fallback={JOB_ICON[summary.job]}
-        alt={JOB_LABEL[summary.job]}
-      />
+      <JobArt job={summary.job} className="seat-chip-job" />
       <div className="seat-chip-body">
-        <strong>{name}</strong>
+        <strong className="seat-chip-name">
+          <Crest shape={seatCrest(summary.seat)} />
+          {name}
+        </strong>
         <HpBar hp={summary.hp} maxHp={summary.maxHp} size="sm" />
         <span className="seat-chip-stats">
-          ⚔️ {summary.atk} · 🛡️ {summary.def} · {COIN_ICON} {summary.coins}
+          <span className="stat-inline" title="공격력">
+            <GameIcon name="atk" />
+            <strong>{summary.atk}</strong>
+          </span>
+          <span className="stat-inline" title="방어력">
+            <GameIcon name="def" />
+            <strong>{summary.def}</strong>
+          </span>
+          <span className="stat-inline" title="코인">
+            <GameIcon name="coins" />
+            <strong>{summary.coins}</strong>
+          </span>
+          {summary.shields > 0 && (
+            <span className="stat-inline" title="방어막">
+              <GameIcon name="shield" />
+              <strong>{summary.shields}</strong>
+            </span>
+          )}
         </span>
       </div>
     </div>

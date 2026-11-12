@@ -1,60 +1,102 @@
 import type { TileDef } from '@dragon-rush/engine';
-import { tileImagePath } from '../../types/assetPaths';
-import { TILE_ICON, TILE_LABEL } from '../../types/labels';
-import type { TileTone } from '../../types/tileView';
-import { AssetImage } from '../common/AssetImage';
+import type { CSSProperties } from 'react';
+import type { TileSide } from '../../types/boardGeometry';
+import { fxAnchorProps } from '../../types/fxAnchor';
+import { TILE_LABEL } from '../../types/labels';
+import {
+  CATEGORY_LABEL,
+  landmarkOf,
+  signed,
+  type EffectChip,
+  type TileCategory,
+} from '../../types/tileView';
+import { GameIcon } from '../icons/GameIcon';
+import { TileArt } from '../icons/Art';
+import { Landmark } from './Landmark';
+
+export interface TileFlags {
+  readonly target: boolean;
+  readonly preview: boolean;
+  readonly active: boolean;
+  readonly flash: boolean;
+}
 
 interface BoardTileProps {
   index: number;
   tile: TileDef;
-  tone: TileTone;
+  category: TileCategory;
+  chips: readonly EffectChip[];
+  side: TileSide;
   row: number;
   col: number;
-  highlighted: boolean;
-  active: boolean;
+  flags: TileFlags;
   onPick?: () => void;
+  onHover?: (index: number | null, el: HTMLElement | null) => void;
 }
 
-export function BoardTile({
-  index,
-  tile,
-  tone,
-  row,
-  col,
-  highlighted,
-  active,
-  onPick,
-}: BoardTileProps) {
+export function EffectChips({ chips, className = '' }: { chips: readonly EffectChip[]; className?: string }) {
+  if (chips.length === 0) return null;
+  return (
+    <span className={`effect-chips ${className}`}>
+      {chips.map((c, i) => (
+        <span key={i} className={`effect-chip chip-${c.tone}`} title={c.label}>
+          <GameIcon name={c.icon} />
+          {c.amount !== null && <b>{signed(c.amount)}</b>}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+/** Parchment plaque with a category gem and effect chips; corners carry a landmark standee. */
+export function BoardTile({ index, tile, category, chips, side, row, col, flags, onPick, onHover }: BoardTileProps) {
   const name = TILE_LABEL[tile.id];
-  const className = `tile tile-${tone}${highlighted ? ' tile-target' : ''}${active ? ' tile-active' : ''}`;
-  const style = { gridRow: row + 1, gridColumn: col + 1 };
+  const landmark = side === 'corner' ? landmarkOf(tile.id) : null;
+  const className = [
+    'tile',
+    `tile-${side}`,
+    `cat-${category}`,
+    flags.target ? 'is-target' : '',
+    flags.preview ? 'is-preview' : '',
+    flags.active ? 'is-active' : '',
+    flags.flash ? 'is-flash' : '',
+  ].join(' ');
+  const style: CSSProperties = { gridRow: row + 1, gridColumn: col + 1 };
+  const hover = {
+    onPointerEnter: (e: { currentTarget: HTMLElement }) => onHover?.(index, e.currentTarget),
+    onPointerLeave: () => onHover?.(null, null),
+    onFocus: (e: { currentTarget: HTMLElement }) => onHover?.(index, e.currentTarget),
+    onBlur: () => onHover?.(null, null),
+  };
   const body = (
     <>
-      <span className="tile-index">{index}</span>
-      <AssetImage
-        className="tile-icon"
-        path={tileImagePath(tile.id)}
-        fallback={TILE_ICON[tile.id]}
-        alt={name}
-      />
-      <span className="tile-name">{name}</span>
+      <span className="tile-face parchment">
+        <span className={`tile-gem gem-${category}`} title={CATEGORY_LABEL[category]} />
+        {!landmark && <TileArt tileId={tile.id} className="tile-icon" />}
+        <span className="tile-name">{name}</span>
+        <EffectChips chips={chips} className="tile-chips" />
+        <span className="tile-glow" />
+      </span>
+      {landmark && <Landmark kind={landmark} tileId={tile.id} />}
     </>
   );
-  if (highlighted && onPick) {
+  if (flags.target && onPick) {
     return (
       <button
         type="button"
         className={className}
         style={style}
         onClick={onPick}
-        title={`${name}(으)로 텔레포트`}
+        aria-label={`${name}(으)로 텔레포트`}
+        {...fxAnchorProps({ kind: 'tile', id: index })}
+        {...hover}
       >
         {body}
       </button>
     );
   }
   return (
-    <div className={className} style={style} title={name}>
+    <div className={className} style={style} {...fxAnchorProps({ kind: 'tile', id: index })} {...hover}>
       {body}
     </div>
   );
