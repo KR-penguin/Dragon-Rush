@@ -245,6 +245,104 @@ describe('keyboard tracking', () => {
   });
 });
 
+describe('combat pointer attack', () => {
+  it('turns a left pointer hold and a sub-tick click into attack for the local fighter', () => {
+    const tracker = new KeyTracker();
+    const source = createKeyboardSource(tracker, KEY_LAYOUTS.solo);
+    tracker.pointerDown(7);
+    expect(source.sample(STATE, 'a').attack).toBe(true);
+    expect(source.sample(STATE, 'a').attack).toBe(true);
+    tracker.pointerUp(7);
+    expect(source.sample(STATE, 'a').attack).toBe(false);
+    tracker.pointerDown(8);
+    tracker.pointerUp(8);
+    expect(source.sample(STATE, 'a').attack).toBe(true);
+    expect(source.sample(STATE, 'a').attack).toBe(false);
+    tracker.pointerDown(9);
+    tracker.pointerUp(10);
+    expect(source.sample(STATE, 'a').attack).toBe(true);
+    tracker.pointerUp(9);
+    expect(source.sample(STATE, 'a').attack).toBe(false);
+  });
+
+  it('keeps keyboard attack and P2 independent of P1 pointer attack', () => {
+    const tracker = new KeyTracker();
+    const p1 = createKeyboardSource(tracker, KEY_LAYOUTS.p1);
+    const p2 = createKeyboardSource(tracker, KEY_LAYOUTS.p2);
+    tracker.pointerDown(1);
+    expect(p1.sample(STATE, 'a').attack).toBe(true);
+    expect(p2.sample(STATE, 'b').attack).toBe(false);
+    tracker.keyDown(down('KeyF'));
+    tracker.pointerUp(1);
+    expect(p1.sample(STATE, 'a').attack).toBe(true);
+    tracker.keyUp(down('KeyF'));
+    expect(p1.sample(STATE, 'a').attack).toBe(false);
+  });
+
+  it('releases on pointer leave, cancel, blur, and detach without a delayed attack', () => {
+    const tracker = new KeyTracker();
+    const source = createKeyboardSource(tracker, KEY_LAYOUTS.solo);
+    const listeners = new Map<string, (event: Event) => void>();
+    const canvas = {
+      addEventListener: (type: string, fn: (event: Event) => void) => listeners.set(type, fn),
+      removeEventListener: (type: string) => listeners.delete(type),
+      getBoundingClientRect: () => ({ left: 0, top: 0, right: 100, bottom: 100 }),
+    };
+    const detach = tracker.attachPointer(canvas);
+    const fire = (type: string, pointerId: number, button = 0) => {
+      const preventDefault = vi.fn();
+      listeners.get(type)!({ pointerId, button, preventDefault } as unknown as Event);
+      return preventDefault;
+    };
+    expect(fire('pointerdown', 1, 2)).not.toHaveBeenCalled();
+    expect(source.sample(STATE, 'a').attack).toBe(false);
+    expect(fire('pointerdown', 1)).toHaveBeenCalled();
+    fire('pointerleave', 1);
+    expect(source.sample(STATE, 'a').attack).toBe(false);
+    fire('pointerdown', 2);
+    fire('pointercancel', 99);
+    expect(source.sample(STATE, 'a').attack).toBe(true);
+    fire('pointercancel', 2);
+    expect(source.sample(STATE, 'a').attack).toBe(false);
+    fire('pointerdown', 6);
+    listeners.get('pointermove')!({ pointerId: 6, clientX: 101, clientY: 50 } as unknown as Event);
+    expect(source.sample(STATE, 'a').attack).toBe(false);
+    fire('pointerdown', 5);
+    fire('pointerup', 5);
+    fire('pointerleave', 5);
+    expect(source.sample(STATE, 'a').attack).toBe(true);
+    expect(source.sample(STATE, 'a').attack).toBe(false);
+    fire('pointerdown', 3);
+    tracker.releaseAll();
+    expect(source.sample(STATE, 'a').attack).toBe(false);
+    fire('pointerdown', 4);
+    detach();
+    expect(source.sample(STATE, 'a').attack).toBe(false);
+    expect(listeners.size).toBe(0);
+  });
+
+  it('clears pointer attack on window blur and hidden tab', () => {
+    const tracker = new KeyTracker();
+    const source = createKeyboardSource(tracker, KEY_LAYOUTS.solo);
+    const winListeners = new Map<string, (event: Event) => void>();
+    const docListeners = new Map<string, (event: Event) => void>();
+    const target = (listeners: Map<string, (event: Event) => void>) => ({
+      addEventListener: (type: string, fn: (event: Event) => void) => listeners.set(type, fn),
+      removeEventListener: (type: string) => listeners.delete(type),
+    });
+    const doc = { ...target(docListeners), hidden: false };
+    const detach = tracker.attach(target(winListeners), doc);
+    tracker.pointerDown(1);
+    winListeners.get('blur')!({} as Event);
+    expect(source.sample(STATE, 'a').attack).toBe(false);
+    tracker.pointerDown(2);
+    doc.hidden = true;
+    docListeners.get('visibilitychange')!({} as Event);
+    expect(source.sample(STATE, 'a').attack).toBe(false);
+    detach();
+  });
+});
+
 describe('input packing and merging', () => {
   it('round-trips every input through one byte', () => {
     for (let move = 0; move <= 8; move++) {
