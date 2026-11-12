@@ -15,7 +15,7 @@ interface MoveAdjustDialogProps {
 
 const deltaLabel = (d: MoveDelta): string => (d < 0 ? '−1' : d > 0 ? '+1' : '그대로');
 
-/** Ninja's shadow step: arrow buttons docked beside the die, each naming where it lands. */
+/** Ninja's shadow step: each option names its destination. */
 export function MoveAdjustDialog({
   dice,
   options,
@@ -29,7 +29,7 @@ export function MoveAdjustDialog({
         <GameIcon name="footsteps" />
         <strong>그림자 걸음</strong>
         <span>
-          주사위 <b className="impact">{dice ?? '?'}</b> · ±1을 쓰면 쿨다운이 걸립니다
+          룰렛 <b className="impact">{dice ?? '?'}</b> · ±1을 쓰면 쿨다운이 걸립니다
         </span>
       </header>
       <div className="move-options" onPointerLeave={() => onPreview?.(null)}>

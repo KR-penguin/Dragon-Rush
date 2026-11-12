@@ -111,7 +111,7 @@ export function BoardTile({
         className={className}
         style={style}
         onClick={onPick}
-        aria-label={`${name}(으)로 텔레포트`}
+        aria-label={`${name}까지 시계 방향으로 텔레포트 이동`}
         aria-describedby={descriptionId}
         {...fxAnchorProps({ kind: 'tile', id: index })}
         {...hover}

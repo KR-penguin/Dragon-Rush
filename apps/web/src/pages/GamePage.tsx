@@ -80,13 +80,13 @@ export function GamePage({ session, onExit, onRestart }: GamePageProps) {
   const combat = useCombatView(store);
   const eliminations = useEliminations(store);
   // Effects and their sounds (hop ticks included) follow the animation queue via the FX layer.
-  const stepped = useSteppedMove(view.current, view.speed);
+  const motion = useReducedMotion();
+  const stepped = useSteppedMove(view.current, view.speed, motion.reduced);
   const fxResolver = useMemo(() => createEmberFxResolver(), []);
   const dice = useLastDice(view.current, display);
   const countdown = useCountdown(latest?.pending?.timeLeftMs ?? null, latest?.version ?? 0);
   const boardBg = useAssetUrl(BOARD_BG_PATH);
   const audio = useMuted();
-  const motion = useReducedMotion();
   const narrow = useMediaQuery(NARROW_QUERY);
   const clientMode = useStore(store, (s) => s.client?.mode ?? 'local');
   const tiltDeg = motion.reduced || narrow ? 0 : BOARD_TILT_DEG;
@@ -166,7 +166,7 @@ export function GamePage({ session, onExit, onRestart }: GamePageProps) {
   if (!latest || !display) {
     return (
       <main className="game-loading">
-        <span className="loading-die" />
+        <span className="loading-roulette" />
         게임을 불러오는 중…
       </main>
     );
@@ -341,7 +341,7 @@ export function GamePage({ session, onExit, onRestart }: GamePageProps) {
       <TileTooltip hover={hover} tiles={display.rules.board} occupants={occupants} />
       {ui.teleportPicking && (
         <TargetBanner icon="teleport" onCancel={ui.cancel}>
-          금빛 테두리가 빛나는 칸 중 이동할 곳을 고르세요
+          목적지를 고르세요 · 시계 방향으로 이동하며 출발 칸을 지나면 보너스를 받습니다
         </TargetBanner>
       )}
 

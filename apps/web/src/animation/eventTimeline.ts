@@ -2,7 +2,7 @@ import type { GameEvent, PublicGameState, SeatId, TileId } from '@dragon-rush/en
 import type { IconName } from '../types/icons';
 import { ITEM_ICON_NAME, STAT_ICON_NAME, TILE_ICON_NAME } from '../types/icons';
 import { ITEM_LABEL, JOB_LABEL, STAT_LABEL, TILE_LABEL, cardLabel } from '../types/labels';
-import { DICE_ROLL_MS, diceMoveMs } from '../types/motion';
+import { ROULETTE_ROLL_MS, diceMoveMs, teleportMoveMs } from '../types/motion';
 import { coinShortfallMessage } from '../types/eventNotices';
 
 export type NameOf = (seat: SeatId) => string;
@@ -16,7 +16,7 @@ export const EVENT_CARD_MS =
 
 /** Base durations (ms) at 1x speed; the server timer does not wait for animations. */
 const DURATION: Partial<Record<GameEvent['type'], number>> = {
-  DiceRolled: DICE_ROLL_MS,
+  DiceRolled: ROULETTE_ROLL_MS,
   Moved: 450,
   EffectApplied: 250,
   CombatStarted: 650,
@@ -32,7 +32,7 @@ const DURATION: Partial<Record<GameEvent['type'], number>> = {
 
 export function eventDuration(e: GameEvent): number {
   // 160 ms per step; the hops shorten inside it (160 ms, x0.9, min 120 ms) and leave a landing beat.
-  if (e.type === 'Moved' && e.via === 'dice') return diceMoveMs(e.steps);
+  if (e.type === 'Moved') return e.via === 'dice' ? diceMoveMs(e.steps) : teleportMoveMs(e.steps);
   if (e.type === 'StartBonus' || e.type === 'MysteryCardDrawn') return EVENT_CARD_MS;
   if (e.type === 'TileResolved') {
     if (e.tileId === 'MYSTERY') return 600;
@@ -59,14 +59,14 @@ export function describeEvent(
     case 'TurnSkipped':
       return `${name(e.seat)}의 쉬는 턴이 끝났습니다`;
     case 'DiceRolled':
-      return `${name(e.seat)} 주사위 ${e.value}`;
+      return `${name(e.seat)} 룰렛 ${e.value}칸`;
     case 'MoveAdjusted':
       return e.delta === 0
         ? null
         : `${name(e.seat)} 그림자 걸음 ${e.delta > 0 ? '+1' : '−1'} → ${e.steps}칸`;
     case 'Moved':
       return e.via === 'teleport'
-        ? `${name(e.seat)} 텔레포트 → ${TILE_LABEL[tileIdAt(e.to)]}`
+        ? `${name(e.seat)} 텔레포트로 시계 방향 ${e.steps}칸 이동 → ${TILE_LABEL[tileIdAt(e.to)]}`
         : `${name(e.seat)} ${e.steps}칸 이동`;
     case 'StartBonus':
       return `${name(e.seat)} 출발 보너스 코인 +${e.coins}, HP +${e.hp}`;
@@ -166,7 +166,7 @@ export function eventSeat(e: GameEvent): SeatId | null {
 export function eventIcon(e: GameEvent): IconName {
   switch (e.type) {
     case 'DiceRolled':
-      return 'dice';
+      return 'roulette';
     case 'MoveAdjusted':
       return 'footsteps';
     case 'Moved':

@@ -214,7 +214,7 @@ describe('pawn view model', () => {
     expect(last.find((x) => x.seat === 1)).toMatchObject({ count: 0, motion: { final: true } });
   });
 
-  it('shows the rolled value after the die lands and while a ninja adjusts', () => {
+  it('shows the roulette result after it settles and while a ninja adjusts', () => {
     const roll: GameEvent = { type: 'DiceRolled', seat: 0, value: 5 };
     const p = buildPawns(inputs({ current: roll, speed: 2 })).find((x) => x.seat === 0)!;
     expect(p.count).toBe(5);
@@ -231,10 +231,16 @@ describe('pawn view model', () => {
     expect(pawnCount(1, { display, current: null, stepped: null, pending: null })).toBeNull();
   });
 
-  it('blinks on teleport and marks the current player active', () => {
-    const tp: GameEvent = { type: 'Moved', seat: 2, from: 0, to: 9, steps: 0, via: 'teleport' };
-    const pawns = buildPawns(inputs({ current: tp }));
-    expect(pawns.find((x) => x.seat === 2)!.motion).toEqual({ kind: 'blink', ms: 300 });
+  it('hops through a teleport route and marks the current player active', () => {
+    const tp: GameEvent = { type: 'Moved', seat: 2, from: 0, to: 9, steps: 9, via: 'teleport' };
+    const pawns = buildPawns(
+      inputs({ current: tp, stepped: { seat: 2, tile: 3, hop: 3, steps: 9, ms: 69 } }),
+    );
+    expect(pawns.find((x) => x.seat === 2)).toMatchObject({
+      tile: 3,
+      motion: { kind: 'hop', ms: 69, final: false },
+      count: 6,
+    });
     expect(pawns.filter((x) => x.active).map((x) => x.seat)).toEqual([game().current]);
   });
 

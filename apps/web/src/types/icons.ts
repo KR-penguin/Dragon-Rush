@@ -76,6 +76,7 @@ export const ICON_NAMES = [
   'flag',
   // UI
   'dice',
+  'roulette',
   'endTurn',
   'chronicle',
   'exit',

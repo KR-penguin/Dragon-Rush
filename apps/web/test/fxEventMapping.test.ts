@@ -42,16 +42,16 @@ const hit = (patch: Partial<HitEvent> = {}): HitEvent => ({
 });
 
 describe('event → effect mapping', () => {
-  it('DiceRolled: rattle now; clack, dust and trauma 0.32 when the die settles', () => {
+  it('DiceRolled: sound, dust and trauma when the roulette settles', () => {
     const cues = fxForEvent({ type: 'DiceRolled', seat: 0, value: 4 }, ctx());
     expect(ofType(cues, 'sound')).toEqual([
       expect.objectContaining({ name: 'dice_roll' }),
-      expect.objectContaining({ name: 'dice_land', delayMs: 595 }),
+      expect.objectContaining({ name: 'dice_land', delayMs: 600 }),
     ]);
-    expect(ofType(cues, 'shake')).toEqual([{ type: 'shake', trauma: 0.32, delayMs: 595 }]);
+    expect(ofType(cues, 'shake')).toEqual([{ type: 'shake', trauma: 0.32, delayMs: 600 }]);
     expect(ofType(cues, 'burst')[0]).toMatchObject({ preset: 'landDust', at: { kind: 'dice' } });
     const fast = fxForEvent({ type: 'DiceRolled', seat: 0, value: 4 }, ctx({ speed: 2 }));
-    expect(ofType(fast, 'shake')[0]?.delayMs).toBe(298);
+    expect(ofType(fast, 'shake')[0]?.delayMs).toBe(300);
   });
 
   it('Moved (dice): a dust puff per hop, rising step ticks, a landing puff and tile glow', () => {
@@ -74,16 +74,19 @@ describe('event → effect mapping', () => {
     ]);
   });
 
-  it('Moved (teleport): magic at both ends and trauma 0.35', () => {
+  it('Moved (teleport): clockwise magic trail, destination impact, and no intermediate tile resolution', () => {
     const cues = fxForEvent(
-      { type: 'Moved', seat: 0, from: 3, to: 15, steps: 0, via: 'teleport' },
+      { type: 'Moved', seat: 0, from: 20, to: 7, steps: 11, via: 'teleport' },
       ctx(),
     );
     expect(ofType(cues, 'shake')[0]?.trauma).toBe(0.35);
-    expect(sounds(cues)).toEqual(['magic']);
+    expect(sounds(cues)).toEqual(['magic', 'land']);
     expect(ofType(cues, 'burst').map((c) => c.at)).toEqual([
-      { kind: 'tile', tile: 3 },
-      { kind: 'tile', tile: 15 },
+      { kind: 'tile', tile: 20 },
+      { kind: 'tile', tile: 23 },
+      { kind: 'tile', tile: 2 },
+      { kind: 'tile', tile: 5 },
+      { kind: 'tile', tile: 7 },
     ]);
   });
 

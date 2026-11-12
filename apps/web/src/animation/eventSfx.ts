@@ -73,7 +73,13 @@ export function soundCuesForEvent(e: GameEvent, ctx: SoundContext): SoundCue[] {
     case 'MoveAdjusted':
       return e.delta === 0 ? [] : [{ name: 'swing', volume: 0.5 }];
     case 'Moved': {
-      if (e.via === 'teleport') return [{ name: 'magic' }];
+      if (e.via === 'teleport') {
+        const last = hopTimings(e, speed, ctx.boardSize ?? BOARD_SIZE).at(-1);
+        return [
+          { name: 'magic' },
+          ...(last ? [{ name: 'land' as const, delayMs: last.landMs }] : []),
+        ];
+      }
       const hops = hopTimings(e, speed, ctx.boardSize ?? BOARD_SIZE);
       const cues: SoundCue[] = hops.map((h, i) => ({
         name: 'move_step',

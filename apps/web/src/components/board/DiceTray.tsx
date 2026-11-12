@@ -1,33 +1,34 @@
 import type { SeatId } from '@dragon-rush/engine';
 import { useLayoutEffect, useRef } from 'react';
-import { getFxAnchor } from '../../services/fxAnchors';
 import { fxAnchorProps } from '../../types/fxAnchor';
 import {
-  clampThrow,
-  cubeTransform,
-  DICE_ROLL_MS,
-  DIE_FACES,
-  diceSpinKeyframes,
-  diceThrowKeyframes,
-  faceTransform,
-  isDieFace,
-  LOCAL_THROW,
-  REST_ROTATION,
-  type DieFace,
+  isRouletteValue,
+  ROULETTE_LAND_MS,
+  ROULETTE_ROLL_MS,
+  ROULETTE_VALUES,
+  rouletteLabelPosition,
+  rouletteRestAngle,
+  rouletteSectorPath,
+  rouletteSpinKeyframes,
 } from '../../types/motion';
 
-const PIPS: Record<DieFace, readonly number[]> = {
-  1: [4],
-  2: [0, 8],
-  3: [0, 4, 8],
-  4: [0, 2, 6, 8],
-  5: [0, 2, 4, 6, 8],
-  6: [0, 2, 3, 5, 6, 8],
-};
+export interface DiceRoll {
+  /** The DiceRolled event is the sole source of the outcome. */
+  readonly key: object;
+  readonly value: number;
+  readonly seat: SeatId;
+  readonly local: boolean;
+}
+
+interface DiceTrayProps {
+  value: number | null;
+  roll: DiceRoll | null;
+  speed: number;
+  reduced: boolean;
+}
 
 const rollIds = new WeakMap<object, number>();
 let nextRollId = 0;
-/** Stable number per roll object, used to restart the number pop animation. */
 const rollId = (key: object): number => {
   let id = rollIds.get(key);
   if (id === undefined) {
@@ -37,107 +38,80 @@ const rollId = (key: object): number => {
   return id;
 };
 
-export interface DiceRoll {
-  /** Changes for every roll (the DiceRolled event being shown). */
-  readonly key: object;
-  readonly value: number;
-  readonly seat: SeatId;
-  /** Rolled by a player at this screen: thrown from the tray's left, else from their corner card. */
-  readonly local: boolean;
-}
-
-interface DiceTrayProps {
-  /** Face to rest on (the last roll), or null before the first roll. */
-  value: number | null;
-  roll: DiceRoll | null;
-  speed: number;
-  reduced: boolean;
-}
-
-/** CSS-3D d6 in a felt tray; it always lands on the engine's value (decision sheet §1.7). */
+/** Ten-sector wheel. The fixed pointer reads the engine's DiceRolled value. */
 export function DiceTray({ value, roll, speed, reduced }: DiceTrayProps) {
-  const trayRef = useRef<HTMLDivElement>(null);
-  const pathRef = useRef<HTMLDivElement>(null);
-  const cubeRef = useRef<HTMLDivElement>(null);
+  const wheelRef = useRef<SVGSVGElement>(null);
+  const previousAngle = useRef(0);
   const rollKey = roll?.key ?? null;
+  const shown = roll?.value ?? value;
+  const valid = isRouletteValue(shown);
+  const angle = valid ? rouletteRestAngle(shown) : 0;
 
   useLayoutEffect(() => {
-    if (!roll || !isDieFace(roll.value)) return;
-    const path = pathRef.current;
-    const cube = cubeRef.current;
-    const tray = trayRef.current;
-    if (!path || !cube || !tray || typeof cube.animate !== 'function') return;
-    const ms = DICE_ROLL_MS / speed;
-    if (reduced) {
-      path.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 150, easing: 'ease-out' });
-      return;
-    }
-    let from: { x: number; y: number } = LOCAL_THROW;
-    if (!roll.local) {
-      const card = getFxAnchor({ kind: 'seat', id: roll.seat });
-      const r = tray.getBoundingClientRect();
-      if (card)
-        from = clampThrow({
-          x: card.x - (r.left + r.width / 2),
-          y: card.y - (r.top + r.height / 2),
-        });
-    }
-    path.animate(diceThrowKeyframes(from.x, from.y), { duration: ms });
-    cube.animate(diceSpinKeyframes(roll.value), { duration: ms });
-    tray.animate(
-      [
-        { transform: 'translate(0, 0)', offset: 0 },
-        { transform: 'translate(0, 0)', offset: 0.855 },
-        { transform: 'translate(-2px, 1px)', offset: 0.89 },
-        { transform: 'translate(2px, -1px)', offset: 0.93 },
-        { transform: 'translate(0, 0)', offset: 1 },
-      ],
-      { duration: ms },
-    );
-    // rollKey identifies the roll; the other values are read once per roll.
-  }, [rollKey]);
+    if (!roll || !isRouletteValue(roll.value)) return;
+    const wheel = wheelRef.current;
+    const from = previousAngle.current;
+    previousAngle.current = rouletteRestAngle(roll.value);
+    if (reduced || !wheel || typeof wheel.animate !== 'function') return;
+    const animation = wheel.animate(rouletteSpinKeyframes(from, roll.value), {
+      duration: ROULETTE_ROLL_MS / speed,
+      fill: 'none',
+    });
+    return () => animation.cancel();
+  }, [rollKey, reduced, speed]);
 
-  const face: DieFace = isDieFace(roll?.value ?? value) ? ((roll?.value ?? value) as DieFace) : 1;
-  const shown = roll?.value ?? value;
+  if (!roll && valid) previousAngle.current = angle;
+
   return (
     <div
-      ref={trayRef}
-      className={`dice-tray${shown === null ? ' is-idle' : ''}`}
+      className={`roulette-tray${valid ? '' : ' is-idle'}`}
       {...fxAnchorProps({ kind: 'dice' })}
-      aria-label={shown === null ? '주사위' : `주사위 ${shown}`}
-      role="img"
+      role="group"
+      aria-label="이동 룰렛"
+      title={valid ? `이동 룰렛: ${shown}칸` : '이동 룰렛: 1~10칸'}
     >
-      <div className="dice-felt">
-        <div ref={pathRef} className="die-path">
-          <div className="die-shadow" />
-          <div
-            ref={cubeRef}
-            className="die-cube"
-            style={{ transform: cubeTransform(REST_ROTATION[face]) }}
-          >
-            {DIE_FACES.map((f) => (
-              <div
-                key={f}
-                className={`die-face die-face-${f}`}
-                style={{ transform: faceTransform(f, 'calc(var(--die) / 2)') }}
-              >
-                {Array.from({ length: 9 }, (_, i) => (
-                  <span key={i} className={PIPS[f].includes(i) ? 'pip' : 'pip pip-off'} />
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>
+      <div className="roulette-felt">
+        <span className="roulette-pointer" aria-hidden="true" />
+        <svg
+          ref={wheelRef}
+          className="roulette-wheel"
+          viewBox="0 0 100 100"
+          style={{ transform: `rotate(${angle}deg)` }}
+          aria-hidden="true"
+        >
+          {ROULETTE_VALUES.map((sector, index) => {
+            const pos = rouletteLabelPosition(index);
+            return (
+              <g key={sector}>
+                <path
+                  className={`roulette-sector sector-${index % 2}`}
+                  d={rouletteSectorPath(index)}
+                />
+                <text x={pos.x} y={pos.y} textAnchor="middle" dominantBaseline="central">
+                  {sector}
+                </text>
+              </g>
+            );
+          })}
+          <circle className="roulette-hub" cx="50" cy="50" r="9" />
+        </svg>
+        <span className="roulette-caption" aria-hidden="true">
+          1–10
+        </span>
       </div>
-      {shown !== null && (
+      {valid && (
         <span
-          key={rollKey ? `roll-${rollId(rollKey)}` : 'rest'}
-          className={`dice-number${roll ? ' is-new' : ''}`}
-          style={{ animationDelay: roll && !reduced ? `${600 / speed}ms` : '0ms' }}
+          key={rollKey ? rollId(rollKey) : 'rest'}
+          className={`roulette-result${roll && !reduced ? ' is-new' : ''}`}
+          style={{ animationDelay: roll && !reduced ? `${ROULETTE_LAND_MS / speed}ms` : '0ms' }}
+          aria-hidden="true"
         >
           {shown}
         </span>
       )}
+      <span className="sr-only" aria-live="polite" aria-atomic="true">
+        {valid ? `이동 룰렛 ${shown}칸` : '이동 룰렛 1부터 10까지'}
+      </span>
     </div>
   );
 }

@@ -106,17 +106,28 @@ function visualCues(e: GameEvent, ctx: FxEventContext): FxCue[] {
       ];
 
     case 'Moved': {
+      const hops = hopTimings(e, speed, ctx.boardSize);
       if (e.via === 'teleport') {
-        const arrive = scaled(150, speed);
+        const last = hops.at(-1);
+        const arrive = last?.landMs ?? 0;
         return [
           ...magicCues(tile(e.from)),
+          ...hops
+            .slice(0, -1)
+            .filter((_, i) => i % 3 === 2)
+            .map((h): FxCue => ({
+              type: 'burst',
+              preset: 'magic',
+              at: tile(h.tile),
+              amount: 0.3,
+              delayMs: h.landMs,
+            })),
           { type: 'burst', preset: 'magic', at: tile(e.to), delayMs: arrive },
           { type: 'ring', preset: 'heavy', at: tile(e.to), color: '#B38CFF', delayMs: arrive },
           { type: 'punch', at: tile(e.to), kind: 'glow', delayMs: arrive },
           { type: 'shake', trauma: TRAUMA.thiefOrTeleport, delayMs: arrive },
         ];
       }
-      const hops = hopTimings(e, speed, ctx.boardSize);
       const cues: FxCue[] = hops.map((h) => ({
         type: 'burst',
         preset: 'dust',
