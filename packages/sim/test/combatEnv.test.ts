@@ -4,6 +4,16 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
+import {
+  createCombat,
+  NO_INPUT,
+  stepCombat,
+  type CombatState,
+  type FighterInput,
+  type FighterSetup,
+  type Side,
+} from '@dragon-rush/combat';
+import { encodeCombatObservation, isActionable, toFighterInput } from '@dragon-rush/combat-ai';
 import { describe, expect, it } from 'vitest';
 import { CombatEnvServer, runBatch, statDistFromRecords } from '../src/index';
 
@@ -17,7 +27,9 @@ interface Outcome {
 interface EpisodeStart {
   episode: number;
   jobs: [string, string | null];
-  stats: { hp: number }[];
+  seed: number;
+  // [a, b] in a duel, [a, dragon setup] in a dragon fight
+  stats: FighterSetup[];
   mirror: { x: boolean; y: boolean };
   opponent: string | null;
   dragon_hp_scale?: number;
@@ -349,6 +361,58 @@ describe('combat env server (in-process)', () => {
       });
     }
     expect(blocked).toBeGreaterThan(0);
+  });
+
+  it('observes exactly the state `delay` ticks back, with the window and no-input rules', () => {
+    const DELAY = 7;
+    const s = new CombatEnvServer();
+    const config = { obs_delay: DELAY, mirror: false, mode_mix: { pvp: 1, dragon: 0 } };
+    let e: EnvOut = call(s, 1, 'reset', { num_envs: 1, seed: 8, encoding: 'json', config }).result
+      .envs[0]!;
+    const { stats, seed } = e.episode_start!;
+    // independent replay of the env loop on the public sim API
+    let sim: CombatState = createCombat({ kind: 'duel', a: stats[0]!, b: stats[1]! }, seed);
+    const history: CombatState[] = [sim];
+    const held: FighterInput[] = [NO_INPUT, NO_INPUT];
+    const prev = [
+      [0, 0],
+      [0, 0],
+    ];
+    const sides: Side[] = ['a', 'b'];
+    const expectObs = () =>
+      sides.map((side, k) =>
+        Array.from(
+          encodeCombatObservation(history[Math.max(0, history.length - 1 - DELAY)]!, side, {
+            delay: DELAY,
+            prevMove: prev[k]![0]!,
+            prevButton: prev[k]![1]!,
+          }),
+        ),
+      );
+    expect(e.obs).toEqual(expectObs());
+    const rand = lcg(9);
+    for (let i = 0; i < 300 && !e.terminated; i++) {
+      const actions = randomActions([e], rand, false)[0] as [number, number][];
+      sides.forEach((side, k) => {
+        if (!isActionable(sim, side, 4)) {
+          held[k] = NO_INPUT;
+          prev[k] = [0, 0];
+        } else {
+          held[k] = toFighterInput({ move: actions[k]![0], button: actions[k]![1] }, held[k]).input;
+          prev[k] = actions[k]!;
+        }
+      });
+      let live = 0;
+      while (!sim.outcome && !(live >= 4 && sim.hitstop === 0)) {
+        const isLive = sim.hitstop === 0;
+        sim = stepCombat(sim, [held[0]!, held[1]!]).state;
+        history.push(sim);
+        if (isLive) live++;
+      }
+      e = call(s, i + 2, 'step', { actions: [actions] }).result.envs[0]!;
+      expect(e.tick).toBe(sim.tick);
+      expect(e.obs).toEqual(expectObs());
+    }
   });
 
   it('samples stats from a stat_dist_v1 file and dragon curriculum scales', () => {
