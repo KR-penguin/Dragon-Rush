@@ -89,7 +89,7 @@
 | 프로토콜 (`protocol`) | 클라이언트↔서버 메시지 타입 + zod 스키마 |
 | AI (`ai`) | 관측 인코더, 행동 코덱·마스크, `Policy`(Strategy 패턴), 내장 봇, 가중치 JSON 어댑터(Adapter 패턴) |
 | 시뮬·env (`sim`) | 헤드리스 시뮬레이터, 밸런스 CLI, env 서버(stdio JSON Lines) |
-| 웹 (`web`) | React + Vite + Zustand + Socket.IO client. 보드는 DOM/SVG + CSS 애니메이션 |
+| 웹 (`web`) | React + Vite + Zustand + Socket.IO client. "Ember Table" 보드(DOM + CSS 3D), 게임 필 FX 레이어, Web Audio. 아이콘은 react-icons/gi(game-icons.net, CC BY 3.0), 글꼴은 Fontsource(Hahmlet·Black Han Sans·Noto Sans KR·Gowun Batang) |
 | 서버 (`server`) | Node 22 + Fastify(HTTP·정적 파일) + Socket.IO(방·실시간). 서버 권위, 인메모리 방 |
 | Python | Python 3.13 + numpy만 사용(gymnasium 의존성 없음). 테스트는 pytest |
 | 테스트·품질 | Vitest + fast-check(속성 테스트), Playwright E2E(선택), ESLint(flat config) + Prettier |

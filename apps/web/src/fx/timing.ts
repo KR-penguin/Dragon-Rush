@@ -1,5 +1,6 @@
 import type { GameEvent } from '@dragon-rush/engine';
 import { eventDuration } from '../animation/eventTimeline';
+import { hopSchedule } from '../types/motion';
 
 /**
  * Board effect timings derived from the animation timeline, so sounds and particles land on the
@@ -8,6 +9,8 @@ import { eventDuration } from '../animation/eventTimeline';
 const DICE_SETTLE_FRACTION = 0.85;
 /** The token's CSS move transition; dust waits for the pawn to arrive. */
 const TOKEN_SETTLE_MS = 120;
+/** The pawn is back on the plane at ~85% of each hop (art-direction hop curve). */
+const HOP_LAND_FRACTION = 0.85;
 
 export const scaled = (ms: number, speed: number): number => Math.round(ms / Math.max(1, speed));
 
@@ -31,11 +34,17 @@ export function hopTimings(
   boardSize: number,
 ): HopTiming[] {
   if (e.via !== 'dice' || e.steps < 1) return [];
-  const stepMs = eventDuration(e) / e.steps / Math.max(1, speed);
-  const settle = Math.min(TOKEN_SETTLE_MS, stepMs * 0.75);
-  return Array.from({ length: e.steps }, (_, i) => ({
-    tile: (e.from + i + 1) % boardSize,
-    startMs: Math.round(i * stepMs),
-    landMs: Math.round(i * stepMs + settle),
-  }));
+  // Follow the pawn's shortening hop schedule so ticks and dust land with the visible hop.
+  const k = 1 / Math.max(1, speed);
+  let start = 0;
+  return hopSchedule(e.steps).map((ms, i) => {
+    const dur = ms * k;
+    const hop = {
+      tile: (e.from + i + 1) % boardSize,
+      startMs: Math.round(start),
+      landMs: Math.round(start + Math.min(TOKEN_SETTLE_MS * k, dur * HOP_LAND_FRACTION)),
+    };
+    start += dur;
+    return hop;
+  });
 }
