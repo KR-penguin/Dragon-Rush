@@ -55,6 +55,9 @@ export const OutcomeModelSchema = z
         seed: z.number().int().nonnegative(),
         samples: z.number().int().nonnegative(),
         calibration_samples: z.number().int().nonnegative().optional(),
+        holdout_samples: z.number().int().nonnegative().optional(),
+        stat_dist_games: z.number().int().nonnegative().optional(),
+        bot: z.string().min(1).optional(),
       })
       .strict(),
     calibration: CalibrationSchema.optional(),

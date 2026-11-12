@@ -174,6 +174,8 @@ export interface FitOutcomeOptions {
   readonly rulesVersion: string;
   readonly combatRulesVersion: string;
   readonly learningRate?: number;
+  readonly statDistGames?: number;
+  readonly bot?: string;
 }
 
 /** Reproducible multihead fit with separate training, calibration, and untouched holdout rows. */
@@ -290,6 +292,9 @@ export function fitOutcomeModel(
     seed: opts.seed,
     samples: train.length,
     calibration_samples: calibrationRows.length,
+    holdout_samples: holdout.length,
+    ...(opts.statDistGames !== undefined ? { stat_dist_games: opts.statDistGames } : {}),
+    ...(opts.bot ? { bot: opts.bot } : {}),
   };
   return { model, holdout };
 }

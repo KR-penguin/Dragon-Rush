@@ -106,6 +106,8 @@ async function main(): Promise<void> {
     id: args.id,
     rulesVersion: dist.rules_version,
     combatRulesVersion: DEFAULT_COMBAT_RULES.version,
+    statDistGames: dist.games,
+    bot: args.bot,
   });
   const report = outcomeCalibration(fit.model, fit.holdout);
   writeFileSync(args.model, JSON.stringify(fit.model) + '\n');
