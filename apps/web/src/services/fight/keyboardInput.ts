@@ -1,6 +1,7 @@
 import type { FighterInput } from '@dragon-rush/combat';
 import { inputFromKeys, layoutCodes, type KeyLayout } from '../../types/combatControls';
 import type { FightInputSource } from './types';
+import { TouchTracker } from './touchInput';
 
 /** The parts of a KeyboardEvent the tracker reads (easy to fake in tests). */
 export interface KeyLike {
@@ -34,6 +35,7 @@ interface PointerTarget extends Listenable {
  * Each keydown bumps a press counter so a tap shorter than one sim tick still registers.
  */
 export class KeyTracker {
+  readonly touch = new TouchTracker();
   private readonly down = new Set<string>();
   private readonly presses = new Map<string, number>();
   private readonly listeners = new Set<() => void>();
@@ -59,6 +61,7 @@ export class KeyTracker {
   /** Window blur / tab hidden: the matching keyups may never arrive. */
   releaseAll(): void {
     this.cancelPointer();
+    this.touch.releaseAll();
     if (this.down.size === 0) return;
     this.down.clear();
     this.notify();
@@ -210,7 +213,14 @@ export function createKeyboardSource(
       for (const code of codes) seen.set(code, tracker.pressCount(code));
       const pointerAttack = usePointer && tracker.pointerActiveSince(seenPointer);
       seenPointer = tracker.pointerPressCount();
-      return pointerAttack ? { ...input, attack: true } : input;
+      if (!usePointer) return input;
+      const touch = tracker.touch.sample();
+      return {
+        move: input.move || touch.move,
+        attack: input.attack || pointerAttack || touch.attack,
+        skill: input.skill || touch.skill,
+        dash: input.dash || touch.dash,
+      };
     },
     peek() {
       const input = inputFromKeys(layout, (code) => tracker.isDown(code));

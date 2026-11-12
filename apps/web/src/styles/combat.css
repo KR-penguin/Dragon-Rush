@@ -44,6 +44,137 @@
   font-size: 13px;
 }
 
+.combat-touch-controls {
+  display: none;
+}
+
+@media (any-pointer: coarse), (max-width: 820px) {
+  .combat-screen {
+    overscroll-behavior: contain;
+  }
+
+  .combat-stage {
+    touch-action: none;
+  }
+
+  .combat-touch-controls {
+    position: absolute;
+    z-index: 4;
+    inset-inline: 0;
+    bottom: 4px;
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 8px;
+    padding-inline: max(10px, env(safe-area-inset-left)) max(10px, env(safe-area-inset-right));
+    pointer-events: none;
+  }
+
+  .combat-touch-pad {
+    display: grid;
+    grid-template-columns: repeat(3, 54px);
+    grid-template-rows: repeat(3, 54px);
+    gap: 1px;
+  }
+
+  .combat-touch-actions {
+    display: grid;
+    grid-template-columns: repeat(2, 62px);
+    grid-template-rows: repeat(2, 62px);
+    gap: 4px;
+    align-self: end;
+  }
+
+  .combat-touch-button,
+  .combat-touch-pause {
+    display: grid;
+    place-items: center;
+    min-width: 48px;
+    min-height: 48px;
+    padding: 0 3px;
+    border: 2px solid rgba(255, 212, 143, 0.72);
+    border-radius: 14px;
+    background: rgba(31, 19, 15, 0.78);
+    color: #fff3dc;
+    font: 700 15px/1 var(--font-body);
+    text-shadow: 0 1px 2px #000;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    pointer-events: auto;
+  }
+
+  .combat-touch-button:active,
+  .combat-touch-button:focus-visible,
+  .combat-touch-pause:active,
+  .combat-touch-pause:focus-visible {
+    background: rgba(193, 79, 41, 0.96);
+    outline: 2px solid #ffe4a3;
+    outline-offset: 1px;
+  }
+
+  .combat-touch-button.is-up {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .combat-touch-button.is-left {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .combat-touch-button.is-right {
+    grid-column: 3;
+    grid-row: 2;
+  }
+  .combat-touch-button.is-down {
+    grid-column: 2;
+    grid-row: 3;
+  }
+  .combat-touch-button.is-attack {
+    grid-column: 2;
+    grid-row: 1;
+    border-radius: 50%;
+    background: rgba(167, 48, 27, 0.87);
+  }
+  .combat-touch-button.is-skill {
+    grid-column: 1;
+    grid-row: 2;
+    border-radius: 50%;
+  }
+  .combat-touch-button.is-dash {
+    grid-column: 2;
+    grid-row: 2;
+    border-radius: 50%;
+  }
+
+  .combat-touch-pause {
+    position: absolute;
+    top: -52px;
+    right: max(10px, env(safe-area-inset-right));
+    min-width: 48px;
+    min-height: 44px;
+  }
+
+  .combat-bar {
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+  }
+
+  .fight-paused .btn {
+    min-height: 48px;
+  }
+
+  .combat-hint {
+    display: none;
+  }
+}
+
+@media (max-height: 500px) and (any-pointer: coarse) {
+  .combat-touch-pad {
+    grid-template-columns: repeat(3, 46px);
+    grid-template-rows: repeat(3, 46px);
+  }
+}
+
 .combat-badge {
   position: absolute;
   top: 12%;
@@ -282,6 +413,10 @@
   background: rgba(15, 11, 10, 0.7);
   font-family: var(--impact);
   font-size: 40px;
+}
+
+.fight-paused small {
+  font: 500 14px/1.4 var(--font-body);
 }
 
 /* --- keycaps & controls help ------------------------------------------------------------- */

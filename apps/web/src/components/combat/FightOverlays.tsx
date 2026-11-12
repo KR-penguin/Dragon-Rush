@@ -68,10 +68,11 @@ export function FightResultCard({ cards, result }: { cards: Cards; result: Comba
   );
 }
 
-export function FightPaused({ onResume }: { onResume: () => void }) {
+export function FightPaused({ onResume, online }: { onResume: () => void; online: boolean }) {
   return (
     <div className="fight-paused">
       <strong>일시 정지</strong>
+      {online && <small>온라인 전투는 계속 진행됩니다</small>}
       <button type="button" className="btn btn-primary" onClick={onResume}>
         계속 (Esc)
       </button>

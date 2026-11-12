@@ -1,5 +1,5 @@
 import type { CombatResult } from '@dragon-rush/combat';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from 'zustand';
 import { CombatScreen } from '../../components/combat/CombatScreen';
 import { ControlsPanel } from '../../components/combat/ControlsPanel';
@@ -76,6 +76,9 @@ function FightContainer({ fight, seats, client, onDone }: FightContainerProps) {
   const pointerCapable = fight.sides.some(
     (side) => side.control === 'keyboard-p1' || side.control === 'keyboard-solo',
   );
+  useLayoutEffect(() => {
+    if (!live || pause.paused || helpOpen) bundle?.tracker.touch.releaseAll();
+  }, [bundle, live, pause.paused, helpOpen]);
   useCombatPointerAttack(
     canvasRef,
     bundle?.tracker ?? null,
@@ -92,10 +95,17 @@ function FightContainer({ fight, seats, client, onDone }: FightContainerProps) {
       replaySpeed={fight.replay !== null ? BOT_REPLAY_SPEED : null}
       paused={pause.paused}
       pointerCapable={pointerCapable && fight.replay === null}
+      online={fight.online !== undefined}
+      touchTracker={
+        live && pointerCapable && !pause.paused && !helpOpen
+          ? (bundle?.tracker.touch ?? null)
+          : null
+      }
       canvasRef={canvasRef}
       stageRef={stageRef}
       onSkip={flow.skip}
       onResume={pause.resume}
+      onPause={pause.pause}
       onOpenControls={() => setHelpOpen(true)}
     >
       {fight.online && <NetStatus session={session} fight={fight} />}

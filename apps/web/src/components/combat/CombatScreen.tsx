@@ -3,6 +3,8 @@ import type { ReactNode, RefObject } from 'react';
 import type { FightPhase } from '../../combat/fightFlow';
 import type { FighterCard } from '../../types/fightView';
 import { FightGo, FightIntro, FightPaused, FightReady, FightResultCard } from './FightOverlays';
+import type { TouchTracker } from '../../services/fight/touchInput';
+import { TouchControls } from './TouchControls';
 
 interface CombatScreenProps {
   cards: readonly [FighterCard, FighterCard];
@@ -13,10 +15,13 @@ interface CombatScreenProps {
   replaySpeed: number | null;
   paused: boolean;
   pointerCapable: boolean;
+  online: boolean;
+  touchTracker: TouchTracker | null;
   canvasRef: RefObject<HTMLCanvasElement | null>;
   stageRef: RefObject<HTMLDivElement | null>;
   onSkip: (() => void) | null;
   onResume: () => void;
+  onPause: () => void;
   onOpenControls: () => void;
   /** The controls help, rendered inside the screen so it stacks above the arena. */
   children?: ReactNode;
@@ -38,7 +43,8 @@ export function CombatScreen(p: CombatScreenProps) {
         {p.phase === 'ready' && <FightReady cards={p.cards} />}
         {p.go && <FightGo />}
         {p.phase === 'result' && p.result && <FightResultCard cards={p.cards} result={p.result} />}
-        {p.paused && <FightPaused onResume={p.onResume} />}
+        {p.paused && <FightPaused onResume={p.onResume} online={p.online} />}
+        {p.touchTracker && <TouchControls tracker={p.touchTracker} onPause={p.onPause} />}
         {p.replaySpeed !== null && p.phase === 'fight' && (
           <div className="combat-badge">봇 전투 ×{p.replaySpeed}</div>
         )}

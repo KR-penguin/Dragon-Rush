@@ -1,4 +1,9 @@
-import type { CombatEvent, CombatResult, CombatState } from '@dragon-rush/combat';
+import {
+  NO_INPUT,
+  type CombatEvent,
+  type CombatResult,
+  type CombatState,
+} from '@dragon-rush/combat';
 import {
   FIGHT_C2S,
   FIGHT_S2C,
@@ -208,9 +213,10 @@ export class OnlineFightSession implements FightSession {
     let events: readonly CombatEvent[] = [];
     if (this.started && !document.hidden) {
       if (this.fighter) {
-        this.alpha = this.fighter.frame(now, (state: CombatState) =>
-          inputToMask(this.source!.sample(state, this.fighter!.seat === 0 ? 'a' : 'b')),
-        );
+        this.alpha = this.fighter.frame(now, (state: CombatState) => {
+          const sampled = this.source!.sample(state, this.fighter!.seat === 0 ? 'a' : 'b');
+          return inputToMask(this.paused ? NO_INPUT : sampled);
+        });
         events = this.fighter.session.reconciler
           .drain()
           .filter(
