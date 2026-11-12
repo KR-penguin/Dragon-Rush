@@ -16,7 +16,13 @@ function firstLegal(envs: { legal: number[] }[]): number[] {
 describe('env server (in-process)', () => {
   it('reports versions and dims', () => {
     const r = call(new EnvServer(), 1, 'info');
-    expect(r.result).toMatchObject({ protocol: 'rpgboard-env/1', obs_dim: 253, action_dim: 47, obs_version: 'obs_v1', act_version: 'act_v1' });
+    expect(r.result).toMatchObject({
+      protocol: 'rpgboard-env/1',
+      obs_dim: 253,
+      action_dim: 47,
+      obs_version: 'obs_v1',
+      act_version: 'act_v1',
+    });
     expect(r.result.action_names).toHaveLength(47);
   });
 
@@ -29,7 +35,12 @@ describe('env server (in-process)', () => {
 
   it('runs single-agent episodes with auto reset and sparse rewards', () => {
     const s = new EnvServer();
-    let r = call(s, 1, 'reset', { num_envs: 3, seed: 42, encoding: 'json', config: { mode: 'single', num_players: 4 } });
+    let r = call(s, 1, 'reset', {
+      num_envs: 3,
+      seed: 42,
+      encoding: 'json',
+      config: { mode: 'single', num_players: 4 },
+    });
     expect(r.ok).toBe(true);
     let envs = r.result.envs;
     expect(envs[0].obs).toHaveLength(253);
@@ -66,7 +77,11 @@ describe('env server (in-process)', () => {
     const run = () => {
       const s = new EnvServer();
       const out: string[] = [];
-      let envs = call(s, 1, 'reset', { num_envs: 2, seed: 7, config: { mode: 'selfplay', num_players: [2, 3, 4] } }).result.envs;
+      let envs = call(s, 1, 'reset', {
+        num_envs: 2,
+        seed: 7,
+        config: { mode: 'selfplay', num_players: [2, 3, 4] },
+      }).result.envs;
       for (let i = 0; i < 200; i++) {
         const r = call(s, i + 2, 'step', { actions: firstLegal(envs) });
         out.push(JSON.stringify(r));
@@ -79,11 +94,19 @@ describe('env server (in-process)', () => {
 
   it('returns terminal observation without auto reset and then refuses to step', () => {
     const s = new EnvServer();
-    let r = call(s, 1, 'reset', { num_envs: 1, seed: 3, auto_reset: false, encoding: 'json', config: { mode: 'single', num_players: 2 } });
+    let r = call(s, 1, 'reset', {
+      num_envs: 1,
+      seed: 3,
+      auto_reset: false,
+      encoding: 'json',
+      config: { mode: 'single', num_players: 2 },
+    });
     for (let i = 0; i < 5000; i++) {
       const env = r.result.envs[0];
       if (env.terminated || env.truncated) break;
-      r = call(s, i + 2, 'step', { actions: [env.legal.includes(2) && i > 200 ? 2 : env.legal[0]] });
+      r = call(s, i + 2, 'step', {
+        actions: [env.legal.includes(2) && i > 200 ? 2 : env.legal[0]],
+      });
     }
     const env = r.result.envs[0];
     expect(env.terminated || env.truncated).toBe(true);
@@ -94,7 +117,11 @@ describe('env server (in-process)', () => {
   it('resolves fights with the real-time sim when combat_resolver is sim', () => {
     const run = () => {
       const s = new EnvServer();
-      const r = call(s, 1, 'reset', { num_envs: 2, seed: 31, config: { mode: 'selfplay', num_players: 4, combat_resolver: 'sim', return_events: true } });
+      const r = call(s, 1, 'reset', {
+        num_envs: 2,
+        seed: 31,
+        config: { mode: 'selfplay', num_players: 4, combat_resolver: 'sim', return_events: true },
+      });
       expect(r.result.combat_resolver).toBe('sim');
       let envs = r.result.envs;
       const out: string[] = [];
@@ -116,24 +143,34 @@ describe('env server (in-process)', () => {
       return out;
     };
     expect(run()).toEqual(run());
-    expect(call(new EnvServer(), 1, 'reset', { expect: { combat_resolver: 'sim' } }).error?.code).toBe('VERSION_MISMATCH');
-    expect(call(new EnvServer(), 1, 'reset', { config: { combat_resolver: 'outcome' } }).error?.code).toBe('BAD_CONFIG');
+    expect(
+      call(new EnvServer(), 1, 'reset', { expect: { combat_resolver: 'sim' } }).error?.code,
+    ).toBe('VERSION_MISMATCH');
+    expect(
+      call(new EnvServer(), 1, 'reset', { config: { combat_resolver: 'outcome' } }).result
+        ?.outcome_model_id,
+    ).toBe('outcome-v1-rush2');
   });
 
   it('rejects bad configs', () => {
     const s = new EnvServer();
     expect(call(s, 1, 'reset', { config: { mode: 'weird' } }).error?.code).toBe('BAD_CONFIG');
-    expect(call(s, 2, 'reset', { expect: { obs_version: 'obs_v9' } }).error?.code).toBe('VERSION_MISMATCH');
+    expect(call(s, 2, 'reset', { expect: { obs_version: 'obs_v9' } }).error?.code).toBe(
+      'VERSION_MISMATCH',
+    );
   });
 });
 
 describe('env server (stdio)', () => {
   it('speaks JSON lines over stdin/stdout', async () => {
     const entry = fileURLToPath(new URL('../src/env-server.ts', import.meta.url));
-    const child = spawn(process.execPath, ['--import', 'tsx', entry], { stdio: ['pipe', 'pipe', 'pipe'] });
+    const child = spawn(process.execPath, ['--import', 'tsx', entry], {
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
     const lines = createInterface({ input: child.stdout });
     const responses: Res[] = [];
-    const next = () => new Promise<Res>((resolve) => lines.once('line', (l) => resolve(JSON.parse(l))));
+    const next = () =>
+      new Promise<Res>((resolve) => lines.once('line', (l) => resolve(JSON.parse(l))));
     child.stdin.write(JSON.stringify({ id: 1, cmd: 'info' }) + '\n');
     responses.push(await next());
     child.stdin.write(JSON.stringify({ id: 2, cmd: 'reset', params: { seed: 5 } }) + '\n');

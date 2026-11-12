@@ -8,8 +8,6 @@ import {
   stepCombat,
   type CombatEvent,
   type CombatState,
-  type DragonState,
-  type ManeuverId,
 } from '../src/index';
 import { statFighter } from './calibration';
 import { dragonFight, eventsOf, play, randomInputs } from './helpers';
@@ -33,27 +31,6 @@ function botFight(
     events.push(...out.events);
   }
   return { states, events };
-}
-
-/** Maneuvers in the order they started, read from the state stream. */
-function maneuverStarts(states: readonly CombatState[]): ManeuverId[] {
-  const out: ManeuverId[] = [];
-  let prev: DragonState | null = null;
-  for (const s of states) {
-    const d = s.dragon!;
-    const starting =
-      d.maneuver !== null &&
-      d.stageTick === 0 &&
-      (d.stage === 'telegraph' || (d.stage === 'active' && d.maneuver === 'volley'));
-    const same =
-      prev !== null &&
-      prev.maneuver === d.maneuver &&
-      prev.stage === d.stage &&
-      prev.stageTick === 0;
-    if (starting && !same && d.maneuver) out.push(d.maneuver);
-    prev = d;
-  }
-  return out;
 }
 
 describe('dragon script', () => {
@@ -81,10 +58,25 @@ describe('dragon script', () => {
 
   it('every 3rd damaging maneuver is Breath (gust does not count)', () => {
     for (const seed of [5, 6, 7]) {
-      const seq = maneuverStarts(botFight(seed).states).filter((m) => m !== 'gust');
-      expect(seq.length).toBeGreaterThanOrEqual(6);
-      seq.forEach((m, i) =>
-        expect(m === 'breath').toBe(i % R.dragon.breathEvery === R.dragon.breathEvery - 1),
+      const { states, events } = botFight(seed);
+      let breaths = 0;
+      for (let i = 1; i < states.length; i++) {
+        const before = states[i - 1]!.dragon!.sinceBreath;
+        const after = states[i]!.dragon!.sinceBreath;
+        if (after === before) continue;
+        if (after === 0) {
+          expect(before).toBe(R.dragon.breathEvery - 1);
+          if (states[i]!.dragon!.maneuver !== null)
+            expect(states[i]!.dragon!.maneuver).toBe('breath');
+          breaths++;
+        } else {
+          expect(after).toBe(before + 1);
+          expect(after).toBeLessThan(R.dragon.breathEvery);
+        }
+      }
+      expect(breaths).toBeGreaterThanOrEqual(2);
+      expect(eventsOf(events, 'TelegraphStart').filter((e) => e.kind === 'breath')).toHaveLength(
+        breaths,
       );
     }
   });

@@ -55,7 +55,9 @@ export function generateOutcomeRows(dist: StatDist, opts: GenerateOutcomeOptions
   const pool = (kind: CombatSetup['kind']) => dist.fighters.filter((f) => f.kind === kind);
   const duel = pool('duel');
   const dragon = pool('dragonFight');
+  const paired = dist.setups;
   if (!duel.length && !dragon.length) throw new RangeError('stat distribution has no fighters');
+  const duelShare = duel.length / 2 / (duel.length / 2 + dragon.length);
   let rng = createRng(opts.seed);
   const random = () => {
     const [n, next] = nextFloat(rng);
@@ -73,19 +75,22 @@ export function generateOutcomeRows(dist: StatDist, opts: GenerateOutcomeOptions
   });
   const out: OutcomeRow[] = [];
   for (let i = 0; i < opts.count; i++) {
-    const kind =
-      duel.length && dragon.length
-        ? random() < 0.75
-          ? 'duel'
-          : 'dragonFight'
-        : duel.length
-          ? 'duel'
-          : 'dragonFight';
-    const a = fighter(pick(kind === 'duel' ? duel : dragon));
-    const setup: CombatSetup =
-      kind === 'duel'
-        ? { kind, a, b: fighter(pick(duel)) }
-        : { kind, a, b: null, dragon: { ...boardRules.dragon } };
+    const setup: CombatSetup = paired?.length
+      ? paired[Math.floor(random() * paired.length)]!
+      : (() => {
+          const kind =
+            duel.length && dragon.length
+              ? random() < duelShare
+                ? 'duel'
+                : 'dragonFight'
+              : duel.length
+                ? 'duel'
+                : 'dragonFight';
+          const a = fighter(pick(kind === 'duel' ? duel : dragon));
+          return kind === 'duel'
+            ? { kind, a, b: fighter(pick(duel)) }
+            : { kind, a, b: null, dragon: { ...boardRules.dragon } };
+        })();
     const seed = Math.floor(random() * 0x1_0000_0000);
     const bot = opts.bot ?? 'scripted:balanced';
     const r = runCombat(
@@ -96,7 +101,7 @@ export function generateOutcomeRows(dist: StatDist, opts: GenerateOutcomeOptions
       ],
       seed,
       DEFAULT_COMBAT_RULES,
-      { decisionInterval: 4 },
+      { decisionInterval: 1 },
     );
     out.push({ setup, result: r.result, ticks: r.ticks });
   }
@@ -173,9 +178,11 @@ export interface FitOutcomeOptions {
   readonly rulesVersion: string;
   readonly combatRulesVersion: string;
   readonly learningRate?: number;
+  readonly statDistGames?: number;
+  readonly bot?: string;
 }
 
-/** Reproducible, small multihead logistic/softmax fit with a seeded 80/20 holdout. */
+/** Reproducible multihead fit with separate training, calibration, and untouched holdout rows. */
 export function fitOutcomeModel(
   rows: readonly OutcomeRow[],
   opts: FitOutcomeOptions,
@@ -200,8 +207,10 @@ export function fitOutcomeModel(
     [order[i], order[j]] = [order[j]!, order[i]!];
   }
   const held = Math.max(1, Math.floor(rows.length * 0.2));
+  const calibrated = Math.max(1, Math.floor(rows.length * 0.2));
   const holdout = order.slice(0, held).map((i) => rows[i]!);
-  const train = order.slice(held).map((i) => rows[i]!);
+  const calibrationRows = order.slice(held, held + calibrated).map((i) => rows[i]!);
+  const train = order.slice(held + calibrated).map((i) => rows[i]!);
   const lr = opts.learningRate ?? 0.02;
   for (let epoch = 0; epoch < opts.epochs; epoch++) {
     for (const row of train) {
@@ -240,7 +249,57 @@ export function fitOutcomeModel(
       );
     }
   }
-  model.training = { seed: opts.seed, samples: train.length };
+  const scored = calibrationRows
+    .map((row) => ({
+      raw: sigmoid(dot(model.win, outcomeFeatures(row.setup, model.damage))),
+      won: Number(row.result.winner === 'a'),
+    }))
+    .sort((a, b) => a.raw - b.raw);
+  const bins = Math.min(20, Math.max(2, Math.floor(scored.length / 100)));
+  const blocks: { raw: number; observed: number; count: number }[] = [];
+  for (let bin = 0; bin < bins; bin++) {
+    const slice = scored.slice(
+      Math.floor((bin * scored.length) / bins),
+      Math.floor(((bin + 1) * scored.length) / bins),
+    );
+    if (!slice.length) continue;
+    blocks.push({
+      raw: slice.reduce((a, b) => a + b.raw, 0) / slice.length,
+      observed: slice.reduce((a, b) => a + b.won, 0) / slice.length,
+      count: slice.length,
+    });
+    while (
+      blocks.length > 1 &&
+      blocks[blocks.length - 2]!.observed > blocks[blocks.length - 1]!.observed
+    ) {
+      const right = blocks.pop()!;
+      const left = blocks.pop()!;
+      const count = left.count + right.count;
+      blocks.push({
+        raw: (left.raw * left.count + right.raw * right.count) / count,
+        observed: (left.observed * left.count + right.observed * right.count) / count,
+        count,
+      });
+    }
+  }
+  const points = blocks
+    .filter((p, i) => i === 0 || p.raw > blocks[i - 1]!.raw)
+    .map(({ raw, observed }) => ({ raw, observed }));
+  model.calibration =
+    points.length >= 2
+      ? points
+      : [
+          { raw: 0, observed: points[0]?.observed ?? 0.5 },
+          { raw: 1, observed: points[0]?.observed ?? 0.5 },
+        ];
+  model.training = {
+    seed: opts.seed,
+    samples: train.length,
+    calibration_samples: calibrationRows.length,
+    holdout_samples: holdout.length,
+    ...(opts.statDistGames !== undefined ? { stat_dist_games: opts.statDistGames } : {}),
+    ...(opts.bot ? { bot: opts.bot } : {}),
+  };
   return { model, holdout };
 }
 

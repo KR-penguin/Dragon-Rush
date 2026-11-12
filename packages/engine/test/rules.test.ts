@@ -15,7 +15,7 @@ describe('DEFAULT_RULES matches docs/game-design.md', () => {
   it('start, economy, items (§3, §7, §8)', () => {
     expect(DEFAULT_RULES.startingCoins).toBe(10);
     expect(DEFAULT_RULES.startingItems).toEqual({ shield: 1 });
-    expect(DEFAULT_RULES.startBonus).toEqual({ coins: 20, hp: 6 });
+    expect(DEFAULT_RULES.startBonus).toEqual({ coins: 35, hp: 6 });
     expect(DEFAULT_RULES.pvpGraceRounds).toBe(2);
     expect(DEFAULT_RULES.upgrades).toEqual({
       atk: { baseCost: 3, costStep: 1, amount: 1 },
@@ -29,28 +29,75 @@ describe('DEFAULT_RULES matches docs/game-design.md', () => {
   });
 
   it('dragon and combat (§9, §10)', () => {
-    expect(DEFAULT_RULES.dragon).toEqual({ hp: 88, atk: 10, def: 6, breathEvery: 3 });
+    expect(DEFAULT_RULES.dragon).toEqual({ hp: 88, atk: 10, def: 10, breathEvery: 3 });
     expect(DEFAULT_RULES.combat).toEqual({ maxExchanges: 100, dieSides: 6, mode: 'external' });
     expect(DEFAULT_RULES.passives.ninjaEvadeDie).toBe(8);
-    expect(DEFAULT_RULES.passives.ninjaAdjustCooldown).toBe(2);
+    expect(DEFAULT_RULES.passives.ninjaAdjustCooldown).toBe(4);
   });
 
   it('board layout (§5)', () => {
     expect(DEFAULT_RULES.board.map((t) => t.id)).toEqual([
-      'START', 'GOBLIN', 'POISON_SWAMP', 'HERB', 'BANDIT', 'TRAINING', 'SHOP', 'WOLF', 'TRAP', 'TREASURE',
-      'PICKPOCKET', 'BLACKSMITH', 'INN', 'ORC', 'CURSED_ALTAR', 'FOUNTAIN', 'ROCKFALL', 'MYSTERY', 'SHOP',
-      'TROLL', 'SPIDER_WEB', 'WANDERING_MERCHANT', 'STORM', 'MYSTERY',
+      'START',
+      'GOBLIN',
+      'POISON_SWAMP',
+      'HERB',
+      'BANDIT',
+      'TRAINING',
+      'SHOP',
+      'WOLF',
+      'TRAP',
+      'TREASURE',
+      'PICKPOCKET',
+      'BLACKSMITH',
+      'INN',
+      'ORC',
+      'CURSED_ALTAR',
+      'FOUNTAIN',
+      'ROCKFALL',
+      'MYSTERY',
+      'SHOP',
+      'TROLL',
+      'SPIDER_WEB',
+      'WANDERING_MERCHANT',
+      'STORM',
+      'MYSTERY',
     ]);
     expect(DEFAULT_RULES.board.filter((t) => t.safe).map((t) => t.id)).toEqual(['START']);
     const amounts = (effects: readonly { kind: string; amount?: number }[]) =>
-      effects.filter((e) => e.kind === 'coins' || e.kind === 'hp').map((e) => `${e.kind}${e.amount}`).join(' ');
+      effects
+        .filter((e) => e.kind === 'coins' || e.kind === 'hp')
+        .map((e) => `${e.kind}${e.amount}`)
+        .join(' ');
     expect(DEFAULT_RULES.board.map((t) => amounts(t.effects))).toEqual([
-      '', 'coins6', 'hp-5', 'hp8', 'coins-4', '', '', 'coins10 hp-3', 'hp-6', 'coins12',
-      'coins-6', '', 'hp20', 'coins12 hp-4', 'coins-6', 'coins6 hp6', 'hp-5', '', '',
-      'coins16 hp-7', '', '', 'coins-2 hp-3', '',
+      '',
+      'coins6',
+      'hp-5',
+      'hp8',
+      'coins-4',
+      '',
+      '',
+      'coins10 hp-3',
+      'hp-6',
+      'coins12',
+      'coins-6',
+      '',
+      'hp20',
+      'coins12 hp-4',
+      'coins-6',
+      'coins6 hp6',
+      'hp-5',
+      '',
+      '',
+      'coins16 hp-7',
+      '',
+      '',
+      'coins-2 hp-3',
+      '',
     ]);
     expect(DEFAULT_RULES.mysteryDeck).toHaveLength(10);
-    expect(Object.fromEntries(DEFAULT_RULES.mysteryDeck.map((c) => [c.id, amounts(c.effects)]))).toEqual({
+    expect(
+      Object.fromEntries(DEFAULT_RULES.mysteryDeck.map((c) => [c.id, amounts(c.effects)])),
+    ).toEqual({
       HIDDEN_GOLD: 'coins12',
       GEM_VEIN: 'coins8',
       ANCIENT_RELIC: '',
@@ -65,14 +112,17 @@ describe('DEFAULT_RULES matches docs/game-design.md', () => {
   });
 
   it('carries the balance version', () => {
-    expect(DEFAULT_RULES.version).toBe('rush-1');
+    expect(DEFAULT_RULES.version).toBe('rush-2');
   });
 
   it('is frozen and valid', () => {
     expect(Object.isFrozen(DEFAULT_RULES.jobs)).toBe(true);
     expect(() => validateRules(DEFAULT_RULES)).not.toThrow();
     expect(() => validateRules(withRules({ board: DEFAULT_RULES.board.slice(1) }))).toThrow();
-    const badMode = { ...DEFAULT_RULES.combat, mode: 'auto' } as unknown as typeof DEFAULT_RULES.combat;
+    const badMode = {
+      ...DEFAULT_RULES.combat,
+      mode: 'auto',
+    } as unknown as typeof DEFAULT_RULES.combat;
     expect(() => validateRules(withRules({ combat: badMode }))).toThrow();
   });
 });

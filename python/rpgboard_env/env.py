@@ -44,7 +44,7 @@ class _Base:
         rules: str | dict[str, Any] = "default",
         reward_shaping: dict[str, float] | None = None,
         return_events: bool = False,
-        combat_resolver: str = "dice",
+        combat_resolver: str = "outcome",
         outcome_model: str | None = None,
         outcome_skill_noise: float = 0.5,
         expect_outcome_model_id: str | None = None,

@@ -1,6 +1,11 @@
 import type { MysteryCardDef, RulesConfig, TileDef } from '../types';
 
-const tile = (id: TileDef['id'], name: string, effects: TileDef['effects'], safe = false): TileDef => ({
+const tile = (
+  id: TileDef['id'],
+  name: string,
+  effects: TileDef['effects'],
+  safe = false,
+): TileDef => ({
   id,
   name,
   safe,
@@ -70,10 +75,10 @@ const MYSTERY_DECK: readonly MysteryCardDef[] = [
 ];
 
 export const DEFAULT_RULES: RulesConfig = deepFreeze({
-  version: 'rush-1',
+  version: 'rush-2',
   startingCoins: 10,
   startingItems: { shield: 1 },
-  startBonus: { coins: 20, hp: 6 },
+  startBonus: { coins: 35, hp: 6 },
   maxRounds: null,
   pvpGraceRounds: 2,
   eventHpFloor: 1,
@@ -89,7 +94,7 @@ export const DEFAULT_RULES: RulesConfig = deepFreeze({
     archerFirstStrikeBonus: 3,
     mageDefDivisor: 2,
     ninjaEvadeDie: 8,
-    ninjaAdjustCooldown: 2,
+    ninjaAdjustCooldown: 4,
     berserkerRageNum: 13,
     berserkerRageDen: 10,
   },
@@ -107,7 +112,7 @@ export const DEFAULT_RULES: RulesConfig = deepFreeze({
   board: BOARD,
   mysteryDeck: MYSTERY_DECK,
   combat: { maxExchanges: 100, dieSides: 6, mode: 'external' },
-  dragon: { hp: 88, atk: 10, def: 6, breathEvery: 3 },
+  dragon: { hp: 88, atk: 10, def: 10, breathEvery: 3 },
 });
 
 function deepFreeze<T>(value: T): T {
@@ -118,6 +123,9 @@ function deepFreeze<T>(value: T): T {
   return value;
 }
 
-export function withRules(overrides: Partial<RulesConfig>, base: RulesConfig = DEFAULT_RULES): RulesConfig {
+export function withRules(
+  overrides: Partial<RulesConfig>,
+  base: RulesConfig = DEFAULT_RULES,
+): RulesConfig {
   return deepFreeze({ ...base, ...overrides });
 }

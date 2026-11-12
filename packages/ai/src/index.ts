@@ -36,6 +36,7 @@ export {
 } from './bots/heuristic/estimate';
 export { createModelPolicy, type ModelPolicyOptions } from './model/modelPolicy';
 export { createPolicyByName, BOT_NAMES } from './bots/registry';
+export { bundledOutcomeModel } from './outcome/bundled';
 export {
   checkParity,
   DEFAULT_PARITY_TOLERANCE,

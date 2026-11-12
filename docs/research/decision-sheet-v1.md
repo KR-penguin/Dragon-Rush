@@ -170,7 +170,7 @@ Every number here is a v1 default.
   - A segmented HP "scale" bar, always 115 because HP resets per challenge.
   - 3 breath rune stones and a "breath in N" intent icon.
   - Ember light +2% per round, capped at +30% [J].
-  - `WinChance` is shown as the "용의 눈" fortune meter, fed by the outcome model when real-time combat is on.
+  - Superseded UI proposal: win probability is not displayed in game; the outcome model is internal to bots and board env.
 
 ### 1.6 Pawns (standees) [BU + resolved GF]
 **Construction:**
@@ -782,7 +782,7 @@ step(actions [N, n_ctrl, 2]  (or [N, n_ctrl] if flat))
 - Alternate the two models; never train both at once.
 - When the combat model is retrained, regenerate the outcome model, then fine-tune the board model.
 
-**Same model in the game:** the UI "용의 눈" meter (`apps/web/src/types/estimates.ts`) and the heuristic bot's estimate (`packages/ai/src/bots/heuristic/estimate.ts`) use the outcome model when real-time combat is on.
+**Same model in the game:** the heuristic bot and board env use the outcome model internally. The in-game probability display was removed.
 
 ### 6.3 Live matchups
 | Matchup | Runs where | Notes |

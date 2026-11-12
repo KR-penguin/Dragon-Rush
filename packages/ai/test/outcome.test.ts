@@ -7,6 +7,7 @@ import {
   predictOutcome,
 } from '../src/outcome';
 import {
+  bundledOutcomeModel,
   createHeuristicBot,
   createPolicyRandom,
   dragonProfile,
@@ -22,6 +23,16 @@ const setup = {
 const damage = { sNum: 8, sDen: 5, k: 10, min: 1, dragonDamageTakenScale: 0.17, mageDefDivisor: 2 };
 
 describe('outcome_v1 contract', () => {
+  it('loads the shipped rush-2 artifact and rejects invalid or mismatched models', () => {
+    const model = bundledOutcomeModel(DEFAULT_RULES.version, 'combat-2');
+    expect(model?.id).toBe('outcome-v1-rush2');
+    expect(model?.training.holdout_samples).toBe(40000);
+    expect(bundledOutcomeModel('rush-1', 'combat-2')).toBeNull();
+    expect(bundledOutcomeModel(DEFAULT_RULES.version, 'combat-3')).toBeNull();
+    expect(
+      bundledOutcomeModel(DEFAULT_RULES.version, 'combat-2', { version: 'broken' }),
+    ).toBeNull();
+  });
   it('validates dimensions, versions, finite weights, and metadata', () => {
     const model = emptyOutcomeModel('fixture', DEFAULT_RULES.version, 'combat-fixture', damage);
     expect(parseOutcomeModel(model)).toEqual(model);
@@ -29,6 +40,15 @@ describe('outcome_v1 contract', () => {
     expect(() => parseOutcomeModel({ ...model, win: [...model.win, 0] })).toThrow();
     expect(() => parseOutcomeModel({ ...model, win: [NaN, ...model.win.slice(1)] })).toThrow();
     expect(() => parseOutcomeModel({ ...model, id: '' })).toThrow();
+    expect(() =>
+      parseOutcomeModel({
+        ...model,
+        calibration: [
+          { raw: 0.5, observed: 0.2 },
+          { raw: 0.4, observed: 0.8 },
+        ],
+      }),
+    ).toThrow();
   });
 
   it('encodes board profiles and returns normalized probabilities', () => {

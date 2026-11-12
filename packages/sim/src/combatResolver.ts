@@ -100,6 +100,8 @@ export function createCombatResolver(
           setup!,
           [createCombatBotByName(bot, random), createCombatBotByName(bot, random)],
           seed,
+          DEFAULT_COMBAT_RULES,
+          { decisionInterval: 1 },
         );
         settled = applyCombatResult(state, out.result);
         winner = out.result.winner;

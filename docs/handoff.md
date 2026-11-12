@@ -7,15 +7,15 @@
 
 | 항목 | 상태 |
 |---|---|
-| `main` | `27358e9` 기준. B 상성 보정, 온라인 용전 진입 수정, 전투 AI 마스크 동기화까지 병합. 작업 트리 깨끗함. |
+| `main` | `38575d2`까지 E 작업 브랜치에 병합. B 상성 보정, 온라인 롤백·용전·PvP 수정, 전투 AI 마스크 동기화, 생성 아티팩트 포맷 제외까지 포함. |
 | 완료·병합 | 1차 P0~P7, 기존 2차 보드·FX·로컬 전투·AI 학습 환경, **A 전투 AI 동기화**, **B 상성 방향 보정**(`a646da7`), **C 온라인 롤백·진입 수정**(`1845ca9`, `25db5d5`), **D 온라인 로비**, outcome 기반 코드(`3846cc1`), UI 잔여 수정, 글꼴·효과음 경량화/별칭, 학습 문서 정리. |
-| 진행 중 | E outcome 최종 데이터 피팅·rush-2 보드 밸런스·README/기획서 동기화(`codex/feature-outcome-v1`, 별도 작업 트리). |
-| 남음 | E 최종 모델·밸런스 병합 → 전체 Prettier·문서 동기화·최종 통합 검증. 실제 에셋·사용자 가중치·배포 대상은 사용자 자료가 있어야 적용 가능. |
+| 통합 대기 | E outcome 최종 데이터 피팅·rush-2 실측·README/기획서 동기화를 `codex/feature-outcome-v1`에서 완료. 중앙 길이 목표 미달은 §E에 기록. |
+| 남음 | 사용자가 E 브랜치를 `main`에 병합 → 전체 Prettier·최종 통합 검증. 실제 에셋·사용자 가중치·배포 대상은 사용자 자료가 있어야 적용 가능. |
 | 워크트리 | `main` 통합용은 `.claude/worktrees/codex-integrate-main`. **루트는 B 에이전트가 사용 중이므로 브랜치 전환·파일 수정 금지.** 다른 에이전트 작업 트리도 수정하지 않는다. |
 
-**작업 순서**: E 작업 에이전트(`01a1cdcd-fca9-7f41-b46d-3f6e0469b248`, `C:\KoreaPenguin\dragon-rush-outcome-v1`)가 최신 `main`에서 최종 모델 피팅·rush-2를 완료한다 → 전체 포맷·문서 동기화·최종 검증. B의 최종 상성 커밋은 `efd4afc`다. Normal/Easy 합산에서 10개 우세 방향은 모두 맞지만 목표 우세 강도와 Hard의 일부 방향은 미달이다(`docs/combat-design.md` §5.1).
+**작업 순서**: E 작업 브랜치(`codex/feature-outcome-v1`, `C:\KoreaPenguin\dragon-rush-outcome-v1`)를 사용자가 `main`에 병합한다 → 전체 포맷·최종 통합 검증. B의 최종 상성 커밋은 `efd4afc`다. 매 틱 입력의 balanced 봇 반응 10f/16f 합산에서 10개 우세 방향은 모두 맞지만 목표 우세 강도와 5f의 일부 방향은 미달이다(`docs/combat-design.md` §5.1). UI Easy/Hard는 별도 스타일이다.
 
-**검증 기록:** 온라인 롤백·outcome 기반 코드 병합 후 `pnpm lint`, `pnpm typecheck`, `pnpm build`, Python pytest 16개가 통과했다. 로비 통합 테스트의 부하 허용 대기를 `2c396d8`로 수정한 뒤 전체 Vitest **455/455 통과**했다. B 상성 병합 뒤 전투 AI 마스크(메테오 누르기 유지 시간)와 지연 관측 테스트의 결투 시간 한도를 `8ac8597`로 동기화했고 해당 15개 테스트가 통과했다. 최종 전체 재실행은 E 병합 뒤 필요하다. 가상 TCP 시험은 최종 해시가 일치하지만 150~250ms 손실 구간 p95 롤백 깊이가 목표보다 크다. 자세한 수치는 `docs/combat-design.md` §9.
+**검증 기록:** E 브랜치에서 `pnpm lint`, `pnpm typecheck`, `pnpm build`, outcome/로컬 전투 집중 시험 18개가 통과했다. 20만 전투의 분리 holdout 4만 판 최대 10분위 오차는 2.74%p다. `main`의 전체 Vitest 463/463 통과 기록은 E 변경 전이며 병합 뒤 전체 재실행이 필요하다. 가상 TCP 시험은 최종 해시가 일치하지만 150~250ms 손실 구간 p95 롤백 깊이가 목표보다 크다. 자세한 수치는 `docs/combat-design.md` §9.
 
 **실제 브라우저 온라인 용전 검증 완료:** 처음에는 `game:update → fight:start` 순서에서 GameStore가 같은 버전의 후속 전투 정보를 버려 경기장에 못 들어갔다. `c2e5d31`이 두 메시지 순서를 모두 처리하도록 고치고 서버 COMBAT 타이머 스냅샷도 수정했다. 병합 후 `pnpm dev`/`http://localhost:5173`에서 사람 검사+성장형 봇 방으로 다시 용에 도전해 2D 탑다운 경기장·핑 HUD·타이머 숨김을 확인했다. 용전 패배 뒤 검사 탈락과 봇 최후 생존 승리 결과 화면까지 확인했다. 실제 인터넷 회선의 지연 체감은 아직 별도 검증이 필요하다.
 
@@ -29,7 +29,7 @@
 |---|---|---|
 | D6 | 직업 선택을 **비공개 동시 선택**으로 바꿀까? (상성 카운터픽 방지, 핫시트는 화면 가림 단계 추가) | 지금처럼 공개 선택 유지 |
 | D4 / D13 | 보드 모델 / 전투 모델 **가중치 JSON 포맷 + 패리티 샘플** | 받기 전까지 모델 좌석 "준비 중" |
-| D16 | 전투 결과 **승률 예측(outcome) 모델 피팅 코드** | 기반 코드 완료·병합, 최종 모델 피팅 중 |
+| D16 | 전투 결과 **승률 예측(outcome) 모델 피팅 코드** | 20만 실제 전투 최종 모델·보정 리포트 완료(E 브랜치); 인게임 승률 비노출 |
 | D8 / D12 | 에셋(이미지 149·효과음 164·음악 8·환경음 3) 제공 — 목록은 `docs/development-plan.md` §4.2 | 플레이스홀더로 동작 |
 | D9 | 배포 호스팅 대상 | 미정 |
 
@@ -120,31 +120,18 @@ pnpm lint/typecheck/test와 web build 통과 후, 가능하면 서버+웹 개발
 체크포인트를 squash하고 Conventional Commits로 정리해 main에 --no-ff 병합, 한국어로 보고하라.
 ```
 
-## E. 실시간 전투 기준 보드 밸런스 + 승률 예측 모델 (B 이후)
+## E. 실시간 전투 기준 보드 밸런스 + 내부 outcome 모델
 
-- `codex/feature-outcome-v1`에서 **기반 코드 3개 커밋을 `main`에 병합했다**(`3846cc1`): 실제 전투 데이터 생성·피팅 CLI, `outcome_v1` 스키마·추론, 게임 RNG로 결과 샘플링하는 리졸버, 봇·웹 연결 지점, 전투 방식별 승률 안내. B 상성 보정이 아직 없으므로 최종 모델 JSON·rush-2 수치와 문서는 미완료다. 같은 에이전트(`01a1cdcd-fca9-7f41-b46d-3f6e0469b248`)에 최신 `main` 병합 후 작업을 이어 달라고 한다.
-- **배경**: rush-1은 주사위 전투 기준으로 맞췄다(4인 중앙 10라운드, 약 6.8분, 용 처치 종료 87.5%로 목표 40~75% 초과). 실시간 전투로 판정하면 결과가 달라진다. 보드 봇(HeuristicBot)의 용 도전 판단과 화면의 "용의 눈"(승률 표시)은 아직 **주사위 기준 추정**이라, 실제 전투 시뮬 결과로 학습한 승률 예측 모델이 필요하다(D16, 기본 진행).
+`codex/feature-outcome-v1`에서 `rush-2`와 `outcome_v1`을 구현했다. 4인 실제 60Hz 전투 8,000판은 중앙 8/p95 11라운드, 용 처치 종료 61.3%, 직업 승률 22.1~29.1%, 3라운드 안 탈락 3.1%였다. 시작 방어막 1개·보호 2라운드·직업 시작 스탯은 보존했다. 중앙 9~11라운드 목표는 미달했고 3인·2인에도 별도 한계가 있다([game-design.md §15](game-design.md)).
 
-**프롬프트**
-```
-드래곤 러쉬 저장소(C:\KoreaPenguin\RPG board game)에서 작업한다. AI_README.md, coding_convention.md, docs/handoff.md(§E),
-docs/game-design.md §15, docs/combat-ai-spec.md(combat_resolver, outcome 모델 부분), docs/research/decision-sheet-v1.md §6을 읽어라.
-상성 2차 보정(작업 B)이 병합된 main에서 feature/outcome-model-and-rush-2 브랜치를 만든다.
-1) 승률 예측(outcome) 모델: 실제 전투 시뮬(봇, 보통 난이도)로 전투 데이터를 대량 생성하고(stat_dist_v1 기반 셋업), 직업 쌍·스탯·불굴 등을 특징으로
-   P(도착자/도전자 승), 승자 HP 분포(10구간), 불굴 소모 확률을 예측하는 작은 모델을 TS로 피팅해 `outcome_v1` JSON으로 저장한다(정책 트레이너가 아님, D16).
-   보정 기준: 10분위별 오차 ±3%. 이 모델을 HeuristicBot 승률 추정(packages/ai/src/bots/heuristic/estimate.ts), 웹 "용의 눈"(apps/web/src/types/estimates.ts),
-   보드 env/시뮬의 combat_resolver: 'outcome'에 연결한다.
-2) 보드 밸런스 rush-2: `pnpm sim --combat sim`(또는 outcome)으로 4인 중앙 9~11라운드·p95 ≤15, 용 처치 종료 40~75%, 직업 승률 공정 ±5%p, 2라운드 내 탈락 <5%를 맞춘다.
-   수치만 바꾼다(DEFAULT_RULES, version 'rush-2'). 구조 변경(예: 시작 방어막 N라운드 후 소멸)이 필요하면 구현하지 말고 근거와 함께 제안만 한다.
-   실시간 전투 시간(결투·용전)을 포함한 한 판 예상 시간을 보고한다.
-3) docs/game-design.md(§6·§9의 "자동 해결" 서술을 실시간 전투로, §15 결과표), README·AI_README·python/README의 수치를 갱신한다.
-전체 검증 후 Conventional Commits로 커밋, main에 --no-ff 병합, 한국어로 보고하라.
-```
+결과 예측기는 실제 보드 전투의 공격자·방어자 쌍을 보존한 프로필에서 추출한 20만 60Hz 전투로 학습했다. 매 틱 스크립트 봇 입력을 로컬·온라인·보드 sim과 맞췄다. 학습 12만·보정 4만·분리 검증 4만에서 10분위 승률 최대 오차 2.74%p로 ±3%p 기준을 통과했다. 보드 봇과 보드 env의 기본 `outcome` 리졸버 내부에서 사용하며 인게임에는 승률을 표시하지 않는다. `sim`은 실제 전투, `dice`는 선택형 빠른 전투다. 사용자 전투 정책 가중치는 아직 없다. balanced 봇 반응 10f/16f 합산 상성 방향 10개는 통과했으나 목표 우세 강도와 5f 일부 방향은 미달이다. 이 보정 통과는 봇의 최종 도전 분포나 HP·불굴 예측까지 보증하지 않는다.
+
+문서와 검증 결과는 이 브랜치 커밋을 참조한다. `main` 병합은 사용자가 진행한다.
 
 ## F. 정리·문서 동기화 (마지막, 작은 작업 묶음)
 
 - 완료: 효과음 폴더·번호 별칭과 자동 선택 테스트(`59ed798`), 한국어 WOFF2 9개만 묶는 글꼴 경량화(`e00ecaa`; CSS 1,080,673→99,364B, 글꼴 25,673,736→3,403,548B).
-- 완료: 화면 잔여 3건(`d1389b3`), 2차 개발 현황 문서(`d9bef5d`), 온라인 로비 부하 테스트 대기 한도(`2c396d8`). 남음: 전체 Prettier, B/E 이후 개발 현황·기획서·README 최종 동기화, 최종 검증.
+- 완료: 화면 잔여 3건(`d1389b3`), 2차 개발 현황 문서(`d9bef5d`), 온라인 로비 부하 테스트 대기 한도(`2c396d8`), E 개발 현황·기획서·README 동기화. 남음: 병합 후 전체 Prettier와 최종 통합 검증.
 
 **프롬프트**
 ```
@@ -161,7 +148,7 @@ main에서 chore/cleanup-after-round2 브랜치를 만들어 다음을 처리한
 
 ## 2. 참고: 주요 수치·위치
 
-- 밸런스 rush-1: 시작 코인 10, 출발 +20, 용 88/10/6, 초반 보호 2라운드, 도둑 10코인 (`packages/engine/src/rules/defaultRules.ts`, 기획서 §15)
+- 밸런스 rush-2: 시작 코인 10, 출발 +35, 용 88/10/10, 초반 보호 2라운드, 시작 방어막 1개, 도둑 10코인 (`packages/engine/src/rules/defaultRules.ts`, 기획서 §15)
 - 실시간 전투: 60Hz, Q8 정수 좌표, 결투 45초(불의 고리), 용 75초 제한, `DEFAULT_COMBAT_RULES` (`packages/combat/src`), 보정 스크립트 `packages/combat/scripts/`
 - 전투 AI: `cobs_v1` 160 / `cact_v1` [9,4]·36, `pnpm combat-env-server`, Python `CombatEnv`/`CombatVecEnv`, `python/README.md` 전투 절
 - 보드 AI: `obs_v1` 253 / `act_v1` 47, `pnpm env-server`, Python `RPGBoardEnv`/`RPGBoardVecEnv`

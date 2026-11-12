@@ -28,7 +28,7 @@
 - 버전 정책은 보드와 같다([ai-interface-spec.md §2](ai-interface-spec.md)): 인덱스·길이·정규화·의미가 바뀌면 `cobs_v2`처럼 올리고, 기존 인덱스의 의미를 재사용하지 않는다. 수치(`DEFAULT_COMBAT_RULES`)만 바뀌면 버전은 그대로이고 `combat_rules_version`·hash가 바뀐다.
 
 ## 3. 결정 타이밍·반응 지연
-- sim은 60Hz. 두 좌석은 **4 라이브 틱마다 동시에** 결정한다(`action_repeat` 4, 초당 15회). 히트스톱(전역 정지) 틱은 세지 않으며, 정지 중에는 결정을 요청하지 않는다.
+- 전투 학습 env의 sim은 60Hz. 두 좌석의 **학습 에이전트는 4 라이브 틱마다 동시에** 결정한다(`action_repeat` 4, 초당 15회). 히트스톱(전역 정지) 틱은 세지 않으며, 정지 중에는 결정을 요청하지 않는다. 로컬·온라인 실전의 스크립트 봇과 보드 `sim`·`outcome_v1` 학습의 스크립트 봇은 상성 보정 조건에 맞춰 매 틱 결정한다.
 - 이동은 창(4틱) 내내 유지한다. 버튼은 레벨로 유지하고, 직전 결정과 다를 때만 누름 에지가 생긴다(같은 버튼 유지 = 홀드, 예: 궁수 당기기). 같은 버튼을 다시 누르려면 한 창 동안 `none`을 고른다. 연타는 동작 중 입력이 예약되므로(combat-design §2.1) 4틱 주기로 충분하다.
 - **`actionable = false`**: KO이거나 긴 피격 경직으로 이번 창의 입력이 무시된다. 트레이너가 이 결정을 건너뛴다면 보상과 `ticks_elapsed`를 다음 저장 전이에 누적한다. 할인은 `γ^(k/4)`(k = 누적 라이브 틱).
 - **반응 지연**: 관측은 `delay`틱 전 상태의 링 버퍼에서 만든다. 기본 `obs_delay: [4, 18]`이면 에피소드마다 좌석별로 U[4, 18]에서 뽑고 관측에 `delay/18`로 넣는다. 정수 `obs_delay`를 주면 지연이 고정된다. 마스크와 직전 행동 one-hot만 현재 값이다. 에피소드 시작 시 버퍼는 첫 상태로 채운다.
@@ -141,7 +141,7 @@
 | `config.opponent` | `"scripted:<name>"` \| `"external"`, `"scripted:pool"` | `p0`일 때 상대 좌석(이름은 §1). `external`은 `controlled: "both"`와만 쓴다(`p0`이면 `BAD_CONFIG`) |
 | `config.mode_mix` | `{pvp, dragon}`, `{pvp: 0.75, dragon: 0.25}` | 에피소드별 모드 확률 |
 | `config.jobs` | `"uniform"` \| 좌석별 목록(직업 id 또는 `"uniform"`, 1~2개), `"uniform"` | 같은 직업 대결 허용. 목록이 1개면 두 좌석 모두에 적용 |
-| `config.stat_sampler` | `"uniform_board"` \| `"start"` \| `"file:<path>"`, `"uniform_board"` | **[구현]** `uniform_board`: `rush-1` 직업 스탯 + 강화 단계 균등 표본(결투 ATK·DEF +0~6, maxHp +0~5단계×6, HP 35~100% / 용전 ATK·DEF +3~9, maxHp +2~7단계, HP 60~100% / 검사 불굴 남음 90%; 보드 휴리스틱 3000판 로그의 p5~p95를 덮도록 정함). `start`: 직업 시작 스탯. `file:<path>`: `stat_dist_v1` 파일(§10.3)에서 같은 직업·같은 전투 종류 표본 |
+| `config.stat_sampler` | `"uniform_board"` \| `"start"` \| `"file:<path>"`, `"uniform_board"` | **[구현]** `uniform_board`: `rush-2`에서도 유지된 직업 시작 스탯 + 강화 단계 균등 표본(결투 ATK·DEF +0~6, maxHp +0~5단계×6, HP 35~100% / 용전 ATK·DEF +3~9, maxHp +2~7단계, HP 60~100% / 검사 불굴 남음 90%; 과거 보드 휴리스틱 3000판 로그의 p5~p95를 덮도록 정함). `start`: 직업 시작 스탯. `file:<path>`: `stat_dist_v1` 파일(§10.3)에서 같은 직업·같은 전투 종류 표본. 현재 실제 전투 분포는 `packages/sim/data/rush2_stat_dist_v1.json` |
 | `config.action_repeat` | int ≥ 1, 4 | §3 |
 | `config.obs_delay` | `[min, max]` 또는 int, `[4, 18]` | §3 |
 | `config.flat_actions` | bool, false | §5 |
@@ -236,9 +236,11 @@ createCombatModelPolicy(model, { difficulty?: 'easy' | 'normal' | 'hard'; temper
 - **권장 메타데이터**: `"cobs_version": "cobs_v1"`, `"cact_version": "cact_v1"`, `"obs_dim": 160`, `"head": "multi"` 또는 `"flat"`, `"output": "logits"` 또는 `"probs"`, `"combat_rules_version"`, 학습 설정 요약. 현재 사용자 포맷 로더가 없으므로 이 메타데이터의 자동 검증도 아직 없다.
 
 ## 12. 보드 env의 전투 해결 (`combat_resolver`)
-- 현재 선택값은 `config.combat_resolver: "dice" | "sim"`이며 기본값은 `"dice"`다. 두 방식 모두 보드 관측 `obs_v1`과 행동 `act_v1`을 그대로 쓴다. reset 응답에는 `combat_resolver`가 있고, `expect.combat_resolver`가 설정값과 다르면 `VERSION_MISMATCH`다. Python에서는 `RPGBoardEnv(combat_resolver="sim")`으로 고른다.
-- `dice`는 엔진의 `resolveCombatWithDice`로 해결한다. `sim`은 `boardCombatSetup(state)`으로 보드 전투원의 직업·HP·ATK·DEF·불굴 가능 여부를 전투 setup에 옮긴 뒤, 두 `scripted:balanced` 봇으로 `runCombat`을 끝까지 실행하고 `applyCombatResult`로 반영한다. 전투 시드는 게임 시드와 전투 순번에서 파생된다. 이는 **학습한 전투 모델의 결과가 아니라 스크립트 봇의 결과**다.
-- 보드 균형 시뮬레이션 CLI에서도 `pnpm sim --combat dice|sim [--combat-bot scripted:<name>] [--log-fights <file>]`을 쓸 수 있다.
+- 보드 env의 선택값은 `config.combat_resolver: "outcome" | "dice" | "sim"`이며 기본값은 `"outcome"`이다. 셋 모두 보드 관측 `obs_v1`과 행동 `act_v1`을 그대로 쓴다. reset 응답에는 `combat_resolver`와 `outcome_model_id`가 있고, `expect.combat_resolver`·`expect.outcome_model_id` 불일치는 `VERSION_MISMATCH`다. Python에서 `RPGBoardEnv(combat_resolver="sim")`으로 실제 전투를 선택할 수 있다.
+- `outcome`은 `packages/ai/src/outcome/model.json`의 내장 `outcome_v1`을 쓴다. `config.outcome_model`로 다른 JSON을 지정할 수도 있다. 로더는 zod 스키마와 `rules_version`/`combat_rules_version` 일치를 검사한다. 기본 아티팩트는 `rush-2`/`combat-2`다. 예측기는 직업 쌍·HP·최대 HP·ATK·DEF·불굴 가능 여부·대략적인 타격 수를 포함한 구조적 전투 프로필을 받으며, 보드 AI 패키지는 전투 sim을 런타임 의존성으로 갖지 않는다. 출력은 도전자 승률, 승자 조건부 HP 10구간, 양측 불굴 사용 확률이다. 셸이 엔진 sfc32 RNG로 승자·HP·불굴을 샘플링해 `applyCombatResult`로 반영한다. `outcome_skill_noise`(기본 0.5)는 에피소드마다 좌석별 승률 로짓에 더하는 정규분포 성향값이다. 이 모델은 **결과 예측기**이며 전투 정책 모델이 아니다. 인게임에는 승률을 표시하지 않는다.
+- 실제 8,000판의 보드 전투 프로필 `packages/sim/data/rush2_stat_dist_v1.json`을 함께 보관한다. `rush-2`, `--seed 7755 --combat sim --log-fights`로 수집했고 실제 공격자·방어자 쌍을 `setups`에 보존한다. 두 차례 각 4,000판의 봇 판단에는 이전 모델과 1틱 정책의 임시 피팅 모델을 사용해 이른 도전과 늦은 도전의 프로필을 함께 담았다. **실제 전투 결과는 모두 매 틱 결정을 내리는 `scripted:balanced`의 60Hz sim**이다. `pnpm outcome --stat-dist packages/sim/data/rush2_stat_dist_v1.json --model <outcome.json> --report <report.json> --count 200000 --seed 44 --epochs 15 --workers 8 --id outcome-v1-rush2 --require-calibration`으로 내장 JSON을 재생성할 수 있다. 12만 학습·4만 승률 보정·4만 **분리 검증**에서 10분위별 승률 오차 최대 2.74%p, Brier 0.1796으로 ±3%p 기준을 통과했다(`model.calibration.json`). 이는 이 혼합 표본의 승률 보정 지표이며, HP·불굴 헤드나 봇이 최종 모델로 고른 도전 분포의 별도 보정 통과를 주장하지 않는다.
+- `dice`는 선택형 빠른 전투의 `resolveCombatWithDice`다. `sim`은 `boardCombatSetup(state)`으로 보드 프로필을 옮겨 두 `scripted:balanced` 봇의 실제 전투를 끝까지 실행한다. 실시간 플레이의 정책은 별도 전투 모델 가중치가 없으면 스크립트 봇이다. `pnpm sim --combat dice|sim|outcome [--outcome-model <file>]`로 비교한다. 4인 보드 밸런스 수치는 `sim`으로 검증했다.
+- 상성 보정 B의 **기본 5직업 시작 스탯은 rush-2에서도 그대로**다. `combat-2`의 balanced 봇 반응 10f/16f 합산 실측의 10개 우세 방향은 모두 통과했지만 목표 대·소 상성 승률 범위는 미달이고 5f 시험에는 일부 역전이 남아 있다([combat-design.md §5.1](combat-design.md)). UI Easy/Hard는 다른 스타일이므로 이 행렬의 통과 범위가 아니다. `outcome_v1`은 실제 전투 데이터의 통계적 근사이며 상성 목표 달성을 의미하지 않는다.
 
 ## 13. 계약 검증
 

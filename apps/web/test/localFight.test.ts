@@ -1,4 +1,4 @@
-import { NO_INPUT, type CombatState } from '@dragon-rush/combat';
+import { NO_INPUT, createCombatBot, runCombat, type CombatState } from '@dragon-rush/combat';
 import type { Action, GameEvent } from '@dragon-rush/engine';
 import { describe, expect, it } from 'vitest';
 import {
@@ -6,7 +6,30 @@ import {
   type LocalGameConfig,
   type Scheduler,
 } from '../src/services/LocalGameClient';
-import { createFightBotSource } from '../src/services/fight/botInput';
+import { createFightBotSource, FIGHT_BOT_LEVELS } from '../src/services/fight/botInput';
+
+it('uses the calibrated per-tick scripted bot policy in Normal local fights', () => {
+  expect(FIGHT_BOT_LEVELS.normal.interval).toBe(1);
+  const setup = {
+    kind: 'duel' as const,
+    a: { job: 'swordsman' as const, hp: 53, maxHp: 53, atk: 5, def: 5, indomitableAvailable: true },
+    b: { job: 'archer' as const, hp: 39, maxHp: 39, atk: 6, def: 6, indomitableAvailable: false },
+  };
+  const seed = 733;
+  const live = new LocalSimProvider(setup, seed, [
+    createFightBotSource('normal', seed, 'a'),
+    createFightBotSource('normal', seed, 'b'),
+  ]);
+  while (!live.curr.outcome) live.step();
+  const headless = runCombat(
+    setup,
+    [createCombatBot('balanced'), createCombatBot('balanced')],
+    seed,
+    undefined,
+    { decisionInterval: 1 },
+  );
+  expect(live.result()).toEqual(headless.result);
+});
 import { HIGHLIGHT, highlightStartTick } from '../src/services/fight/LocalFightSession';
 import { LocalSimProvider, ReplayProvider, simulateFight } from '../src/services/fight/simProvider';
 import type { FightInputSource } from '../src/services/fight/types';

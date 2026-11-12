@@ -29,8 +29,8 @@ export const EnvConfigSchema = z
       .nullable()
       .default(null),
     return_events: z.boolean().default(false),
-    /** How fights are settled; outcome requires an outcome_v1 model path. */
-    combat_resolver: z.enum(COMBAT_RESOLVERS).default('dice'),
+    /** How fights are settled; the shipped outcome_v1 model is the default. */
+    combat_resolver: z.enum(COMBAT_RESOLVERS).default('outcome'),
     outcome_model: z.string().min(1).optional(),
     outcome_skill_noise: z.number().finite().min(0).max(2).default(0.5),
   })

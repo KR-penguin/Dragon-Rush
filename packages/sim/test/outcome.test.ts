@@ -3,8 +3,9 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { DEFAULT_COMBAT_RULES } from '@dragon-rush/combat';
-import { createRng, DEFAULT_RULES } from '@dragon-rush/engine';
+import { DEFAULT_COMBAT_RULES, policyRandom, runCombat } from '@dragon-rush/combat';
+import { createCombatBotByName } from '@dragon-rush/combat-ai';
+import { createRng, DEFAULT_RULES, nextFloat } from '@dragon-rush/engine';
 import { emptyOutcomeModel } from '@dragon-rush/ai';
 import {
   generateOutcomeRows,
@@ -54,6 +55,42 @@ describe('outcome pipeline', () => {
     ).toBe(true);
   });
 
+  it('preserves actual board fight pairs and the per-tick scripted bot cadence', () => {
+    const setup = {
+      kind: 'duel' as const,
+      a: {
+        job: 'swordsman' as const,
+        hp: 21,
+        maxHp: 25,
+        atk: 8,
+        def: 5,
+        indomitableAvailable: true,
+      },
+      b: { job: 'mage' as const, hp: 18, maxHp: 19, atk: 9, def: 4, indomitableAvailable: false },
+    };
+    const paired = StatDistSchema.parse({ ...fixture, setups: [setup] });
+    const row = generateOutcomeRows(paired, { seed: 12, count: 1 })[0]!;
+    expect(row.setup).toEqual(setup);
+    let rng = createRng(12);
+    [, rng] = nextFloat(rng); // select the sole setup
+    const [seedDraw] = nextFloat(rng);
+    const seed = Math.floor(seedDraw * 0x1_0000_0000);
+    const expected = runCombat(
+      setup,
+      [
+        createCombatBotByName('scripted:balanced', policyRandom(seed, 3)),
+        createCombatBotByName('scripted:balanced', policyRandom(seed, 4)),
+      ],
+      seed,
+      DEFAULT_COMBAT_RULES,
+      { decisionInterval: 1 },
+    );
+    expect({ result: row.result, ticks: row.ticks }).toEqual(expected);
+    expect(() =>
+      StatDistSchema.parse({ ...fixture, setups: [{ ...setup, a: { ...setup.a, hp: 26 } }] }),
+    ).toThrow();
+  });
+
   it('fits reproducibly and reports holdout reliability', () => {
     const rows = generateOutcomeRows(fixture, { seed: 3, count: 36 });
     const a = fitOutcomeModel(rows, {
@@ -76,7 +113,9 @@ describe('outcome pipeline', () => {
     expect(report.count).toBeGreaterThan(0);
     expect(report.brier).toBeGreaterThanOrEqual(0);
     expect(report.deciles).toHaveLength(10);
-    expect(a.model.training.samples).toBe(rows.length - a.holdout.length);
+    expect(a.model.training.samples).toBe(
+      rows.length - a.holdout.length - (a.model.training.calibration_samples ?? 0),
+    );
   });
 
   it('gates holdout calibration by predicted-probability deciles', () => {
@@ -229,7 +268,7 @@ describe('outcome pipeline', () => {
           }),
         ),
       );
-      expect(bad.error.code).toBe('BAD_CONFIG');
+      expect(bad.result.outcome_model_id).toBe('outcome-v1-rush2');
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
