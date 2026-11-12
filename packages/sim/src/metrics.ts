@@ -17,6 +17,10 @@ export interface Metrics {
   shieldCancelsPerGame: number;
   purchasesPerGame: Record<string, number>;
   netCoinsPerTurn: number;
+  avgBoardTurns: number;
+  avgCombatSeconds: number;
+  /** Board turns at 10 seconds each plus measured 60Hz combat time. */
+  estimatedMinutes10s: number;
   policyWinRate: Record<string, number>;
 }
 
@@ -51,6 +55,7 @@ export function summarize(records: GameRecord[]): Metrics {
     if (r.outcome === 'dragon') dragonWinRounds.push(r.rounds);
   }
   const attempts = records.reduce((a, r) => a + r.dragonAttempts, 0);
+  const combatSeconds = records.reduce((a, r) => a + r.combatTicks / 60, 0);
   const wins = records.reduce((a, r) => a + r.dragonWins, 0);
   const jobWinRate = Object.fromEntries(
     JOB_IDS.map((j) => [j, jobGames[j] ? (jobWins[j] ?? 0) / jobGames[j]! : null]),
@@ -71,6 +76,9 @@ export function summarize(records: GameRecord[]): Metrics {
     shieldCancelsPerGame: records.reduce((a, r) => a + r.shieldCancels, 0) / g,
     purchasesPerGame: Object.fromEntries(ITEM_IDS.map((i) => [i, records.reduce((a, r) => a + r.purchases[i], 0) / g])),
     netCoinsPerTurn: coins / turns,
+    avgBoardTurns: turns / g,
+    avgCombatSeconds: combatSeconds / g,
+    estimatedMinutes10s: (turns * 10 + combatSeconds) / g / 60,
     policyWinRate: Object.fromEntries(Object.keys(policyGames).map((p) => [p, (policyWins[p] ?? 0) / policyGames[p]!])),
   };
 }
@@ -92,6 +100,8 @@ export function formatMetrics(m: Metrics): string {
     `| 판당 PvP 전투 / 방어막 취소 | ${num(m.pvpPerGame)} / ${num(m.shieldCancelsPerGame)} |`,
     `| 판당 구매 tp / sh / th | ${ITEM_IDS.map((i) => num(m.purchasesPerGame[i] ?? 0)).join(' / ')} |`,
     `| 턴당 순 코인 | ${num(m.netCoinsPerTurn)} |`,
+    `| 판당 보드 턴 / 실측 전투 시간 | ${num(m.avgBoardTurns, 1)} / ${num(m.avgCombatSeconds, 1)}초 |`,
+    `| 예상 판 시간 (보드 턴당 10초) | ${num(m.estimatedMinutes10s, 1)}분 |`,
     `| 정책별 승률 | ${Object.entries(m.policyWinRate).map(([p, w]) => `${p} ${pct(w)}`).join(', ')} |`,
   ];
   return lines.join('\n');
