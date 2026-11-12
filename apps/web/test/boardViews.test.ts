@@ -8,14 +8,29 @@ import {
 } from '@dragon-rush/engine';
 import { describe, expect, it } from 'vitest';
 import { countUpMs, eventCardFor, showsEventCard } from '../src/types/eventCards';
-import { breathRunesLit, lairState } from '../src/types/lairView';
+import { breathRunesLit, dragonIntentCue, lairState } from '../src/types/lairView';
 import { buildPawns, pawnCount, type PawnInputs } from '../src/types/pawnView';
 import type { CombatView } from '../src/types/combatView';
-import { effectChips, effectSummary, landmarkOf, signed, tileCategory } from '../src/types/tileView';
+import {
+  effectChips,
+  effectSummary,
+  landmarkOf,
+  signed,
+  tileCategory,
+} from '../src/types/tileView';
 
 const CATEGORY_TABLE: Record<string, readonly TileId[]> = {
   good: ['GOBLIN', 'HERB', 'WOLF', 'TREASURE', 'BLACKSMITH', 'ORC', 'FOUNTAIN', 'TROLL'],
-  bad: ['POISON_SWAMP', 'BANDIT', 'TRAP', 'PICKPOCKET', 'CURSED_ALTAR', 'ROCKFALL', 'SPIDER_WEB', 'STORM'],
+  bad: [
+    'POISON_SWAMP',
+    'BANDIT',
+    'TRAP',
+    'PICKPOCKET',
+    'CURSED_ALTAR',
+    'ROCKFALL',
+    'SPIDER_WEB',
+    'STORM',
+  ],
   special: ['TRAINING', 'MYSTERY', 'WANDERING_MERCHANT'],
   landmark: ['START', 'SHOP', 'INN'],
 };
@@ -59,13 +74,19 @@ describe('event cards', () => {
     expect(showsEventCard(rules.board[index('SHOP')]!)).toBe(false);
     expect(showsEventCard(rules.board[index('TRAINING')]!)).toBe(false);
     expect(showsEventCard(rules.board[index('START')]!)).toBe(false);
-    const herb = eventCardFor({ type: 'TileResolved', seat: 1, tile: index('HERB'), tileId: 'HERB' }, rules)!;
+    const herb = eventCardFor(
+      { type: 'TileResolved', seat: 1, tile: index('HERB'), tileId: 'HERB' },
+      rules,
+    )!;
     expect(herb).toMatchObject({ kind: 'tile', seat: 1, tone: 'good', icon: 'herb' });
     expect(herb.chips[0]!.icon).toBe('hp');
   });
 
   it('keeps a cave card face down until the mystery card turns it over', () => {
-    const cave = eventCardFor({ type: 'TileResolved', seat: 0, tile: index('MYSTERY'), tileId: 'MYSTERY' }, rules)!;
+    const cave = eventCardFor(
+      { type: 'TileResolved', seat: 0, tile: index('MYSTERY'), tileId: 'MYSTERY' },
+      rules,
+    )!;
     expect(cave.kind).toBe('cave');
     expect(cave.chips).toEqual([]);
     const card = eventCardFor({ type: 'MysteryCardDrawn', seat: 0, cardId: 'BAT_SWARM' }, rules)!;
@@ -89,7 +110,9 @@ describe('event cards', () => {
 });
 
 const game = (): PublicGameState =>
-  toPublicState(createGame({ seats: [{ job: 'mage' }, { job: 'ninja' }, { job: 'archer' }] }, DEFAULT_RULES, 3));
+  toPublicState(
+    createGame({ seats: [{ job: 'mage' }, { job: 'ninja' }, { job: 'archer' }] }, DEFAULT_RULES, 3),
+  );
 
 const inputs = (over: Partial<PawnInputs>): PawnInputs => ({
   display: game(),
@@ -131,7 +154,14 @@ describe('pawn view model', () => {
     expect(p.count).toBe(5);
     expect(p.countDelayMs).toBe(300);
     const display = { ...game(), turn: { ...game().turn, dice: 4 } };
-    expect(pawnCount(2, { display, current: null, stepped: null, pending: { actor: 2, phase: 'MOVE_ADJUST' } })).toBe(4);
+    expect(
+      pawnCount(2, {
+        display,
+        current: null,
+        stepped: null,
+        pending: { actor: 2, phase: 'MOVE_ADJUST' },
+      }),
+    ).toBe(4);
     expect(pawnCount(1, { display, current: null, stepped: null, pending: null })).toBeNull();
   });
 
@@ -144,8 +174,13 @@ describe('pawn view model', () => {
 
   it('keeps a fight loser standing until the fight closes, then topples it', () => {
     const base = game();
-    const display = { ...base, players: base.players.map((p) => (p.seat === 2 ? { ...p, alive: false, hp: 0 } : p)) };
-    const during = buildPawns(inputs({ display, combat: duelView(0, 2) })).find((x) => x.seat === 2)!;
+    const display = {
+      ...base,
+      players: base.players.map((p) => (p.seat === 2 ? { ...p, alive: false, hp: 0 } : p)),
+    };
+    const during = buildPawns(inputs({ display, combat: duelView(0, 2) })).find(
+      (x) => x.seat === 2,
+    )!;
     expect(during.out).toBe(false);
     const after = buildPawns(inputs({ display })).find((x) => x.seat === 2)!;
     expect(after.out).toBe(true);
@@ -154,6 +189,16 @@ describe('pawn view model', () => {
 });
 
 describe('lair', () => {
+  it('describes board dragon intent and attack cadence without inventing a breath countdown', () => {
+    expect(dragonIntentCue('asleep', 3)).toEqual({
+      status: '용이 잠들어 있습니다',
+      breath: '전투 시 3번째 공격마다 브레스',
+    });
+    expect(dragonIntentCue('awake', 3).status).toBe('용에게 도전할 수 있습니다');
+    expect(dragonIntentCue('roar', 3).status).toBe('용이 포효합니다');
+    expect(dragonIntentCue('asleep', 4).breath).toBe('전투 시 4번째 공격마다 브레스');
+  });
+
   it('sleeps, wakes when a challenge is legal and roars in a dragon fight', () => {
     expect(lairState(null, false)).toBe('asleep');
     expect(lairState(null, true)).toBe('awake');

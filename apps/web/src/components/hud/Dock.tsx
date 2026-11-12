@@ -44,17 +44,6 @@ export function Dock(props: DockProps) {
 
   return (
     <section className="dock" aria-label="행동">
-      {showActions && anvilOpen && props.upgrades && (
-        <div className="dock-above">
-          <AnvilTray
-            options={props.upgrades}
-            coins={props.coins}
-            disabled={locked}
-            onUpgrade={props.onUpgrade}
-            onClose={() => setAnvilOpen(false)}
-          />
-        </div>
-      )}
       <div className="dock-status" role="status">
         <span>{props.status}</span>
         {props.countdown !== null && <span className="dock-timer num">{props.countdown}초</span>}
@@ -66,7 +55,12 @@ export function Dock(props: DockProps) {
         {showActions ? (
           <div className="dock-actions">
             {groups.roll && (
-              <button type="button" className="btn btn-primary dock-primary" disabled={locked} onClick={props.onRoll}>
+              <button
+                type="button"
+                className="btn btn-primary dock-primary"
+                disabled={locked}
+                onClick={props.onRoll}
+              >
                 <GameIcon name="dice" /> 주사위 굴리기
               </button>
             )}
@@ -81,12 +75,22 @@ export function Dock(props: DockProps) {
               </button>
             )}
             {groups.challengeDragon && (
-              <button type="button" className="btn btn-danger dock-dragon" disabled={locked} onClick={props.onDragon}>
+              <button
+                type="button"
+                className="btn btn-danger dock-dragon"
+                disabled={locked}
+                onClick={props.onDragon}
+              >
                 <GameIcon name="dragon" /> 용에게 도전
               </button>
             )}
             {props.shopAvailable && (
-              <button type="button" className="btn dock-shop" disabled={locked} onClick={props.onShop}>
+              <button
+                type="button"
+                className="btn dock-shop"
+                disabled={locked}
+                onClick={props.onShop}
+              >
                 <GameIcon name="tent" /> 상점
               </button>
             )}
@@ -122,16 +126,30 @@ export function Dock(props: DockProps) {
         )}
 
         {showActions && props.upgrades && (
-          <button
-            type="button"
-            className={`anvil-btn${anvilOpen ? ' is-open' : ''}${anyUpgrade ? ' is-ready' : ''}`}
-            onClick={() => setAnvilOpen((o) => !o)}
-            aria-expanded={anvilOpen}
-            title="코인으로 스탯 강화"
-          >
-            <GameIcon name="anvil" />
-            <span>강화</span>
-          </button>
+          <div className="anvil-anchor">
+            <button
+              type="button"
+              className={`anvil-btn${anvilOpen ? ' is-open' : ''}${anyUpgrade ? ' is-ready' : ''}`}
+              onClick={() => setAnvilOpen((o) => !o)}
+              aria-expanded={anvilOpen}
+              aria-controls="dock-anvil-tray"
+              title="코인으로 스탯 강화"
+            >
+              <GameIcon name="anvil" />
+              <span>강화</span>
+            </button>
+            {anvilOpen && (
+              <div className="dock-above" id="dock-anvil-tray">
+                <AnvilTray
+                  options={props.upgrades}
+                  coins={props.coins}
+                  disabled={locked}
+                  onUpgrade={props.onUpgrade}
+                  onClose={() => setAnvilOpen(false)}
+                />
+              </div>
+            )}
+          </div>
         )}
       </div>
     </section>

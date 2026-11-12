@@ -1,12 +1,17 @@
 import type { CSSProperties } from 'react';
 import { fxAnchorProps } from '../../types/fxAnchor';
-import type { LairState } from '../../types/lairView';
+import { dragonIntentCue, type LairState } from '../../types/lairView';
 import { CATEGORIES, CATEGORY_LABEL, type TileCategory } from '../../types/tileView';
 import { DragonArt } from '../icons/Art';
 import { GameIcon } from '../icons/GameIcon';
 
 interface DragonLairProps {
-  dragon: { readonly hp: number; readonly atk: number; readonly def: number; readonly breathEvery: number };
+  dragon: {
+    readonly hp: number;
+    readonly atk: number;
+    readonly def: number;
+    readonly breathEvery: number;
+  };
   state: LairState;
   round: number;
   /** Breath runes lit in the current dragon fight (0 when no fight). */
@@ -27,6 +32,7 @@ export function DragonLair({ dragon, state, round, breathLit, legend, onLegend }
   // The lair glows a little hotter every round (+2 %, capped at +30 %).
   const style = { '--ember-boost': Math.min(round * 0.02, 0.3) } as CSSProperties;
   const label = state === 'asleep' ? '잠든 용' : state === 'awake' ? '깨어난 용' : '포효하는 용';
+  const intent = dragonIntentCue(state, dragon.breathEvery);
   return (
     <div className={`lair lair-${state}`} style={style}>
       <div className="lair-floor">
@@ -40,6 +46,11 @@ export function DragonLair({ dragon, state, round, breathLit, legend, onLegend }
             <GameIcon name="rune" />
           </span>
         ))}
+      </div>
+
+      <div className="lair-intent" role="status">
+        <strong>{intent.status}</strong>
+        <span>{intent.breath}</span>
       </div>
 
       <div className="lair-stand">
@@ -78,7 +89,10 @@ export function DragonLair({ dragon, state, round, breathLit, legend, onLegend }
               <GameIcon name="def" />
               <strong>{dragon.def}</strong>
             </span>
-            <span className="stat-inline lair-breath" title={`${dragon.breathEvery}번째 공격마다 방어 무시 브레스`}>
+            <span
+              className="stat-inline lair-breath"
+              title={`${dragon.breathEvery}번째 공격마다 방어 무시 브레스`}
+            >
               <GameIcon name="breath" />
               <strong>{dragon.breathEvery}</strong>
             </span>
@@ -86,7 +100,12 @@ export function DragonLair({ dragon, state, round, breathLit, legend, onLegend }
         </div>
       </div>
 
-      <div className="lair-legend" role="group" aria-label="칸 범례" onPointerLeave={() => onLegend(null)}>
+      <div
+        className="lair-legend"
+        role="group"
+        aria-label="칸 범례"
+        onPointerLeave={() => onLegend(null)}
+      >
         {CATEGORIES.map((c) => (
           <button
             key={c}

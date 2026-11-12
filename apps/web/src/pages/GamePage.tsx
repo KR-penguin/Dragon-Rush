@@ -44,7 +44,7 @@ import { BOARD_TILT_DEG } from '../types/boardGeometry';
 import { statOptions } from '../types/decisionView';
 import { cornerOf } from '../types/hudLayout';
 import { DRAGON_NAME, PHASE_LABEL, seatColor } from '../types/labels';
-import { breathRunesLit, lairState } from '../types/lairView';
+import { breathRunesLit, dragonIntentCue, lairState } from '../types/lairView';
 import { buildPawns } from '../types/pawnView';
 import { playerCards, playerOf, seatName } from '../types/playerView';
 import { outcomeHeadline, resultRows } from '../types/resultView';
@@ -180,7 +180,8 @@ export function GamePage({ session, onExit, onRestart }: GamePageProps) {
 
   const mainPhase = phase === 'PRE_ROLL' || phase === 'POST_MOVE';
   // While another seat's turn is still animating, do not reveal the next decision's buttons yet.
-  const showActions = ui.mine && mainPhase && !ui.handoff && (!animating || display.current === actor);
+  const showActions =
+    ui.mine && mainPhase && !ui.handoff && (!animating || display.current === actor);
   const shopAvailable = phase === 'POST_MOVE' && (ui.groups.buys.length > 0 || state.turn.canBuy);
   const thiefTargeting = ui.dialog === 'thief';
   const thiefTargets = new Set(thiefTargeting ? ui.groups.thiefTargets : []);
@@ -188,7 +189,12 @@ export function GamePage({ session, onExit, onRestart }: GamePageProps) {
   const current = view.current;
   const roll: DiceRoll | null =
     current?.type === 'DiceRolled'
-      ? { key: current, value: current.value, seat: current.seat, local: controllable.includes(current.seat) }
+      ? {
+          key: current,
+          value: current.value,
+          seat: current.seat,
+          local: controllable.includes(current.seat),
+        }
       : null;
 
   const spotlightMode =
@@ -198,10 +204,14 @@ export function GamePage({ session, onExit, onRestart }: GamePageProps) {
         ? 'off'
         : 'turn';
   const breathLit = breathRunesLit(combat, display.rules.dragon.breathEvery);
+  const dragonState = lairState(combat, ui.groups.challengeDragon && showActions);
+  const dragonIntent = dragonIntentCue(dragonState, display.rules.dragon.breathEvery);
   const cards = playerCards(display, seats, animating ? null : actor);
   const ribbonPlayer = ribbon ? display.players.find((p) => p.seat === ribbon.seat) : undefined;
   const occupants = hover
-    ? display.players.filter((p) => p.alive && p.position === hover.index).map((p) => nameOf(p.seat))
+    ? display.players
+        .filter((p) => p.alive && p.position === hover.index)
+        .map((p) => nameOf(p.seat))
     : [];
 
   return (
@@ -227,7 +237,7 @@ export function GamePage({ session, onExit, onRestart }: GamePageProps) {
           >
             <DragonLair
               dragon={display.rules.dragon}
-              state={lairState(combat, ui.groups.challengeDragon && showActions)}
+              state={dragonState}
               round={display.round}
               breathLit={breathLit}
               legend={legend}
@@ -253,6 +263,7 @@ export function GamePage({ session, onExit, onRestart }: GamePageProps) {
           maxRounds={display.rules.maxRounds}
           breathEvery={display.rules.dragon.breathEvery}
           breathLit={breathLit}
+          dragonIntent={dragonIntent}
           speed={view.speed}
           canSkip={animating}
           muted={audio.muted}
@@ -296,7 +307,9 @@ export function GamePage({ session, onExit, onRestart }: GamePageProps) {
           locked={ui.locked || ui.teleportPicking}
           groups={ui.groups}
           shopAvailable={shopAvailable}
-          upgrades={showActions && actor !== null ? statOptions(state, actor, ui.groups.upgrades) : null}
+          upgrades={
+            showActions && actor !== null ? statOptions(state, actor, ui.groups.upgrades) : null
+          }
           items={showActions && actor !== null ? playerOf(state, actor).items : null}
           coins={actor !== null ? playerOf(state, actor).coins : 0}
           onRoll={() => void ui.submit({ type: 'ROLL_DICE' })}
@@ -342,7 +355,9 @@ export function GamePage({ session, onExit, onRestart }: GamePageProps) {
       {finished && state.outcome && (
         <ResultOverlay
           {...outcomeHeadline(state.outcome, nameOf)}
-          winnerJob={state.outcome.winner !== null ? playerOf(state, state.outcome.winner).job : null}
+          winnerJob={
+            state.outcome.winner !== null ? playerOf(state, state.outcome.winner).job : null
+          }
           winnerColor={state.outcome.winner !== null ? seatColor(state.outcome.winner) : null}
           rounds={state.round}
           rows={resultRows(state, nameOf, eliminations)}
