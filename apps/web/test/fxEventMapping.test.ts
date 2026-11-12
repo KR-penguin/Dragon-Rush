@@ -327,7 +327,7 @@ describe('event → effect mapping', () => {
   it('maps every event of a seeded full game within the safety limits', () => {
     const created = createGameWithEvents(
       { seats: [{ job: 'berserker' }, { job: 'ninja' }, { job: 'archer' }, { job: 'swordsman' }] },
-      { ...DEFAULT_RULES, maxRounds: 40 },
+      { ...DEFAULT_RULES, maxRounds: 40, combat: { ...DEFAULT_RULES.combat, mode: 'dice' } },
       11,
     );
     let state = created.state;
