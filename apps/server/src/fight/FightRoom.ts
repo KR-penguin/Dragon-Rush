@@ -64,9 +64,8 @@ export class FightRoom {
   private readonly desyncs = new Map<string, number>();
   private ended = false;
   private readonly bot: readonly CombatPolicy[];
-  private readonly random: () => number;
+  private readonly random: readonly [() => number, () => number];
   private readonly botMaskHeld: [number, number] = [0, 0];
-  private readonly botLive: [number, number] = [0, 0];
   private readonly goTimeout: ReturnType<typeof setTimeout>;
 
   constructor(
@@ -83,7 +82,7 @@ export class FightRoom {
       const info = seats.find((s) => s.seat === engineSeat);
       return info ? (room.seats[info.lobbySeat]?.playerId ?? null) : null;
     });
-    this.random = policyRandom(launch.seed, 7);
+    this.random = [policyRandom(launch.seed, 1), policyRandom(launch.seed, 2)];
     this.bot = [createCombatBot('balanced'), createCombatBot('balanced')];
     const controllers = [0, 1].map((i) => {
       const engineSeat = i === 0 ? launch.request.a : launch.request.b;
@@ -152,12 +151,9 @@ export class FightRoom {
 
   private botMask(state: CombatState, seat: 0 | 1): number {
     if (state.hitstop === 0) {
-      if (this.botLive[seat] % 4 === 0) {
-        this.botMaskHeld[seat] = isActionable(state, seat === 0 ? 'a' : 'b', 4)
-          ? inputToMask(this.bot[seat]!.decide(state, seat === 0 ? 'a' : 'b', this.random))
-          : 0;
-      }
-      this.botLive[seat] += 1;
+      this.botMaskHeld[seat] = isActionable(state, seat === 0 ? 'a' : 'b', 1)
+        ? inputToMask(this.bot[seat]!.decide(state, seat === 0 ? 'a' : 'b', this.random[seat]))
+        : 0;
     }
     return this.botMaskHeld[seat];
   }

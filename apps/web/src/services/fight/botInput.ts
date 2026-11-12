@@ -18,11 +18,11 @@ export interface FightBotParams {
   readonly interval: number;
 }
 
-/** Normal: a decision every 4 ticks and a ~10-tick reaction delay. */
+/** Scripted bots decide each tick; difficulty changes reaction delay and style. */
 export const FIGHT_BOT_LEVELS: Readonly<Record<FightBotLevel, FightBotParams>> = {
-  easy: { style: 'cautious', reaction: 18, interval: 6 },
-  normal: { style: 'balanced', reaction: 10, interval: 4 },
-  hard: { style: 'aggressive', reaction: 6, interval: 2 },
+  easy: { style: 'cautious', reaction: 18, interval: 1 },
+  normal: { style: 'balanced', reaction: 10, interval: 1 },
+  hard: { style: 'aggressive', reaction: 6, interval: 1 },
 };
 
 export const FIGHT_BOT_LABEL: Readonly<Record<FightBotLevel, string>> = {
