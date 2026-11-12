@@ -63,10 +63,7 @@ export interface SessionNotifier {
 
 export type SubmitSource = 'human' | 'timer' | 'policy';
 
-/**
- * TEMPORARY resolver until real-time combat (@dragon-rush/combat) lands: settles a pending COMBAT
- * with the dice rules inside the same submit, so clients see one update exactly like the old 'dice' mode.
- */
+/** Settle COMBAT with dice when the room explicitly chooses quick combat. */
 function autoResolveCombat(r: { state: GameState; events: GameEvent[] }): {
   state: GameState;
   events: GameEvent[];

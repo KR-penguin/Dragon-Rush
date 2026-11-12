@@ -8,6 +8,7 @@ import {
   type CombatPolicy,
   type CombatState,
 } from '@dragon-rush/combat';
+import { isActionable } from '@dragon-rush/combat-ai';
 import {
   decodeFightAck,
   decodeFightInput,
@@ -65,6 +66,7 @@ export class FightRoom {
   private readonly bot: readonly CombatPolicy[];
   private readonly random: () => number;
   private readonly botMaskHeld: [number, number] = [0, 0];
+  private readonly botLive: [number, number] = [0, 0];
   private readonly goTimeout: ReturnType<typeof setTimeout>;
 
   constructor(
@@ -95,7 +97,7 @@ export class FightRoom {
       seed: launch.seed,
       rules: this.rules,
       controllers,
-      botMask: (state, seat, tick) => this.botMask(state, seat, tick),
+      botMask: (state, seat) => this.botMask(state, seat),
     });
     for (const pid of room.members) this.sendStart(pid);
     this.goTimeout = setTimeout(() => this.go(), READY_TIMEOUT_MS);
@@ -148,11 +150,14 @@ export class FightRoom {
     return DEFAULT_COMBAT_RULES;
   }
 
-  private botMask(state: CombatState, seat: 0 | 1, tick: number): number {
-    if (tick % 4 === 1 && state.hitstop === 0) {
-      this.botMaskHeld[seat] = inputToMask(
-        this.bot[seat]!.decide(state, seat === 0 ? 'a' : 'b', this.random),
-      );
+  private botMask(state: CombatState, seat: 0 | 1): number {
+    if (state.hitstop === 0) {
+      if (this.botLive[seat] % 4 === 0) {
+        this.botMaskHeld[seat] = isActionable(state, seat === 0 ? 'a' : 'b', 4)
+          ? inputToMask(this.bot[seat]!.decide(state, seat === 0 ? 'a' : 'b', this.random))
+          : 0;
+      }
+      this.botLive[seat] += 1;
     }
     return this.botMaskHeld[seat];
   }
