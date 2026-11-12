@@ -408,7 +408,7 @@ Python (사용자 트레이너) ─┬─ RPGBoardEnv/RPGBoardVecEnv ── stdi
 - 결과 입력: `applyCombatResult(state, { winner, hpA, hpB, indomitableUsedA?, indomitableUsedB?, timedOut? })`. 엔진이 검증(`InvalidCombatResultError`)하고 `CombatEnded`·탈락·전리품·승리 판정을 이어 간다. `resolveCombatWithDice(state)`는 대기 중인 전투를 주사위 규칙으로 정리한다(`dice` 리졸버·대체 경로).
 - 서버: `GameSession`이 `COMBAT`에 들어가면 턴 타이머를 멈추고 전투 방(`FightRoom`)을 연다. 서버가 확정한 결과는 `GameSession.submitCombatResult(fightId, result)` 한 경로로 들어오며 활성 `fightId`와 `COMBAT` phase를 검사한 뒤 적용한다. 방의 `quickCombat` 선택만 주사위 해결 경로를 쓴다. 로컬은 `LocalGameClient`가 브라우저 sim 결과를 같은 엔진 함수에 넣는다.
 - `PROTOCOL_VERSION`은 2다. 보드 정책은 `COMBAT`에서 결정하지 않는다. 과거 `rush-9`에서 남은 강화 횟수를 붙여 `obs_v3`(258차원), 강화 마스크 계약을 `act_v2`(47개)로 올렸다. 현행 `rush-10`은 생성된 맵의 24칸 효과를 추가한 `obs_v4`(498차원)와 닌자 보정 0도 쿨다운을 소비하는 `act_v3`(47개)를 쓴다. 소켓 메시지 형태는 바뀌지 않아 `PROTOCOL_VERSION`은 유지한다.
-- 현행 실시간 전투 규칙은 `combat-6`이다. 용전은 최대 90초(5,400틱)이며, 소프트 격노 시작 시점은 20초(1,200틱) 그대로다.
+- 현행 실시간 전투 규칙은 `combat-7`이다. 용전은 최대 60초(3,600틱)이며, 소프트 격노 시작 시점은 20초(1,200틱) 그대로다.
 
 ### 12.3 온라인 롤백·전송 (`packages/netcode`, `packages/protocol`)
 | 방향 | 이름 | 페이로드·역할 |

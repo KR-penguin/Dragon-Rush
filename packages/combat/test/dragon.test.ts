@@ -40,7 +40,9 @@ describe('dragon script', () => {
       let state = createCombat(dragonFight(statFighter('swordsman', 5000, 1, 8)), 19, rules);
       while (!state.outcome) {
         const result = stepCombat(state, [idle]);
-        const hit = result.events.find((event) => event.type === 'Hit' && event.attacker === 'dragon');
+        const hit = result.events.find(
+          (event) => event.type === 'Hit' && event.attacker === 'dragon',
+        );
         if (hit?.type === 'Hit') return hit.dmg;
         state = result.state;
       }
@@ -123,8 +125,8 @@ describe('dragon script', () => {
     expect(combatResult(states.at(-1)!)?.winner).toBe('a');
   });
 
-  it('the challenger loses at 90 s and the dragon soft-enrages at 20 s', () => {
-    expect(R.timeLimit.dragonFight).toBe(90 * R.tickHz);
+  it('the challenger loses at 60 s and the dragon soft-enrages at 20 s', () => {
+    expect(R.timeLimit.dragonFight).toBe(60 * R.tickHz);
     expect(R.dragon.softEnrageTick).toBe(20 * R.tickHz);
     const wall = statFighter('swordsman', 5000, 1, 60);
     const p = play(createCombat(dragonFight(wall), 3), randomInputs(3, 6000), [], 6000);

@@ -23,7 +23,7 @@
 | `COBS_VERSION` / `COBS_DIM` | `"cobs_v1"` / **160** | 관측 레이아웃·정규화 |
 | `CACT_VERSION` / `CACT_NVEC` / `CACT_FLAT_DIM` | `"cact_v1"` / **[9, 4]** / **36** | 행동 ↔ 입력 마스크 매핑 |
 | `COMBAT_ENV_PROTOCOL` (`packages/sim`) | `"rpgboard-combat-env/1"` | combat env 메시지 형식 |
-| `combat_rules_version` + `combat_rules_hash` | `DEFAULT_COMBAT_RULES.version`(현재 `"combat-6"`) + `hashCombatRules`(규칙 JSON의 FNV-1a 32비트) | 전투 수치 식별 |
+| `combat_rules_version` + `combat_rules_hash` | `DEFAULT_COMBAT_RULES.version`(현재 `"combat-7"`) + `hashCombatRules`(규칙 JSON의 FNV-1a 32비트) | 전투 수치 식별 |
 
 - 버전 정책은 보드와 같다([ai-interface-spec.md §2](ai-interface-spec.md)): 인덱스·길이·정규화·의미가 바뀌면 `cobs_v2`처럼 올리고, 기존 인덱스의 의미를 재사용하지 않는다. 수치(`DEFAULT_COMBAT_RULES`)만 바뀌면 버전은 그대로이고 `combat_rules_version`·hash가 바뀐다.
 
@@ -95,7 +95,7 @@
 **전역 블록** — offset 143, 길이 17
 | off | len | 이름 | 인코딩 |
 |---|---|---|---|
-| 143 | 4 | `g.match` | [남은 시간/제한 시간(결투 45초, 용전 90초), 용전 여부, 불의 고리 반지름/RING_S, delay/DELAY_S] |
+| 143 | 4 | `g.match` | [남은 시간/제한 시간(결투 45초, 용전 60초), 용전 여부, 불의 고리 반지름/RING_S, delay/DELAY_S] |
 | 147 | 9 | `g.prevMove` | 직전 결정의 이동 one-hot |
 | 156 | 4 | `g.prevButton` | 직전 결정의 버튼 one-hot |
 
@@ -125,7 +125,7 @@
 - **종단**: 승 +1, 패 −1. 무승부 없음(시간 종료도 결투는 HP 비율·동률은 도착자, 용전은 도전자 패배로 승패가 난다).
 - **shaping**: `k · (Δ준 피해/상대 maxHp − Δ받은 피해/자기 maxHp)`, 스텝마다 [−1, 1]로 클리핑(종단 보상은 별도). k는 `k_start` 0.5 → `k_end` 0.1로 `anneal_decisions` 결정 동안 선형 감소한다. `anneal_decisions=0`이면 k는 0.5로 고정된다. 이 보상은 클리핑·할인 때문에 정책 불변성을 보장하는 potential shaping은 아니다.
 - 시간 벌점·명중 보너스 없음. 접근 보너스(`approach`, 거리 감소량/W × 계수)는 커리큘럼 0단계에서만 쓴다(기본 0).
-- **종료**: KO 또는 규칙 시간 종료(결투 45초, 용전 90초) → `terminated = true`. 용전은 20초(1,200틱)부터 소프트 격노하고 90초(5,400틱)에 종료한다. 안전 상한(규칙 시간의 2배) → `truncated = true`(부트스트랩).
+- **종료**: KO 또는 규칙 시간 종료(결투 45초, 용전 60초) → `terminated = true`. 용전은 20초(1,200틱)부터 소프트 격노하고 60초(3,600틱)에 종료한다. 안전 상한(규칙 시간의 2배) → `truncated = true`(부트스트랩).
 - **[구현]** 피해는 현재(지연 없는) 상태의 HP 차이(0 아래는 0)로 잰다. 고리 피해도 받은 피해에 들어간다. k 감소용 결정 수는 서버 프로세스 전체에서 활성 슬롯의 결정을 센 값이고 reset으로 초기화하지 않는다. 종단 보상은 클리핑한 shaping 값에 더한다(그 스텝 보상은 [−2, 2]). `approach`는 클리핑 뒤에 더한다.
 
 ## 8. combat env 서버 프로토콜 (stdio JSON Lines)
@@ -141,7 +141,7 @@
 | `config.opponent` | `"scripted:<name>"` \| `"external"`, `"scripted:pool"` | `p0`일 때 상대 좌석(이름은 §1). `external`은 `controlled: "both"`와만 쓴다(`p0`이면 `BAD_CONFIG`) |
 | `config.mode_mix` | `{pvp, dragon}`, `{pvp: 0.75, dragon: 0.25}` | 에피소드별 모드 확률 |
 | `config.jobs` | `"uniform"` \| 좌석별 목록(직업 id 또는 `"uniform"`, 1~2개), `"uniform"` | 같은 직업 대결 허용. 목록이 1개면 두 좌석 모두에 적용 |
-| `config.stat_sampler` | `"uniform_board"` \| `"start"` \| `"file:<path>"`, `"uniform_board"` | **[구현]** `uniform_board`: 현재도 유지된 직업 시작 스탯 + 강화 단계 균등 표본(결투 ATK·DEF +0~6, maxHp +0~5단계×6, HP 35~100% / 용전 ATK·DEF +3~9, maxHp +2~7단계, HP 60~100% / 검사 불굴 남음 90%; 과거 보드 휴리스틱 3000판 로그의 p5~p95를 덮도록 정함). `start`: 직업 시작 스탯. `file:<path>`: `stat_dist_v1` 파일(§10.3)에서 같은 직업·같은 전투 종류 표본. 보관된 `packages/sim/data/rush4_stat_dist_v1.json`은 과거 `rush-4` 분포이며 현행 `rush-10`/`combat-6` 분포가 아니다 |
+| `config.stat_sampler` | `"uniform_board"` \| `"start"` \| `"file:<path>"`, `"uniform_board"` | **[구현]** `uniform_board`: 현재도 유지된 직업 시작 스탯 + 강화 단계 균등 표본(결투 ATK·DEF +0~6, maxHp +0~5단계×6, HP 35~100% / 용전 ATK·DEF +3~9, maxHp +2~7단계, HP 60~100% / 검사 불굴 남음 90%; 과거 보드 휴리스틱 3000판 로그의 p5~p95를 덮도록 정함). `start`: 직업 시작 스탯. `file:<path>`: `stat_dist_v1` 파일(§10.3)에서 같은 직업·같은 전투 종류 표본. 보관된 `packages/sim/data/rush4_stat_dist_v1.json`은 과거 `rush-4` 분포이며 현행 `rush-10`/`combat-7` 분포가 아니다 |
 | `config.action_repeat` | int ≥ 1, 4 | §3 |
 | `config.obs_delay` | `[min, max]` 또는 int, `[4, 18]` | §3 |
 | `config.flat_actions` | bool, false | §5 |
@@ -241,7 +241,7 @@ createCombatModelPolicy(model, { difficulty?: 'easy' | 'normal' | 'hard'; temper
 ## 12. 보드 env의 전투 해결 (`combat_resolver`)
 - 보드 env(`rpgboard-env/2`)의 선택값은 `config.combat_resolver: "sim" | "dice"`이며 기본값은 `"sim"`이다. 둘 다 생성된 24칸 맵의 효과를 담은 보드 관측 `obs_v4`(498)와 행동 `act_v3`(47)을 쓴다. 닌자의 −1/0/+1은 어느 선택이든 쿨다운 2를 시작해 다음 자기 턴에는 사용할 수 없다. reset 응답의 `combat_resolver`와 `expect.combat_resolver` 불일치는 `VERSION_MISMATCH`다.
 - 내부 `outcome_v1` 결과 예측기와 `outcome` resolver, 모델 JSON 로더·CLI는 제거됐다. 보드 학습은 실제 스크립트 전투 `sim`을 사용한다. 사용자 제공 보드 정책과 전투 정책 모델의 어댑터 계약은 유지한다.
-- **역사적 측정**: 삭제된 `outcome_v1`은 과거 `rush-3`/`combat-2` 분포로 적합·검증됐다. 당시 보정 수치와 20만 전투 표본은 현행 `rush-10`/`combat-6`의 성능이나 현재 사용 가능한 명령을 뜻하지 않는다. 이전 `stat_dist_v1` 파일은 역사적 전투 스탯 분포 자료로 남는다.
+- **역사적 측정**: 삭제된 `outcome_v1`은 과거 `rush-3`/`combat-2` 분포로 적합·검증됐다. 당시 보정 수치와 20만 전투 표본은 현행 `rush-10`/`combat-7`의 성능이나 현재 사용 가능한 명령을 뜻하지 않는다. 이전 `stat_dist_v1` 파일은 역사적 전투 스탯 분포 자료로 남는다.
 - **역사적 비교**: 과거 `rush-3`에서 제거된 결과 예측기를 보드 봇에 적용한 뒤 같은 시드·4인 8,000판을 실제 `sim` 전투로 다시 측정하면 중앙 6/p95 9라운드, 용 처치 종료 46.8%, 직업 승률 검/궁/마/닌/광 18.8/26.1/34.8/25.4/19.8%, 3라운드 안 탈락 22.6%였다([game-design.md §15](game-design.md)). 현재 예측기가 제거돼 같은 값은 재현되지 않는다. §15의 과거 `rush-7` 표도 현행 봇 기준선이 아니다.
 - `dice`는 선택형 빠른 전투의 `resolveCombatWithDice`다. 기본 `sim`은 `boardCombatSetup(state)`으로 보드 프로필을 옮겨 두 `scripted:balanced` 봇의 실제 전투를 끝까지 실행한다. 실시간 플레이의 정책은 별도 전투 모델 가중치가 없으면 스크립트 봇이다. `pnpm sim --combat sim` 또는 `pnpm sim --combat dice`로 비교한다.
 - 상성 보정 B의 **기본 5직업 시작 스탯은 rush-2에서도 그대로**다. `combat-2`의 balanced 봇 반응 10f/16f 합산 실측의 10개 우세 방향은 모두 통과했지만 목표 대·소 상성 승률 범위는 미달이고 5f 시험에는 일부 역전이 남아 있다([combat-design.md §5.1](combat-design.md)). UI Easy/Hard는 다른 스타일이므로 이 행렬의 통과 범위가 아니다.
