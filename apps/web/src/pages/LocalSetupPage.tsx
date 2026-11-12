@@ -1,4 +1,5 @@
 import { DEFAULT_RULES } from '@dragon-rush/engine';
+import { GameIcon } from '../components/icons/GameIcon';
 import { SeatEditor } from '../components/setup/SeatEditor';
 import { useLocalSetup } from '../hooks/useLocalSetup';
 import { CombatOptions } from './setup/CombatOptions';
@@ -25,7 +26,10 @@ export function LocalSetupPage({ onBack }: LocalSetupPageProps) {
         <button type="button" className="btn btn-ghost" onClick={onBack}>
           ← 처음으로
         </button>
-        <h1>로컬 게임 준비</h1>
+        <div className="page-title">
+          <span className="page-kicker">작전 탁자에 둘러앉기</span>
+          <h1>로컬 게임 준비</h1>
+        </div>
       </header>
 
       <section className="panel setup-options">
@@ -93,7 +97,7 @@ export function LocalSetupPage({ onBack }: LocalSetupPageProps) {
           disabled={errors.length > 0}
           onClick={setup.start}
         >
-          ⚔️ 게임 시작
+          <GameIcon name="duel" /> 게임 시작
         </button>
       </footer>
     </main>

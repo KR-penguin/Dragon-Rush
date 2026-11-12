@@ -11,7 +11,7 @@ import { TrainingDialog } from '../../components/dialogs/TrainingDialog';
 import type { DecisionUi } from '../../hooks/useDecisionUi';
 import { moveOptions, opponentSummaries, shopRows, statOptions } from '../../types/decisionView';
 import { dragonWinChance, duelWinChance, shieldDecisionChance } from '../../types/estimates';
-import { PHASE_LABEL, seatColor } from '../../types/labels';
+import { PHASE_LABEL, seatColor, seatCrest } from '../../types/labels';
 import { playerOf } from '../../types/playerView';
 
 interface DecisionDialogsProps {
@@ -19,10 +19,12 @@ interface DecisionDialogsProps {
   /** Authoritative state the pending decision belongs to. */
   state: PublicGameState;
   nameOf: (seat: SeatId) => string;
+  /** Destination preview on the board for the ninja's move adjust. */
+  onPreviewTile?: (tile: number | null) => void;
 }
 
 /** Renders the one dialog the decision UI asks for, wired to legal actions only. */
-export function DecisionDialogs({ ui, state, nameOf }: DecisionDialogsProps) {
+export function DecisionDialogs({ ui, state, nameOf, onPreviewTile }: DecisionDialogsProps) {
   const { dialog, actor, groups, locked, submit } = ui;
 
   const estimate = useMemo(() => {
@@ -49,6 +51,7 @@ export function DecisionDialogs({ ui, state, nameOf }: DecisionDialogsProps) {
         <HandoffDialog
           name={nameOf(actor)}
           color={seatColor(actor)}
+          crest={seatCrest(actor)}
           phaseLabel={ui.phase ? PHASE_LABEL[ui.phase] : ''}
           onConfirm={ui.acknowledgeHandoff}
         />
@@ -60,6 +63,7 @@ export function DecisionDialogs({ ui, state, nameOf }: DecisionDialogsProps) {
           options={moveOptions(state, groups.moveDeltas)}
           locked={locked}
           onChoose={(delta) => void submit({ type: 'ADJUST_MOVE', delta })}
+          {...(onPreviewTile ? { onPreview: onPreviewTile } : {})}
         />
       );
     case 'pvpTarget':
