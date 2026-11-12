@@ -1,8 +1,9 @@
 import type { SeatId } from '@dragon-rush/engine';
+import type { CSSProperties } from 'react';
 import type { OpponentSummary } from '../../types/decisionView';
-import { ITEM_ICON } from '../../types/labels';
-import { Modal } from '../common/Modal';
-import { SeatChip } from '../common/SeatChip';
+import { seatColor, seatCrest } from '../../types/labels';
+import { Crest } from '../icons/Crest';
+import { GameIcon } from '../icons/GameIcon';
 
 interface ThiefDialogProps {
   targets: readonly { readonly name: string; readonly summary: OpponentSummary }[];
@@ -12,34 +13,43 @@ interface ThiefDialogProps {
   onClose: () => void;
 }
 
+/**
+ * Thief targeting: the world dims and the targets' corner cards get gold rims (click one there),
+ * with this strip as the keyboard-friendly list.
+ */
 export function ThiefDialog({ targets, stealMax, locked, onChoose, onClose }: ThiefDialogProps) {
   return (
-    <Modal
-      className="thief"
-      title={`${ITEM_ICON.thief} 도둑 사용`}
-      onClose={onClose}
-      footer={
-        <button type="button" className="btn btn-ghost" onClick={onClose}>
-          취소
-        </button>
-      }
-    >
-      <p>코인을 훔칠 상대를 고르세요. 최대 {stealMax}개를 가져옵니다.</p>
-      <ul className="target-list">
+    <div className="targeting-panel" role="dialog" aria-label="도둑 사용">
+      <header>
+        <GameIcon name="thief" className="targeting-icon" />
+        <div>
+          <strong>도둑 사용</strong>
+          <span>금빛 테두리 카드를 골라 코인을 최대 {stealMax}개 훔치세요.</span>
+        </div>
+      </header>
+      <ul>
         {targets.map((t) => (
           <li key={t.summary.seat}>
-            <SeatChip name={t.name} summary={t.summary} />
             <button
               type="button"
-              className="btn btn-primary"
+              className="target-pill"
+              style={{ '--seat-color': seatColor(t.summary.seat) } as CSSProperties}
               disabled={locked}
               onClick={() => onChoose(t.summary.seat)}
             >
-              훔치기
+              <Crest shape={seatCrest(t.summary.seat)} />
+              {t.name}
+              <span className="stat-inline">
+                <GameIcon name="coins" />
+                <strong>{t.summary.coins}</strong>
+              </span>
             </button>
           </li>
         ))}
       </ul>
-    </Modal>
+      <button type="button" className="btn btn-ghost" onClick={onClose}>
+        취소 <kbd>Esc</kbd>
+      </button>
+    </div>
   );
 }

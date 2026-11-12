@@ -1,5 +1,8 @@
 import { JOB_IDS, type JobDef, type JobId } from '@dragon-rush/engine';
-import { JOB_ICON, JOB_LABEL } from '../../types/labels';
+import type { CSSProperties } from 'react';
+import { JOB_LABEL, seatColor, seatCrest } from '../../types/labels';
+import { JobArt } from '../icons/Art';
+import { Crest } from '../icons/Crest';
 import {
   BOT_OPTIONS,
   type BotOptionId,
@@ -23,9 +26,9 @@ const isBot = (v: string): v is BotOptionId => BOT_OPTIONS.some((o) => o.id === 
 export function SeatEditor({ index, seat, taken, jobs, scale, onChange }: SeatEditorProps) {
   const id = `seat-${index}`;
   return (
-    <section className="seat-editor">
+    <section className="seat-editor" style={{ '--seat-color': seatColor(index) } as CSSProperties}>
       <header className="seat-editor-head">
-        <span className="seat-dot" />
+        <Crest shape={seatCrest(index)} className="seat-crest" />
         <span>좌석 {index + 1}</span>
       </header>
       <label className="field">
@@ -86,7 +89,7 @@ export function SeatEditor({ index, seat, taken, jobs, scale, onChange }: SeatEd
               title={isTaken ? `${JOB_LABEL[job]} (다른 좌석이 선택함)` : JOB_LABEL[job]}
               onClick={() => onChange({ job })}
             >
-              <span>{JOB_ICON[job]}</span>
+              <JobArt job={job} className="job-pick-art" />
               <small>{JOB_LABEL[job]}</small>
             </button>
           );
