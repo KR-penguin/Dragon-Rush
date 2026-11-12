@@ -51,9 +51,10 @@ function dispatch(ctx: Ctx, action: Action): void {
 
 const MAX_AUTO_STEPS = 10_000;
 
-/** Applies decisions that have exactly one legal action, so players only ever see real choices. */
+/** Applies single-action decisions except PvP confirmation, which the arriver must explicitly submit. */
 function autoAdvance(ctx: Ctx): { state: GameState; events: GameEvent[] } {
   for (let i = 0; i < MAX_AUTO_STEPS; i++) {
+    if (ctx.s.pending?.phase === 'CHOOSE_PVP_TARGET') break;
     const legal = getLegalActions(ctx.s);
     if (legal.length !== 1) break;
     dispatch(ctx, legal[0] as Action);

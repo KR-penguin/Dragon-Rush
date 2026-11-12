@@ -92,6 +92,7 @@ export interface RulesConfig {
   readonly startBonus: { readonly coins: number; readonly hp: number };
   readonly maxRounds: number | null;
   readonly pvpGraceRounds: number;
+  readonly pvpWinBonusCoins: number;
   readonly eventHpFloor: number;
   readonly jobs: Readonly<Record<JobId, JobDef>>;
   readonly passives: {

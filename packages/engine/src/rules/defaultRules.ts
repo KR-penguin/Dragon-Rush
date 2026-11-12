@@ -16,7 +16,7 @@ const BOARD: readonly TileDef[] = [
   tile('START', '출발', [], true),
   tile('GOBLIN', '고블린 무리 처치', [{ kind: 'coins', amount: 6 }]),
   tile('POISON_SWAMP', '독 늪', [{ kind: 'hp', amount: -5 }]),
-  tile('HERB', '약초 군락', [{ kind: 'hp', amount: 8 }]),
+  tile('TREASURE', '보물 상자', [{ kind: 'coins', amount: 12 }]),
   tile('BANDIT', '산적의 습격', [{ kind: 'coins', amount: -4 }]),
   tile('TRAINING', '수련장', [{ kind: 'training' }]),
   tile('SHOP', '상점', [{ kind: 'shop' }]),
@@ -25,7 +25,7 @@ const BOARD: readonly TileDef[] = [
     { kind: 'hp', amount: -3 },
   ]),
   tile('TRAP', '가시 함정', [{ kind: 'hp', amount: -6 }]),
-  tile('TREASURE', '보물 상자', [{ kind: 'coins', amount: 12 }]),
+  tile('HERB', '약초 군락', [{ kind: 'hp', amount: 8 }]),
   tile('PICKPOCKET', '소매치기', [{ kind: 'coins', amount: -6 }]),
   tile('BLACKSMITH', '대장장이의 축복', [{ kind: 'stat', stat: 'def', amount: 1 }]),
   tile('INN', '여관', [{ kind: 'hp', amount: 20 }]),
@@ -75,12 +75,13 @@ const MYSTERY_DECK: readonly MysteryCardDef[] = [
 ];
 
 export const DEFAULT_RULES: RulesConfig = deepFreeze({
-  version: 'rush-2',
+  version: 'rush-3',
   startingCoins: 10,
-  startingItems: { shield: 1 },
+  startingItems: {},
   startBonus: { coins: 35, hp: 6 },
   maxRounds: null,
   pvpGraceRounds: 2,
+  pvpWinBonusCoins: 30,
   eventHpFloor: 1,
   jobs: {
     swordsman: { hp: 53, atk: 5, def: 5 },

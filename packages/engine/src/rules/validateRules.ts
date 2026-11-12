@@ -37,6 +37,8 @@ export function validateRules(rules: RulesConfig): void {
   if (rules.dragon.hp < 1 || rules.dragon.breathEvery < 1) fail('invalid dragon config');
   if (rules.maxRounds !== null && rules.maxRounds < 1) fail('maxRounds must be null or >= 1');
   if (rules.pvpGraceRounds < 0) fail('pvpGraceRounds must be >= 0');
+  if (!Number.isSafeInteger(rules.pvpWinBonusCoins) || rules.pvpWinBonusCoins < 0)
+    fail('pvpWinBonusCoins must be a non-negative safe integer');
   if (rules.eventHpFloor < 1) fail('eventHpFloor must be >= 1');
 }
 
