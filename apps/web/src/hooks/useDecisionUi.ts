@@ -6,6 +6,7 @@ import { groupActions } from '../types/actionGroups';
 import {
   activeDialog,
   canAct,
+  landingDecisionReached,
   needsHandoff,
   shopVisitKey,
   type DialogKind,
@@ -16,7 +17,12 @@ import {
  * Decision UI state for the Game page: which dialog or board mode is open and what may be submitted.
  * Everything selectable comes from `latest.legalActions`.
  */
-export function useDecisionUi(store: GameStore, latest: GameUpdate | null, animating: boolean) {
+export function useDecisionUi(
+  store: GameStore,
+  latest: GameUpdate | null,
+  display: GameUpdate['publicState'] | null,
+  animating: boolean,
+) {
   const [request, setRequest] = useState<UserRequest | null>(null);
   const [shopDismissedKey, setShopDismissedKey] = useState<string | null>(null);
   const [handoffAck, setHandoffAck] = useState<SeatId | null>(null);
@@ -35,7 +41,7 @@ export function useDecisionUi(store: GameStore, latest: GameUpdate | null, anima
   const state = latest?.publicState ?? null;
   const actor = latest?.pending?.actor ?? null;
   const phase = latest?.pending?.phase ?? null;
-  const acting = canAct(latest, animating);
+  const acting = canAct(latest, animating && !landingDecisionReached(latest, display));
   const settled = canAct(latest, false);
   const handoff = settled && needsHandoff(latest?.controllableSeats ?? [], actor, handoffAck);
   const shopAvailable =

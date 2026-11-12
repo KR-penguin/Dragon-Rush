@@ -17,6 +17,24 @@ export function canAct(update: DecisionSource | null, animating: boolean): boole
   );
 }
 
+/** A landing decision may be shown once the pawn reaches the authoritative tile. */
+export function landingDecisionReached(
+  update: DecisionSource | null,
+  display: PublicGameState | null,
+): boolean {
+  const pending = update?.pending;
+  if (!pending || !display) return false;
+  const landingPhase =
+    pending.phase === 'POST_MOVE' ||
+    pending.phase === 'CHOOSE_PVP_TARGET' ||
+    pending.phase === 'SHIELD_DECISION' ||
+    pending.phase === 'TRAINING_CHOICE';
+  if (!landingPhase || display.current !== pending.actor) return false;
+  return (
+    display.players[pending.actor]?.position === update.publicState.players[pending.actor]?.position
+  );
+}
+
 /** Hot-seat hand-off: several local humans share the screen and a different one must decide now. */
 export function needsHandoff(
   controllable: readonly SeatId[],

@@ -76,7 +76,7 @@ export function GamePage({ session, onExit, onRestart }: GamePageProps) {
   useAnimationQueue(store);
   const view = useGameView(store);
   const { latest, display, animating } = view;
-  const ui = useDecisionUi(store, latest, animating);
+  const ui = useDecisionUi(store, latest, display, animating);
   const combat = useCombatView(store);
   const eliminations = useEliminations(store);
   // Effects and their sounds (hop ticks included) follow the animation queue via the FX layer.
