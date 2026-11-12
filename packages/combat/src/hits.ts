@@ -178,6 +178,9 @@ export function hitFighter(c: Ctx, t: MFighter, h: HitDesc): HitOutcome {
     h.fixed > 0 ? h.fixed * 256 : computeDamageQ8(r, h.power, h.atkNum, h.atkDen, t.def, h.defDiv);
   const flat = takeFirstStrike(c, h.attacker);
   dmgQ8 += flat * 256;
+  if (h.attacker === 'dragon') {
+    dmgQ8 = divRound(dmgQ8 * Math.round(r.damage.dragonDamageDealtScale * 1000), 1000);
+  }
   const dmg = dmgQ8 / 256;
   let hitstop = Math.min(h.hitstop, r.hitstop.cap);
   if (t.hpQ8 - dmgQ8 <= 0 && t.lastStandAvailable) {

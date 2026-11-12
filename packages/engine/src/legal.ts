@@ -13,6 +13,7 @@ import {
 type LegalGenerator = (s: PublicGameState) => Action[];
 
 const upgrades = (s: PublicGameState): Action[] => {
+  if (s.turn.paidUpgradesUsed >= s.rules.maxPaidUpgradesPerTurn) return [];
   const p = playerAt(s, s.current);
   return UPGRADE_STATS.filter((stat) => canAffordUpgrade(s.rules, p, stat)).map((stat) => ({
     type: 'UPGRADE' as const,

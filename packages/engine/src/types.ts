@@ -95,6 +95,7 @@ export interface RulesConfig {
   readonly pvpWinBonusCoins: number;
   readonly eventHpFloor: number;
   readonly coinShortfallHpPerCoin: number;
+  readonly maxPaidUpgradesPerTurn: number;
   readonly jobs: Readonly<Record<JobId, JobDef>>;
   readonly passives: {
     readonly indomitableUses: number;
@@ -126,6 +127,8 @@ export interface RulesConfig {
     readonly atk: number;
     readonly def: number;
     readonly breathEvery: number;
+    /** Multiplies dragon hits after the target's DEF has been applied. */
+    readonly damageDealtScale: number;
   };
 }
 
@@ -157,6 +160,7 @@ export interface PendingDecision {
 
 export interface TurnContext {
   resting: boolean;
+  paidUpgradesUsed: number;
   rolled: boolean;
   dice: number | null;
   teleportsUsed: number;

@@ -209,6 +209,63 @@ describe('movement and tiles', () => {
     expect(hp.maxHp - hp.hp).toBe(0);
   });
 
+  it('limits paid upgrades to three across PRE_ROLL and POST_MOVE, then resets next turn', () => {
+    const rules = withRules({
+      board: DEFAULT_RULES.board.map((tile) => ({ ...tile, safe: true })),
+    });
+    let s = setPlayer(withTeleport(newGame(['swordsman', 'archer'], 5, rules)), 0, {
+      coins: 100,
+    });
+    s = act(s, { type: 'UPGRADE', stat: 'atk' }).state;
+    s = act(s, { type: 'UPGRADE', stat: 'def' }).state;
+    expect(s.turn.paidUpgradesUsed).toBe(2);
+    s = act(s, { type: 'USE_TELEPORT', tile: 6 }).state;
+    expect(s.pending?.phase).toBe('POST_MOVE');
+    s = act(s, { type: 'UPGRADE', stat: 'maxHp' }).state;
+    expect(s.turn.paidUpgradesUsed).toBe(3);
+    expect(getLegalActions(s).some((a) => a.type === 'UPGRADE')).toBe(false);
+    expect(() => act(s, { type: 'UPGRADE', stat: 'atk' })).toThrow(/illegal action/);
+    s = act(s, { type: 'END_TURN' }).state;
+    s = act(s, { type: 'ROLL_DICE' }).state;
+    s = act(s, { type: 'END_TURN' }).state;
+    expect(s.current).toBe(0);
+    expect(s.turn.paidUpgradesUsed).toBe(0);
+    expect(getLegalActions(s).some((a) => a.type === 'UPGRADE')).toBe(true);
+  });
+
+  it('does not count free training against the paid upgrade limit', () => {
+    let s = setPlayer(withTeleport(newGame(['swordsman', 'archer'], 5)), 0, {
+      coins: 100,
+      items: { teleport: 2, shield: 0, thief: 0 },
+    });
+    for (const stat of ['atk', 'def', 'maxHp'] as const) {
+      s = act(s, { type: 'UPGRADE', stat }).state;
+    }
+    const trained = act(s, { type: 'USE_TELEPORT', tile: 5 }).state;
+    expect(trained.pending?.phase).toBe('TRAINING_CHOICE');
+    s = act(trained, { type: 'CHOOSE_TRAINING_STAT', stat: 'def' }).state;
+    expect(s.players[0]!.upgradeLevels.def).toBe(2);
+    expect(s.turn.paidUpgradesUsed).toBe(3);
+    expect(getLegalActions(s).some((a) => a.type === 'UPGRADE')).toBe(false);
+  });
+
+  it('applies the blacksmith DEF bonus immediately on landing', () => {
+    const before = withTeleport(newGame(['swordsman', 'archer'], 5));
+    const defBefore = before.players[0]!.def;
+    const landing = act(before, { type: 'USE_TELEPORT', tile: 11 });
+    expect(landing.state.pending?.phase).toBe('POST_MOVE');
+    expect(landing.state.players[0]!.def).toBe(defBefore + 1);
+    expect(eventsOf(landing.events, 'EffectApplied')).toContainEqual({
+      type: 'EffectApplied',
+      seat: 0,
+      effect: 'stat',
+      stat: 'def',
+      delta: 1,
+      after: defBefore + 1,
+    });
+    expect(landing.state.players[0]!.upgradeLevels.def).toBe(0);
+  });
+
   it('ninja move adjustment is available every other own turn and zero does not start cooldown', () => {
     const rules = withRules({
       board: DEFAULT_RULES.board.map((tile) => ({ ...tile, safe: true, effects: [] })),

@@ -41,6 +41,12 @@ export function validateRules(rules: RulesConfig): void {
   if (rules.combat.mode !== 'dice' && rules.combat.mode !== 'external')
     fail('combat.mode must be dice or external');
   if (rules.dragon.hp < 1 || rules.dragon.breathEvery < 1) fail('invalid dragon config');
+  if (
+    !Number.isFinite(rules.dragon.damageDealtScale) ||
+    rules.dragon.damageDealtScale <= 0 ||
+    rules.dragon.damageDealtScale > 1
+  )
+    fail('dragon.damageDealtScale must be within (0, 1]');
   if (rules.maxRounds !== null && rules.maxRounds < 1) fail('maxRounds must be null or >= 1');
   if (rules.pvpGraceRounds < 0) fail('pvpGraceRounds must be >= 0');
   if (!Number.isSafeInteger(rules.pvpWinBonusCoins) || rules.pvpWinBonusCoins < 0)
@@ -48,6 +54,8 @@ export function validateRules(rules: RulesConfig): void {
   if (rules.eventHpFloor < 1) fail('eventHpFloor must be >= 1');
   if (!Number.isSafeInteger(rules.coinShortfallHpPerCoin) || rules.coinShortfallHpPerCoin < 0)
     fail('coinShortfallHpPerCoin must be a non-negative safe integer');
+  if (!Number.isSafeInteger(rules.maxPaidUpgradesPerTurn) || rules.maxPaidUpgradesPerTurn < 0)
+    fail('maxPaidUpgradesPerTurn must be a non-negative safe integer');
 }
 
 export function validateSetup(setup: GameSetup): void {

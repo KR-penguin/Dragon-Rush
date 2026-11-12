@@ -3,6 +3,7 @@ import { ITEM_IDS, type CombatantRef, type GameOutcome, type ItemId, type SeatId
 
 export const freshTurn = (resting: boolean) => ({
   resting,
+  paidUpgradesUsed: 0,
   rolled: false,
   dice: null,
   teleportsUsed: 0,

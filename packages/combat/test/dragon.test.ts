@@ -10,7 +10,7 @@ import {
   type CombatState,
 } from '../src/index';
 import { statFighter } from './calibration';
-import { dragonFight, eventsOf, play, randomInputs } from './helpers';
+import { dragonFight, eventsOf, idle, play, randomInputs } from './helpers';
 
 const R = DEFAULT_COMBAT_RULES;
 
@@ -34,11 +34,29 @@ function botFight(
 }
 
 describe('dragon script', () => {
+  it('scales actual outgoing dragon hits after defense in real time', () => {
+    const firstHit = (scale: number): number => {
+      const rules = { ...R, damage: { ...R.damage, dragonDamageDealtScale: scale } };
+      let state = createCombat(dragonFight(statFighter('swordsman', 5000, 1, 8)), 19, rules);
+      while (!state.outcome) {
+        const result = stepCombat(state, [idle]);
+        const hit = result.events.find((event) => event.type === 'Hit' && event.attacker === 'dragon');
+        if (hit?.type === 'Hit') return hit.dmg;
+        state = result.state;
+      }
+      throw new Error('dragon did not land a hit');
+    };
+    const normal = firstHit(1);
+    const reduced = firstHit(0.6);
+    expect(reduced / normal).toBeCloseTo(0.6, 2);
+  });
+
   it('scales the stronger board dragon for real-time fights', () => {
     const d = createCombat(dragonFight(statFighter('swordsman', 70, 9, 8)), 1).dragon!;
     expect(d.maxHp).toBe(194);
     expect(d.atk).toBe(55);
     expect(R.damage.dragonDamageTakenScale).toBe(0.3);
+    expect(R.damage.dragonDamageDealtScale).toBe(0.6);
   });
 
   it('telegraphs every maneuver for 24+ live ticks and resolves within one live tick', () => {

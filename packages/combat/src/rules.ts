@@ -295,6 +295,7 @@ export interface CombatRules {
   /**
    * dmg = max(min, roundHalfUp(S * P * ATK_eff * K / (K + DEF_eff))) + flat, all in integer ratios.
    * Hits on the dragon are further scaled by `dragonDamageTakenScale` (quantised to 1/1000).
+   * Hits from the dragon are scaled after DEF by `dragonDamageDealtScale`.
    */
   readonly damage: {
     readonly sNum: number;
@@ -302,6 +303,7 @@ export interface CombatRules {
     readonly k: number;
     readonly min: number;
     readonly dragonDamageTakenScale: number;
+    readonly dragonDamageDealtScale: number;
   };
   /** Hitstop ticks (global freeze) by hit class; P thresholds in percent. */
   readonly hitstop: {
@@ -350,7 +352,7 @@ const NO_ARMOR = { armorFrom: -1, armorTo: -1 } as const;
 
 /** Every combat number lives here (decision sheet v1 §3; board passives come from the engine's DEFAULT_RULES). */
 export const DEFAULT_COMBAT_RULES: CombatRules = deepFreeze({
-  version: 'combat-4',
+  version: 'combat-5',
   tickHz: COMBAT_TICK_HZ,
   arena: { duel: { w: 800, h: 448 }, dragonFight: { w: 896, h: 448 } },
   duelGap: 480,
@@ -360,7 +362,14 @@ export const DEFAULT_COMBAT_RULES: CombatRules = deepFreeze({
   accelTicks: 4,
   stopTicks: 3,
   aimAssist: { half: 18, rangePct: 150 },
-  damage: { sNum: 8, sDen: 5, k: 10, min: 1, dragonDamageTakenScale: 0.3 },
+  damage: {
+    sNum: 8,
+    sDen: 5,
+    k: 10,
+    min: 1,
+    dragonDamageTakenScale: 0.3,
+    dragonDamageDealtScale: 0.6,
+  },
   hitstop: {
     light: 3,
     multiHit: 2,

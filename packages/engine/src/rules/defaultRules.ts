@@ -75,7 +75,7 @@ const MYSTERY_DECK: readonly MysteryCardDef[] = [
 ];
 
 export const DEFAULT_RULES: RulesConfig = deepFreeze({
-  version: 'rush-8',
+  version: 'rush-9',
   startingCoins: 10,
   startingItems: {},
   startBonus: { coins: 35, hp: 6 },
@@ -84,6 +84,7 @@ export const DEFAULT_RULES: RulesConfig = deepFreeze({
   pvpWinBonusCoins: 30,
   eventHpFloor: 1,
   coinShortfallHpPerCoin: 1,
+  maxPaidUpgradesPerTurn: 3,
   jobs: {
     swordsman: { hp: 53, atk: 5, def: 5 },
     archer: { hp: 39, atk: 6, def: 6 },
@@ -115,7 +116,7 @@ export const DEFAULT_RULES: RulesConfig = deepFreeze({
   mysteryDeck: MYSTERY_DECK,
   movement: { rollSides: 10 },
   combat: { maxExchanges: 100, dieSides: 6, mode: 'external' },
-  dragon: { hp: 88, atk: 50, def: 10, breathEvery: 3 },
+  dragon: { hp: 88, atk: 50, def: 10, breathEvery: 3, damageDealtScale: 0.6 },
 });
 
 function deepFreeze<T>(value: T): T {

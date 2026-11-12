@@ -8,6 +8,7 @@ export function upgrade(ctx: Ctx, stat: UpgradeStat): void {
   const p = playerAt(ctx.s, seat);
   const cost = upgradeCost(ctx.s.rules, p, stat);
   p.coins -= cost;
+  ctx.s.turn.paidUpgradesUsed += 1;
   const valueAfter = raiseStat(ctx.s.rules, p, stat);
   p.upgradeLevels[stat] += 1;
   emit(ctx, {

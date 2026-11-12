@@ -19,6 +19,7 @@ describe('DEFAULT_RULES matches docs/game-design.md', () => {
     expect(DEFAULT_RULES.pvpGraceRounds).toBe(0);
     expect(DEFAULT_RULES.pvpWinBonusCoins).toBe(30);
     expect(DEFAULT_RULES.coinShortfallHpPerCoin).toBe(1);
+    expect(DEFAULT_RULES.maxPaidUpgradesPerTurn).toBe(3);
     expect(DEFAULT_RULES.upgrades).toEqual({
       atk: { baseCost: 3, costStep: 1, amount: 1 },
       def: { baseCost: 2, costStep: 1, amount: 1 },
@@ -32,7 +33,13 @@ describe('DEFAULT_RULES matches docs/game-design.md', () => {
 
   it('dragon and combat (§9, §10)', () => {
     expect(DEFAULT_RULES.movement).toEqual({ rollSides: 10 });
-    expect(DEFAULT_RULES.dragon).toEqual({ hp: 88, atk: 50, def: 10, breathEvery: 3 });
+    expect(DEFAULT_RULES.dragon).toEqual({
+      hp: 88,
+      atk: 50,
+      def: 10,
+      breathEvery: 3,
+      damageDealtScale: 0.6,
+    });
     expect(DEFAULT_RULES.combat).toEqual({ maxExchanges: 100, dieSides: 6, mode: 'external' });
     expect(DEFAULT_RULES.passives.ninjaEvadeDie).toBe(8);
     expect(DEFAULT_RULES.passives.ninjaAdjustCooldown).toBe(2);
@@ -115,7 +122,7 @@ describe('DEFAULT_RULES matches docs/game-design.md', () => {
   });
 
   it('carries the balance version', () => {
-    expect(DEFAULT_RULES.version).toBe('rush-8');
+    expect(DEFAULT_RULES.version).toBe('rush-9');
   });
 
   it('is frozen and valid', () => {

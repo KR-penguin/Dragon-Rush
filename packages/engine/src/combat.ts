@@ -79,6 +79,7 @@ export function resolveCombat(
     let damage = Math.max(1, eff.atk + dieRoll - defEff);
     const firstStrike = attacksMade[side] === 1 && hooks.firstStrikeBonus !== undefined;
     if (firstStrike && hooks.firstStrikeBonus) damage += hooks.firstStrikeBonus(rules);
+    if (isDragon) damage = Math.max(1, Math.round(damage * rules.dragon.damageDealtScale));
     let evaded = false;
     const defHooks = def.job ? PASSIVES[def.job] : {};
     if (defHooks.evadeDie && roll(defHooks.evadeDie(rules)) === 1) {

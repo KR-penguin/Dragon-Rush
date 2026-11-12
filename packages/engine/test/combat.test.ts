@@ -24,6 +24,25 @@ const hits = (events: ReturnType<typeof resolveCombat>['events']) =>
   events.filter((e) => e.type === 'CombatHit').map((e) => (e.type === 'CombatHit' ? e.damage : 0));
 
 describe('resolveCombat', () => {
+  it('scales post-defense dragon damage to 60% in quick dice combat', () => {
+    const challenger = fighter(0, 'mage', 100, 0, 10);
+    const dragon = fighter('dragon', null, 100, 50, 10);
+    const run = (damageDealtScale: number) =>
+      resolveCombat(
+        {
+          ...R,
+          dragon: { ...R.dragon, damageDealtScale },
+          combat: { ...R.combat, maxExchanges: 1 },
+        },
+        challenger,
+        dragon,
+        { kind: 'dragonFight', defaultFirst: 'a', capTieWinner: 'b', capLoser: 'a' },
+        scripted([1, 1]),
+      ).events.find((event) => event.type === 'CombatHit' && event.attacker === 'dragon');
+    expect(run(1)).toMatchObject({ damage: 41 });
+    expect(run(0.6)).toMatchObject({ damage: 25 });
+  });
+
   it('reproduces the game-design §9 example opening (archer strikes first, mage pierces)', () => {
     const mage = fighter(0, 'mage', 38, 4, 5);
     const archer = fighter(1, 'archer', 39, 6, 6);
@@ -56,9 +75,9 @@ describe('resolveCombat', () => {
     expect(
       dragonHits.slice(0, 3).map((e) => (e.type === 'CombatHit' ? [e.damage, e.breath] : [])),
     ).toEqual([
-      [2, false],
-      [2, false],
-      [11, true],
+      [1, false],
+      [1, false],
+      [7, true],
     ]);
   });
 
