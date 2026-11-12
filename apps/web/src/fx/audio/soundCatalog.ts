@@ -124,10 +124,52 @@ export const SOUND_SPEC: Readonly<Record<SoundName, SoundSpec>> = {
 
 export const SOUND_EXTENSIONS = ['mp3', 'ogg', 'wav'] as const;
 
-/** `audio/sfx/coin.mp3` is variant 1; `coin_2.mp3` … `coin_5.mp3` are round-robin variants. */
+/** Delivery paths in development-plan.md §4.2; the flat names remain compatible. */
+const DELIVERY_SOUNDS: Readonly<Record<SoundName, { stem: string; numbered?: true }>> = {
+  dice_roll: { stem: 'audio/sfx/board/dice_land', numbered: true },
+  move_step: { stem: 'audio/sfx/board/pawn_hop', numbered: true },
+  attack_hit: { stem: 'audio/sfx/combat/hit_light', numbered: true },
+  coin: { stem: 'audio/sfx/board/coin_gain', numbered: true },
+  upgrade: { stem: 'audio/sfx/board/stat_up' },
+  item_use: { stem: 'audio/sfx/board/item_use' },
+  shield: { stem: 'audio/sfx/board/item_shield' },
+  dragon_breath: { stem: 'audio/sfx/dragon/breath_loop' },
+  victory: { stem: 'audio/bgm/stinger_victory' },
+  defeat: { stem: 'audio/bgm/stinger_defeat' },
+  swing: { stem: 'audio/sfx/combat/swing_light', numbered: true },
+  magic: { stem: 'audio/sfx/jobs/mage_bolt_cast', numbered: true },
+  buy: { stem: 'audio/sfx/board/purchase' },
+  dragon_roar: { stem: 'audio/sfx/dragon/roar', numbered: true },
+  heal: { stem: 'audio/sfx/board/hp_heal' },
+  land: { stem: 'audio/sfx/board/pawn_land' },
+  eliminate: { stem: 'audio/sfx/board/elimination' },
+  crit: { stem: 'audio/sfx/combat/hit_heavy', numbered: true },
+  parry: { stem: 'audio/sfx/combat/parry', numbered: true },
+  dice_land: { stem: 'audio/sfx/board/dice_land', numbered: true },
+  turn_chime: { stem: 'audio/sfx/ui/turn_start' },
+  ui_click: { stem: 'audio/sfx/ui/ui_click', numbered: true },
+  breath_charge: { stem: 'audio/sfx/dragon/breath_charge' },
+  thud: { stem: 'audio/sfx/combat/hit_heavy', numbered: true },
+  chime: { stem: 'audio/sfx/board/tile_good' },
+  clink: { stem: 'audio/sfx/board/coin_gain', numbered: true },
+  dash: { stem: 'audio/sfx/combat/dash', numbered: true },
+  shot: { stem: 'audio/sfx/jobs/arrow_release', numbered: true },
+  telegraph: { stem: 'audio/sfx/dragon/breath_charge' },
+  clash: { stem: 'audio/sfx/board/duel_clash' },
+};
+
+/** `audio/sfx/coin.mp3` is variant 1; `coin_2.mp3` … `coin_5.mp3` are legacy variants. */
 export function soundFileCandidates(name: SoundName, variant = 1): string[] {
   const base = variant <= 1 ? name : `${name}_${variant}`;
-  return SOUND_EXTENSIONS.map((ext) => `audio/sfx/${base}.${ext}`);
+  const paths = SOUND_EXTENSIONS.map((ext) => `audio/sfx/${base}.${ext}`);
+  const delivery = DELIVERY_SOUNDS[name];
+  if (delivery && (delivery.numbered || variant <= 1)) {
+    const stem = delivery.numbered
+      ? `${delivery.stem}_${String(variant).padStart(2, '0')}`
+      : delivery.stem;
+    paths.push(...SOUND_EXTENSIONS.map((ext) => `${stem}.${ext}`));
+  }
+  return paths;
 }
 
 export type SoundSource =
