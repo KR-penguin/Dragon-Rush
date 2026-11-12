@@ -1,7 +1,6 @@
 import type { OpponentSummary } from '../../types/decisionView';
 import { Modal } from '../common/Modal';
 import { SeatChip } from '../common/SeatChip';
-import { WinChance } from '../common/WinChance';
 import { DragonArt } from '../icons/Art';
 import { GameIcon } from '../icons/GameIcon';
 
@@ -9,8 +8,6 @@ interface DragonConfirmDialogProps {
   name: string;
   me: OpponentSummary;
   dragon: { readonly hp: number; readonly atk: number; readonly def: number };
-  chance: number | null;
-  method: 'dice' | 'realtime';
   locked: boolean;
   onConfirm: () => void;
   onCancel: () => void;
@@ -21,8 +18,6 @@ export function DragonConfirmDialog({
   name,
   me,
   dragon,
-  chance,
-  method,
   locked,
   onConfirm,
   onCancel,
@@ -71,7 +66,6 @@ export function DragonConfirmDialog({
           </span>
         </div>
       </div>
-      <WinChance label="예상 승리 확률" chance={chance} method={method} />
       <p className="warning">
         이기면 즉시 승리합니다. 지면 탈락하고 코인과 아이템이 모두 사라집니다.
       </p>
