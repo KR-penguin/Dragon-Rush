@@ -1,6 +1,6 @@
 import { JOB_IDS } from '@dragon-rush/engine';
 import type { CSSProperties } from 'react';
-import { DragonArt, JobArt } from '../components/icons/Art';
+import { JobArt } from '../components/icons/Art';
 import { AssetImage } from '../components/common/AssetImage';
 import { GameIcon } from '../components/icons/GameIcon';
 import { JOB_LABEL, seatColor } from '../types/labels';
@@ -21,7 +21,12 @@ export function HomePage({ onLocal, onOnline }: HomePageProps) {
       <div className="home-hero">
         <div className="home-dragon-wrap">
           <span className="home-dragon-glow" aria-hidden="true" />
-          <DragonArt className="home-dragon" />
+          <AssetImage
+            path="images/brand/dragon-head-v2.png"
+            alt="용의 머리"
+            className="home-dragon"
+            fallback={<GameIcon name="dragon" />}
+          />
         </div>
         <h1 className="home-title">
           <AssetImage
