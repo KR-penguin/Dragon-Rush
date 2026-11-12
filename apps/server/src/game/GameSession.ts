@@ -166,6 +166,7 @@ export class GameSession {
       : applyAction(this.state, action);
     this.state = r.state;
     this._version += 1;
+    this.scheduleNext();
     this.notify.update(r.events);
     if (this.state.pending?.phase === 'COMBAT' && this.state.combat && !this.opts.quickCombat) {
       const id = GameSession.nextFightId++ >>> 0;
@@ -177,7 +178,6 @@ export class GameSession {
         request: this.state.combat,
       });
     }
-    this.scheduleNext();
     if (this.state.outcome) this.notify.ended();
     return this._version;
   }
@@ -190,8 +190,8 @@ export class GameSession {
     this.activeFightId = null;
     this.state = r.state;
     this._version += 1;
-    this.notify.update(r.events);
     this.scheduleNext();
+    this.notify.update(r.events);
     if (this.state.outcome) this.notify.ended();
     return this._version;
   }
@@ -329,9 +329,10 @@ export class GameSession {
         ? {
             actor: pending.actor,
             phase: pending.phase,
-            timeLeftMs: this.controlledByBot(this.seats[pending.actor]!)
-              ? null
-              : this.timer.timeLeftMs(),
+            timeLeftMs:
+              pending.phase === 'COMBAT' || this.controlledByBot(this.seats[pending.actor]!)
+                ? null
+                : this.timer.timeLeftMs(),
           }
         : null,
       seats: this.seatInfos(),
