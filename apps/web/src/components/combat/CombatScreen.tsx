@@ -5,6 +5,7 @@ import type { FighterCard } from '../../types/fightView';
 import { FightGo, FightIntro, FightPaused, FightReady, FightResultCard } from './FightOverlays';
 import type { TouchTracker } from '../../services/fight/touchInput';
 import { TouchControls } from './TouchControls';
+import { GameIcon } from '../icons/GameIcon';
 
 interface CombatScreenProps {
   cards: readonly [FighterCard, FighterCard];
@@ -52,7 +53,7 @@ export function CombatScreen(p: CombatScreenProps) {
       <div className="combat-bar">
         {p.onSkip ? (
           <button type="button" className="btn btn-ghost" onClick={p.onSkip}>
-            건너뛰기 ⏭
+            <GameIcon name="skip" /> 건너뛰기
           </button>
         ) : (
           <span className="combat-hint">
@@ -60,7 +61,7 @@ export function CombatScreen(p: CombatScreenProps) {
           </span>
         )}
         <button type="button" className="btn btn-ghost" onClick={p.onOpenControls}>
-          🎮 조작법
+          조작법
         </button>
       </div>
       {p.children}

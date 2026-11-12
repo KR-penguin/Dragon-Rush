@@ -2,10 +2,10 @@ import type { PointerEvent } from 'react';
 import type { TouchAction, TouchTracker } from '../../services/fight/touchInput';
 
 const directions: readonly { action: TouchAction; glyph: string; label: string }[] = [
-  { action: 'up', glyph: '▲', label: '위로 이동' },
-  { action: 'left', glyph: '◀', label: '왼쪽으로 이동' },
-  { action: 'right', glyph: '▶', label: '오른쪽으로 이동' },
-  { action: 'down', glyph: '▼', label: '아래로 이동' },
+  { action: 'up', glyph: '↑', label: '위로 이동' },
+  { action: 'left', glyph: '←', label: '왼쪽으로 이동' },
+  { action: 'right', glyph: '→', label: '오른쪽으로 이동' },
+  { action: 'down', glyph: '↓', label: '아래로 이동' },
 ];
 const attacks: readonly { action: TouchAction; label: string }[] = [
   { action: 'attack', label: '공격' },

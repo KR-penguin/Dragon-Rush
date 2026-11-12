@@ -2,6 +2,7 @@ import { useEffect, type RefObject } from 'react';
 import { FightDirector } from '../combat/fightDirector';
 import { ArenaRenderer } from '../combat/render/arenaRenderer';
 import {
+  combatDragonAttackImage,
   combatDragonImage,
   combatJobImage,
   preloadCombatImages,
@@ -40,6 +41,7 @@ export function useArenaRenderer(
         b: cards[1].seat === null ? null : look(cards[1]),
         fighterImage: combatJobImage,
         dragonImage: combatDragonImage,
+        dragonAttackImage: combatDragonAttackImage,
       },
       session.frame().curr,
       fight.seed,

@@ -1,8 +1,10 @@
 import type { CSSProperties } from 'react';
-import { DRAGON_IMAGE_PATH, jobImagePath } from '../../types/assetPaths';
+import { DRAGON_IMAGE_PATH, combatJobImagePath } from '../../types/assetPaths';
 import { subtitleOf, type FighterCard } from '../../types/fightView';
-import { DRAGON_ICON, JOB_ICON, JOB_LABEL } from '../../types/labels';
+import { JOB_LABEL } from '../../types/labels';
 import { AssetImage } from '../common/AssetImage';
+import { GameIcon } from '../icons/GameIcon';
+import { JobPortrait } from '../icons/JobPortrait';
 
 /** Portrait medal with seat ring, name ribbon and job line (VS splash, result card). */
 export function FightPortrait({ card, side }: { card: FighterCard; side: 'left' | 'right' }) {
@@ -14,12 +16,12 @@ export function FightPortrait({ card, side }: { card: FighterCard; side: 'left' 
       <div className="fight-portrait-medal">
         {card.job ? (
           <AssetImage
-            path={jobImagePath(card.job)}
-            fallback={JOB_ICON[card.job]}
+            path={combatJobImagePath(card.job)}
+            fallback={<JobPortrait job={card.job} />}
             alt={JOB_LABEL[card.job]}
           />
         ) : (
-          <AssetImage path={DRAGON_IMAGE_PATH} fallback={DRAGON_ICON} alt="용" />
+          <AssetImage path={DRAGON_IMAGE_PATH} fallback={<GameIcon name="dragon" />} alt="용" />
         )}
       </div>
       <strong className="fight-portrait-name">{card.name}</strong>

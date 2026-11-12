@@ -129,88 +129,64 @@ function drawCutout(ctx: CanvasRenderingContext2D, image: HTMLImageElement): voi
   ctx.drawImage(image, -w / 2, -h, w, h);
 }
 
-/** Missing-art stand-ins are enchanted tools, with a glowing eye and no human anatomy. */
-function drawToolMascot(ctx: CanvasRenderingContext2D, job: JobId, now: number): void {
+/** A human silhouette keeps combat readable while its cutout is loading. */
+function drawFighterFallback(ctx: CanvasRenderingContext2D, job: JobId): void {
   const style = JOB_LOOK[job];
-  ctx.strokeStyle = style.body;
-  ctx.fillStyle = style.trim;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
+  ctx.strokeStyle = style.body;
+  ctx.lineWidth = 8;
+  ctx.beginPath();
+  ctx.moveTo(-5, -18);
+  ctx.lineTo(-7, -3);
+  ctx.moveTo(5, -18);
+  ctx.lineTo(7, -3);
+  ctx.stroke();
+  ctx.fillStyle = style.body;
+  ctx.beginPath();
+  ctx.moveTo(-12, -38);
+  ctx.lineTo(12, -38);
+  ctx.lineTo(10, -18);
+  ctx.lineTo(-10, -18);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = style.trim;
+  ctx.lineWidth = 6;
+  ctx.beginPath();
+  ctx.moveTo(-10, -35);
+  ctx.lineTo(-16, -19);
+  ctx.moveTo(10, -35);
+  ctx.lineTo(16, -19);
+  ctx.stroke();
+  ctx.fillStyle = '#D9B394';
+  ctx.beginPath();
+  ctx.arc(0, -46, 8, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = style.trim;
   switch (job) {
     case 'swordsman':
-      ctx.lineWidth = 9;
-      ctx.beginPath();
-      ctx.moveTo(0, -13);
-      ctx.lineTo(0, -52);
-      ctx.stroke();
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = style.trim;
-      ctx.beginPath();
-      ctx.moveTo(-13, -18);
-      ctx.lineTo(13, -18);
-      ctx.stroke();
+      ctx.fillRect(-10, -55, 20, 5);
       break;
     case 'archer':
-      ctx.lineWidth = 6;
-      ctx.beginPath();
-      ctx.moveTo(-10, -54);
-      ctx.quadraticCurveTo(18, -31, -10, -9);
-      ctx.stroke();
-      ctx.strokeStyle = style.trim;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(-10, -54);
-      ctx.lineTo(-10, -9);
-      ctx.stroke();
+      ctx.fillRect(-9, -54, 18, 4);
       break;
     case 'mage':
-      ctx.lineWidth = 7;
       ctx.beginPath();
-      ctx.moveTo(-5, -8);
-      ctx.lineTo(7, -48);
-      ctx.stroke();
-      ctx.fillStyle = style.trim;
-      ctx.beginPath();
-      ctx.arc(9, -53, 8 + Math.sin(now / 180), 0, Math.PI * 2);
+      ctx.moveTo(-14, -53);
+      ctx.lineTo(0, -69);
+      ctx.lineTo(14, -53);
+      ctx.closePath();
       ctx.fill();
       break;
     case 'ninja':
-      ctx.lineWidth = 7;
-      ctx.beginPath();
-      ctx.moveTo(-15, -11);
-      ctx.lineTo(13, -50);
-      ctx.stroke();
-      ctx.fillStyle = style.trim;
-      ctx.beginPath();
-      ctx.moveTo(13, -56);
-      ctx.lineTo(19, -43);
-      ctx.lineTo(8, -47);
-      ctx.closePath();
-      ctx.fill();
+      ctx.fillRect(-9, -49, 18, 6);
       break;
     case 'berserker':
-      ctx.lineWidth = 8;
       ctx.beginPath();
-      ctx.moveTo(-7, -8);
-      ctx.lineTo(5, -49);
-      ctx.stroke();
-      ctx.fillStyle = style.trim;
-      ctx.beginPath();
-      ctx.moveTo(1, -54);
-      ctx.quadraticCurveTo(20, -62, 23, -40);
-      ctx.lineTo(8, -34);
-      ctx.closePath();
+      ctx.arc(0, -53, 11, Math.PI, 0);
       ctx.fill();
       break;
   }
-  ctx.fillStyle = '#FFFFFF';
-  ctx.beginPath();
-  ctx.arc(3, -30, 3, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = style.body;
-  ctx.beginPath();
-  ctx.arc(4, -30, 1.3, 0, Math.PI * 2);
-  ctx.fill();
 }
 
 /** Weapon along the aim (full 8-way), from the hand. */
@@ -318,7 +294,7 @@ function drawWeapon(
   ctx.restore();
 }
 
-/** Cutout or enchanted-tool stand-in, with shared combat state overlays. */
+/** Cutout or human stand-in, with shared combat state overlays. */
 export function drawFighterBody(
   ctx: CanvasRenderingContext2D,
   p: FighterPose,
@@ -343,7 +319,7 @@ export function drawFighterBody(
   ctx.scale(sx * p.flip, sy);
   if (f.mode === 'ko') ctx.globalAlpha *= 0.65;
   if (p.image) drawCutout(ctx, p.image);
-  else drawToolMascot(ctx, f.job, p.now);
+  else drawFighterFallback(ctx, f.job);
   if (p.image && p.flash > 0) {
     ctx.globalAlpha = p.alpha * p.flash * (p.softFlash ? 0.5 : 0.85);
     ctx.filter = p.softFlash ? 'sepia(1) saturate(3)' : 'brightness(0) invert(1)';

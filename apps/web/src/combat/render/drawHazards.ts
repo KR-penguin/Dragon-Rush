@@ -6,7 +6,28 @@ import {
   type ZoneState,
 } from '@dragon-rush/combat';
 import { bamToRad } from './layout';
+import type { DragonAttackArt } from './combatImages';
 import { PAL } from './palette';
+
+type AttackImage = (name: DragonAttackArt) => HTMLImageElement | null;
+
+function drawAttackImage(
+  ctx: CanvasRenderingContext2D,
+  image: HTMLImageElement,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  angle = 0,
+  alpha = 1,
+): void {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle);
+  ctx.globalAlpha = alpha;
+  ctx.drawImage(image, -w / 2, -h / 2, w, h);
+  ctx.restore();
+}
 
 /** Shapes from state are Q8; `px` converts to arena px (sizes are already px). */
 export function shapePx(sh: Shape): Shape {
@@ -169,11 +190,13 @@ export function drawZone(
   z: ZoneState,
   paint: HazardPaint,
   now: number,
+  attackImage: AttackImage,
 ): void {
   const x = z.x / Q;
   const y = z.y / Q;
   const circle: Shape = { kind: 'circle', x, y, r: z.radius };
   if (z.arm > 0) {
+    if (z.kind !== 'burningFloor') attackImage(z.kind);
     drawTelegraph(ctx, circle, z.age / Math.max(1, z.age + z.arm), paint);
     if (z.kind === 'meteor') drawRune(ctx, x, y, z.radius, now);
     return;
@@ -191,13 +214,21 @@ export function drawZone(
       ctx.fill();
     }
   } else {
-    const g = ctx.createRadialGradient(x, y, 0, x, y, z.radius);
-    g.addColorStop(0, 'rgba(255, 246, 224, 0.95)');
-    g.addColorStop(0.45, 'rgba(255, 178, 91, 0.8)');
-    g.addColorStop(1, 'rgba(200, 64, 42, 0)');
-    ctx.fillStyle = g;
-    traceShape(ctx, circle);
-    ctx.fill();
+    const art = attackImage(z.kind);
+    if (art) {
+      const size = z.radius * (z.kind === 'meteor' ? 2.4 : 2.8);
+      traceShape(ctx, circle);
+      ctx.clip();
+      drawAttackImage(ctx, art, x, y, size, size, 0, 0.9);
+    } else {
+      const g = ctx.createRadialGradient(x, y, 0, x, y, z.radius);
+      g.addColorStop(0, 'rgba(255, 246, 224, 0.95)');
+      g.addColorStop(0.45, 'rgba(255, 178, 91, 0.8)');
+      g.addColorStop(1, 'rgba(200, 64, 42, 0)');
+      ctx.fillStyle = g;
+      traceShape(ctx, circle);
+      ctx.fill();
+    }
   }
   ctx.restore();
 }
@@ -236,10 +267,76 @@ export function drawDragonHazards(
   s: CombatState,
   paint: HazardPaint,
   now: number,
+  attackImage: AttackImage,
 ): void {
+  if (d.maneuver && d.stage === 'telegraph') attackImage(d.maneuver);
   if (d.telegraph && d.stage === 'telegraph') {
     const progress = d.stageTick / Math.max(1, d.stageLen);
     drawTelegraph(ctx, shapePx(d.telegraph), progress, paint, d.maneuver === 'gust');
+  }
+  if (d.maneuver === 'volley' && (d.stage === 'active' || d.stage === 'recovery')) {
+    const art = attackImage('volley');
+    if (art) {
+      const fade = d.stage === 'active' ? 1 : 1 - d.stageTick / Math.max(1, d.stageLen);
+      drawAttackImage(ctx, art, d.x / Q, d.y / Q + 48, 210, 140, 0, 0.8 * fade);
+    }
+  }
+  if (d.stage === 'active' && d.telegraph && (d.maneuver === 'claw' || d.maneuver === 'tail')) {
+    const sh = shapePx(d.telegraph);
+    const art = attackImage(d.maneuver);
+    ctx.save();
+    traceShape(ctx, sh);
+    ctx.clip();
+    if (art) {
+      const reach = d.maneuver === 'claw' ? s.rules.dragon.claw.reach : s.rules.dragon.tail.reach;
+      drawAttackImage(ctx, art, sh.x, sh.y, reach * 2.3, reach * 2.1, bamToRad(d.aim));
+    } else {
+      ctx.fillStyle = 'rgba(255, 160, 70, 0.45)';
+      ctx.fillRect(sh.x - 180, sh.y - 180, 360, 360);
+    }
+    ctx.restore();
+  }
+  if (d.stage === 'active' && d.maneuver === 'charge') {
+    const art = attackImage('charge');
+    const a = bamToRad(d.aim);
+    if (art) {
+      drawAttackImage(
+        ctx,
+        art,
+        d.x / Q + Math.cos(a) * 72,
+        d.y / Q + Math.sin(a) * 72,
+        220,
+        110,
+        a,
+        0.88,
+      );
+    } else {
+      ctx.save();
+      ctx.translate(d.x / Q, d.y / Q);
+      ctx.rotate(a);
+      ctx.fillStyle = 'rgba(255, 160, 70, 0.4)';
+      ctx.beginPath();
+      ctx.moveTo(-60, -22);
+      ctx.lineTo(115, 0);
+      ctx.lineTo(-60, 22);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+  if (d.stage === 'active' && d.maneuver === 'dive') {
+    const art = attackImage('dive');
+    const radius = s.rules.dragon.dive.radius;
+    if (art) {
+      drawAttackImage(ctx, art, d.x / Q, d.y / Q, radius * 2.6, radius * 2.6);
+    } else {
+      ctx.save();
+      ctx.fillStyle = 'rgba(255, 160, 70, 0.4)';
+      ctx.beginPath();
+      ctx.arc(d.x / Q, d.y / Q, radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
   }
   if (d.stage === 'active' && d.maneuver === 'breath') {
     const R = s.rules.dragon;
@@ -249,23 +346,35 @@ export function drawDragonHazards(
     const dir = bamToRad(d.aim);
     const half = bamToRad(R.breath.half);
     const flick = 0.85 + 0.15 * Math.sin(now / 37);
-    const g = ctx.createRadialGradient(hx, hy, 4, hx, hy, R.breath.reach);
-    g.addColorStop(0, 'rgba(255, 246, 224, 0.95)');
-    g.addColorStop(0.25, 'rgba(255, 178, 91, 0.85)');
-    g.addColorStop(0.7, 'rgba(255, 122, 61, 0.55)');
-    g.addColorStop(1, 'rgba(200, 64, 42, 0)');
+    const art = attackImage('breath');
     ctx.save();
-    ctx.globalAlpha = flick;
-    ctx.fillStyle = g;
     ctx.beginPath();
     ctx.moveTo(hx, hy);
     ctx.arc(hx, hy, R.breath.reach * flick, dir - half, dir + half);
     ctx.closePath();
-    ctx.fill();
+    if (art) {
+      ctx.clip();
+      ctx.translate(hx, hy);
+      ctx.rotate(dir);
+      ctx.globalAlpha = flick;
+      ctx.drawImage(art, 0, -R.breath.reach * 0.52, R.breath.reach * 1.1, R.breath.reach * 1.04);
+    } else {
+      const g = ctx.createRadialGradient(hx, hy, 4, hx, hy, R.breath.reach);
+      g.addColorStop(0, 'rgba(255, 246, 224, 0.95)');
+      g.addColorStop(0.25, 'rgba(255, 178, 91, 0.85)');
+      g.addColorStop(0.7, 'rgba(255, 122, 61, 0.55)');
+      g.addColorStop(1, 'rgba(200, 64, 42, 0)');
+      ctx.globalAlpha = flick;
+      ctx.fillStyle = g;
+      ctx.fill();
+    }
     ctx.restore();
   }
   if (d.stage === 'active' && d.maneuver === 'gust') {
     const R = s.rules.dragon.gust;
+    const art = attackImage('gust');
+    if (art)
+      drawAttackImage(ctx, art, d.x / Q, d.y / Q, R.reach * 1.5, R.reach * 1.5, now / 900, 0.42);
     ctx.save();
     ctx.strokeStyle = PAL.moon;
     ctx.lineWidth = 2;

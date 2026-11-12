@@ -64,7 +64,7 @@ export function CombatOptionsField({
         </div>
       )}
       <button type="button" className="btn btn-ghost" onClick={onOpenControls}>
-        🎮 조작법
+        조작법
       </button>
     </>
   );

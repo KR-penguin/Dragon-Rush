@@ -1,8 +1,10 @@
 import { JOB_IDS } from '@dragon-rush/engine';
 import { KEY_LAYOUTS } from '../../types/combatControls';
 import { KIT_LABEL, PASSIVE_HINT } from '../../types/combatLabels';
-import { JOB_ICON, JOB_LABEL } from '../../types/labels';
+import { JOB_LABEL } from '../../types/labels';
+import { JOB_ICON_NAME } from '../../types/icons';
 import { Modal } from '../common/Modal';
+import { GameIcon } from '../icons/GameIcon';
 import { KeycapHints } from './KeycapHints';
 
 interface ControlsPanelProps {
@@ -88,7 +90,7 @@ export function ControlsPanel({ pressed, testing, onToggleTest, onClose }: Contr
             {JOB_IDS.map((job) => (
               <tr key={job}>
                 <th>
-                  {JOB_ICON[job]} {JOB_LABEL[job]}
+                  <GameIcon name={JOB_ICON_NAME[job]} /> {JOB_LABEL[job]}
                 </th>
                 <td>{KIT_LABEL[job].attack}</td>
                 <td>{KIT_LABEL[job].skill}</td>

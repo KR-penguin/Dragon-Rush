@@ -10,6 +10,7 @@ import type { ArenaFx } from '../../fx/runtime/arenaFx';
 import type { JobId } from '@dragon-rush/engine';
 import type { FightFrame } from '../../services/fight/types';
 import { drawDragon, drawDragonShadow, drawProjectile } from './drawDragon';
+import type { DragonAttackArt } from './combatImages';
 import {
   drawFighterBody,
   drawFootRing,
@@ -36,6 +37,7 @@ export interface ArenaLooks {
   readonly b: FighterLookInput | null;
   readonly fighterImage: (job: JobId) => HTMLImageElement | null;
   readonly dragonImage: () => HTMLImageElement | null;
+  readonly dragonAttackImage: (name: DragonAttackArt) => HTMLImageElement | null;
 }
 
 export interface RenderEnv {
@@ -159,8 +161,9 @@ export class ArenaRenderer {
     ctx.rect(0, 0, r.w, r.h);
     ctx.clip();
     drawFireRing(ctx, curr, this.paint, 0.5 + 0.5 * Math.sin(now / 160));
-    for (const z of curr.zones) drawZone(ctx, z, this.paint, now);
-    if (curr.dragon) drawDragonHazards(ctx, curr.dragon, curr, this.paint, now);
+    for (const z of curr.zones) drawZone(ctx, z, this.paint, now, this.looks.dragonAttackImage);
+    if (curr.dragon)
+      drawDragonHazards(ctx, curr.dragon, curr, this.paint, now, this.looks.dragonAttackImage);
     ctx.restore();
     this.drawActors(ctx, frame, env);
     ctx.restore();

@@ -1,6 +1,13 @@
 import type { JobId } from '@dragon-rush/engine';
+import type { DragonState } from '@dragon-rush/combat';
 import { resolveAsset } from '../../services/assets';
-import { combatDragonImagePath, combatJobImagePath } from '../../types/assetPaths';
+import {
+  combatDragonAttackImagePath,
+  combatDragonImagePath,
+  combatJobImagePath,
+} from '../../types/assetPaths';
+
+export type DragonAttackArt = NonNullable<DragonState['maneuver']> | 'meteor' | 'fireball';
 
 interface ImageEntry {
   readonly image: HTMLImageElement;
@@ -33,6 +40,9 @@ export const combatJobImage = (job: JobId): HTMLImageElement | null =>
   combatImage(combatJobImagePath(job));
 
 export const combatDragonImage = (): HTMLImageElement | null => combatImage(combatDragonImagePath);
+
+export const combatDragonAttackImage = (name: DragonAttackArt): HTMLImageElement | null =>
+  combatImage(combatDragonAttackImagePath(name));
 
 export function preloadCombatImages(jobs: readonly JobId[], dragon: boolean): void {
   for (const job of jobs) combatJobImage(job);
