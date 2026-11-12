@@ -136,7 +136,7 @@ function applyVolumes(immediate = false): void {
     set(graph.master, muted ? 0 : volumes.master);
     for (const b of ['music', 'ambience', 'sfx', 'ui'] as const) set(graph.buses[b], volumes[b]);
   }
-  if (bgm?.kind === 'element') bgm.el.volume = volumes.master * volumes.music;
+  if (bgm?.kind === 'element') bgm.el.volume = muted ? 0 : volumes.master * volumes.music;
 }
 
 // --- Unlock -------------------------------------------------------------------------------
@@ -533,3 +533,26 @@ export function subscribeAudio(listener: () => void): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);
 }
+
+/** Vite replaces modules without unloading the page, so old AudioContexts must be closed. */
+export function disposeAudio(): void {
+  ++bgmRequest;
+  wantedBgm = null;
+  if (bgm?.kind === 'element') bgm.el.pause();
+  if (bgm?.kind === 'buffer') {
+    bgm.src.stop();
+    bgm.src.disconnect();
+    bgm.gain.disconnect();
+  }
+  bgm = null;
+  playingBgm = null;
+  disarmUnlock();
+  if (graph) {
+    void graph.ctx.close();
+    graph = null;
+  }
+  listeners.clear();
+  playedListeners.clear();
+}
+
+if (import.meta.hot) import.meta.hot.dispose(disposeAudio);

@@ -61,10 +61,14 @@ const sources: (FakeNode & {
   stop(at: number): void;
 })[] = [];
 const gains: (FakeNode & { gain: ReturnType<typeof param> })[] = [];
+const contexts: FakeAudioContext[] = [];
 let decodeFails = false;
 let decodeCount = 0;
 
 class FakeAudioContext {
+  constructor() {
+    contexts.push(this);
+  }
   static initialState: AudioContextState = 'suspended';
   currentTime = 0;
   state: AudioContextState = FakeAudioContext.initialState;
@@ -115,6 +119,10 @@ class FakeAudioContext {
     this.state = 'running';
     return Promise.resolve();
   }
+  close() {
+    this.state = 'closed';
+    return Promise.resolve();
+  }
 }
 
 beforeEach(() => {
@@ -122,6 +130,7 @@ beforeEach(() => {
   vi.unstubAllGlobals();
   sources.length = 0;
   gains.length = 0;
+  contexts.length = 0;
   decodeFails = false;
   decodeCount = 0;
   FakeAudioContext.initialState = 'suspended';
@@ -262,6 +271,19 @@ describe('file BGM through the audio bus', () => {
     expect(sources[1]!.startAt).toBeGreaterThanOrEqual(sources[0]!.stopAt);
     audio.playBgm('board');
     expect(sources).toHaveLength(2);
+  });
+
+  it('closes the active audio graph on module replacement so mute cannot leave an orphan track', async () => {
+    const audio = await import('../src/services/audio');
+    audio.playBgm('dragon_battle');
+    audio.unlockAudio();
+    await vi.waitFor(() => expect(sources).toHaveLength(1));
+    audio.setMuted(true);
+    expect(sources[0]!.stopped).toBe(true);
+    audio.disposeAudio();
+    expect(contexts[0]!.state).toBe('closed');
+    await vi.waitFor(() => expect(sources[0]!.disconnected).toBe(true));
+    expect(audio.getAudioSettings().muted).toBe(true);
   });
 
   it('does not synthesize music when a listed file cannot be decoded', async () => {
