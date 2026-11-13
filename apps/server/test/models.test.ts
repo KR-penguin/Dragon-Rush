@@ -15,11 +15,11 @@ import { describe, expect, it } from 'vitest';
 import { loadModelRegistry } from '../src/ai/modelRegistry';
 import { startServer } from '../src/app';
 
-/** Test-only adapter: `{ "bias": number[47] }` -> constant logits. Not the user's format. */
+/** Test-only adapter: `{ "bias": number[44] }` -> constant logits. Not the user's format. */
 const fakeAdapter: WeightAdapter = (raw, id) => {
   const bias = (raw as { bias?: unknown }).bias;
   if (!Array.isArray(bias) || bias.length !== ACTION_DIM)
-    throw new ModelFormatError('bias must have 47 numbers');
+    throw new ModelFormatError('bias must have 44 numbers');
   const meta = (raw as { meta?: { obs_version?: string } }).meta;
   return {
     meta: {

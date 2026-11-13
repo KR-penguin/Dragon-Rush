@@ -16,11 +16,11 @@ import {
   BOARD_OFFSET,
   GLOBAL_OFFSET,
   OBS_DIM,
-  OBS_V4_SCALES as S,
+  OBS_V5_SCALES as S,
   OPP_BLOCK,
   SELF_BLOCK,
   TILE_BLOCK,
-} from './layout';
+} from './layoutV5';
 
 const OBS_DICE_SIDES = 10;
 
@@ -136,7 +136,11 @@ function writeGlobal(w: Writer, view: PublicGameState, seat: SeatId): void {
   w.oneHot(view.pending ? relative(seat, view.current, count) : -1, 4);
   w.oneHot(view.turn.dice !== null ? view.turn.dice - 1 : -1, OBS_DICE_SIDES);
   w.put(view.turn.canBuy);
-  w.put(view.turn.thiefUsed);
+  w.put(
+    r.maxItemsBoughtPerTurn === 0
+      ? 0
+      : Math.max(0, r.maxItemsBoughtPerTurn - view.turn.itemsBought) / r.maxItemsBoughtPerTurn,
+  );
   w.put(n(view.turn.teleportsUsed, S.TP_S));
   const limit = r.items.teleport.perTurnLimit;
   w.put(limit !== null && view.turn.teleportsUsed >= limit);
@@ -219,13 +223,13 @@ function writeTile(w: Writer, tile: TileDef): void {
   w.put(mystery);
 }
 
-/** obs_v4: ego-centric float32 vector from the acting seat's point of view (docs/ai-interface-spec.md §3). */
+/** obs_v5: ego-centric float32 vector from the acting seat's point of view (docs/ai-interface-spec.md §3). */
 export function encodeObservation(view: PublicGameState, seat: SeatId): Float32Array {
   if (view.rules.movement.rollSides > OBS_DICE_SIDES) {
-    throw new RangeError(`obs_v4 supports at most ${OBS_DICE_SIDES} movement roll sides`);
+    throw new RangeError(`obs_v5 supports at most ${OBS_DICE_SIDES} movement roll sides`);
   }
   if (view.rules.board.length !== BOARD_SIZE)
-    throw new RangeError(`obs_v4 requires ${BOARD_SIZE} tiles`);
+    throw new RangeError(`obs_v5 requires ${BOARD_SIZE} tiles`);
   const buf = new Float32Array(OBS_DIM);
   const me = view.players[seat];
   if (!me) throw new RangeError(`no seat ${seat}`);

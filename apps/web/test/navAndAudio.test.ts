@@ -97,6 +97,25 @@ describe('sound mapping', () => {
     outcome: { kind: winner === null ? 'draw' : 'dragon', winner },
   });
 
+  it('voices automatic totem use and leaves maximum-HP restoration silent', () => {
+    const context = { controllable: [0] };
+    expect(soundCuesForEvent({ type: 'ItemUsed', seat: 0, item: 'princeTotem' }, context)).toEqual([
+      { name: 'item_use' },
+    ]);
+    expect(
+      soundCuesForEvent(
+        { type: 'EffectApplied', seat: 0, effect: 'maxHp', delta: 15, after: 55 },
+        context,
+      ),
+    ).toEqual([{ name: 'upgrade' }]);
+    expect(
+      soundCuesForEvent(
+        { type: 'EffectApplied', seat: 0, effect: 'maxHp', delta: -15, after: 40 },
+        context,
+      ),
+    ).toEqual([]);
+  });
+
   it('leaves victory music to the result BGM without an old jingle', () => {
     expect(soundCuesForEvent(ended(0), { controllable: [0] })).toEqual([]);
     expect(soundCuesForEvent(ended(1), { controllable: [0] })).toEqual([{ name: 'defeat' }]);

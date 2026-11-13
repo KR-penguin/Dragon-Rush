@@ -29,7 +29,7 @@ describe('game setup', () => {
     for (const p of s.players) {
       expect(p.position).toBe(0);
       expect(p.coins).toBe(p.job === 'archer' ? 16 : 10);
-      expect(p.items).toEqual({ teleport: 0, shield: 0, thief: 0 });
+      expect(p.items).toEqual({ teleport: 0, shield: 0, princeTotem: 0 });
       expect(p.hp).toBe(p.maxHp);
     }
     expect(s.round).toBe(1);
@@ -181,9 +181,9 @@ describe('movement and tiles', () => {
     s = setPlayer(s, 0, { coins: 20 });
     const r1 = act(s, { type: 'USE_TELEPORT', tile: 6 });
     expect(r1.state.turn.canBuy).toBe(true);
-    const r2 = act(r1.state, { type: 'BUY_ITEM', item: 'thief' });
-    expect(r2.state.players[0]!.items.thief).toBe(1);
-    expect(r2.state.players[0]!.coins).toBe(15);
+    const r2 = act(r1.state, { type: 'BUY_ITEM', item: 'princeTotem' });
+    expect(r2.state.players[0]!.items.princeTotem).toBe(1);
+    expect(r2.state.players[0]!.coins).toBe(5);
   });
 
   it('waits at an unaffordable shop so the visit can be shown', () => {
@@ -236,7 +236,7 @@ describe('movement and tiles', () => {
   it('does not count free training against the paid upgrade limit', () => {
     let s = setPlayer(withTeleport(newGame(['swordsman', 'archer'], 5)), 0, {
       coins: 100,
-      items: { teleport: 2, shield: 0, thief: 0 },
+      items: { teleport: 2, shield: 0, princeTotem: 0 },
     });
     for (const stat of ['atk', 'def', 'maxHp'] as const) {
       s = act(s, { type: 'UPGRADE', stat }).state;
@@ -410,7 +410,7 @@ describe('pvp', () => {
     let s = duelSetup(0, 0);
     s = patch(s, (d) => {
       d.players[1]!.coins = 13;
-      d.players[1]!.items.thief = 2;
+      d.players[1]!.items.teleport = 2;
       d.players[0]!.coins = 9;
     });
     const landing = act(s, { type: 'USE_TELEPORT', tile: 9 });
@@ -455,18 +455,6 @@ describe('pvp', () => {
 });
 
 describe('items', () => {
-  it('thief steals up to 10 coins once per turn', () => {
-    let s = newGame(['swordsman', 'archer'], 5);
-    s = patch(s, (d) => {
-      d.players[0]!.items.thief = 2;
-      d.players[1]!.coins = 13;
-    });
-    const r = act(s, { type: 'USE_THIEF', target: 1 });
-    expect(r.state.players[0]!.coins).toBe(s.players[0]!.coins + 10);
-    expect(r.state.players[1]!.coins).toBe(3);
-    expect(getLegalActions(r.state).some((a) => a.type === 'USE_THIEF')).toBe(false);
-  });
-
   it('teleport cannot target the current tile', () => {
     const s = withTeleport(newGame(['swordsman', 'archer'], 5));
     const tiles = getLegalActions(s).filter((a) => a.type === 'USE_TELEPORT');

@@ -38,7 +38,7 @@ function playOut(s0: GameState, policies: Policy[], seed: number): GameState {
 const meta = (id: string) => ({
   id,
   obsVersion: OBS_VERSION,
-  actVersion: 'act_v3',
+  actVersion: 'act_v4',
   output: 'logits' as const,
   obsDim: OBS_DIM,
   actionDim: ACTION_DIM,
@@ -59,6 +59,37 @@ describe('built-in bots', () => {
     expect(winProbability(state.rules, first, opponent, 192)).toBe(duel);
   });
 
+  it('includes an owned prince totem in the estimated combat profile', () => {
+    const state = newGame(2, 17);
+    const player = state.players[0]!;
+    player.hp = 1;
+    player.items.princeTotem = 2;
+    const estimated = profileOf(player, state.rules);
+    expect(estimated.maxHp).toBe(player.maxHp + state.rules.princeTotemMaxHpBonus);
+    expect(estimated.hp).toBe(estimated.maxHp);
+    expect(player.hp).toBe(1);
+    expect(player.items.princeTotem).toBe(2);
+  });
+
+  it('continues planning when the turn shop purchase allowance is exhausted', () => {
+    const state = newGame(2, 17);
+    const player = state.players[0]!;
+    player.coins = 100;
+    player.items = { teleport: 1, shield: 1, princeTotem: 0 };
+    state.pending = { actor: 0, phase: 'POST_MOVE' };
+    state.turn.canBuy = true;
+    state.turn.itemsBought = 3;
+    const legal = getLegalActions(state);
+    expect(legal.some((action) => action.type === 'BUY_ITEM')).toBe(false);
+    const action = createHeuristicBot().decide({
+      view: toPublicState(state),
+      seat: 0,
+      legal,
+      random: () => 0.5,
+    });
+    expect(action.type).toBe('UPGRADE');
+  });
+
   it('heuristic bots of every style finish games with legal actions', () => {
     for (let seed = 1; seed <= 4; seed++) {
       const policies = [0, 1, 2, 3].map((i) =>
@@ -70,11 +101,11 @@ describe('built-in bots', () => {
   });
 
   it.each(['PRE_ROLL', 'POST_MOVE'] as const)(
-    'continues considering upgrades after a thief has already been used in %s',
+    'continues upgrading while an owned prince totem waits for combat in %s',
     (phase) => {
       const bot = createHeuristicBot('growth');
       let state = newGame(2, 42);
-      state.players[0]!.items.thief = 2;
+      state.players[0]!.items.princeTotem = 2;
       state.players[0]!.coins = 50;
       state.players[1]!.coins = 100;
       state.pending = { actor: 0, phase };
@@ -87,13 +118,34 @@ describe('built-in bots', () => {
         });
 
       const first = decide();
-      expect(first).toEqual({ type: 'USE_THIEF', target: 1 });
+      expect(first.type).toBe('UPGRADE');
       state = applyAction(state, first).state;
-      expect(state.turn.thiefUsed).toBe(true);
-      expect(state.players[0]!.items.thief).toBe(1);
+      expect(state.players[0]!.items.princeTotem).toBe(2);
       expect(decide().type).toBe('UPGRADE');
     },
   );
+
+  it('buys a missing prince totem before buying another teleport', () => {
+    let state = newGame(2, 42);
+    state.players[0]!.coins = 100;
+    state.players[0]!.items = { teleport: 0, shield: 1, princeTotem: 0 };
+    state.pending = { actor: 0, phase: 'POST_MOVE' };
+    state.turn.canBuy = true;
+    const bot = createHeuristicBot('growth');
+    const decide = () =>
+      bot.decide({
+        view: toPublicState(state),
+        seat: 0,
+        legal: getLegalActions(state),
+        random: () => 0.5,
+      });
+    const purchase = decide();
+    expect(purchase).toEqual({ type: 'BUY_ITEM', item: 'princeTotem' });
+    state = applyAction(state, purchase).state;
+    expect(state.players[0]!.items.princeTotem).toBe(1);
+    expect(state.turn.itemsBought).toBe(1);
+    expect(decide()).toEqual({ type: 'BUY_ITEM', item: 'teleport' });
+  });
 
   it('considers a healing teleport when paid upgrades are exhausted', () => {
     const state = newGame(2, 42);
@@ -145,7 +197,7 @@ describe('built-in bots', () => {
         meta: { ...meta('legacy'), obsVersion: 'obs_v1' },
         forward: () => scores,
       }),
-    ).toThrow(/obs_v1.*obs_v4/);
+    ).toThrow(/obs_v1.*obs_v5/);
   });
 
   it('evaluates all ten movement outcomes before using a teleport', () => {

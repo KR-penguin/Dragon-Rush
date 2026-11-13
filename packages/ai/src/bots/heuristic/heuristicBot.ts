@@ -25,7 +25,6 @@ interface StyleParams {
   hunt: number;
   wantTeleport: number;
   wantShield: number;
-  thiefMin: number;
   innFrac: number;
   tpEcon: number;
   tpBuySpare: number;
@@ -40,7 +39,6 @@ export const STYLE_PARAMS: Readonly<Record<HeuristicStyle, StyleParams>> = {
     hunt: 0.7,
     wantTeleport: 1,
     wantShield: 1,
-    thiefMin: 6,
     innFrac: 0.35,
     tpEcon: 5,
     tpBuySpare: 0,
@@ -52,7 +50,6 @@ export const STYLE_PARAMS: Readonly<Record<HeuristicStyle, StyleParams>> = {
     hunt: 0.8,
     wantTeleport: 1,
     wantShield: 1,
-    thiefMin: 7,
     innFrac: 0.45,
     tpEcon: 6,
     tpBuySpare: 4,
@@ -64,7 +61,6 @@ export const STYLE_PARAMS: Readonly<Record<HeuristicStyle, StyleParams>> = {
     hunt: 0.85,
     wantTeleport: 0,
     wantShield: 1,
-    thiefMin: 7,
     innFrac: 0.5,
     tpEcon: 6,
     tpBuySpare: 99,
@@ -217,19 +213,6 @@ class Planner {
     return this.opponents().some((q) => this.duelWp(q, this.me) >= 0.5);
   }
 
-  private richest(): PlayerState | null {
-    const opps = this.opponents();
-    return opps.length ? opps.reduce((a, b) => (b.coins > a.coins ? b : a)) : null;
-  }
-
-  thiefTarget(): SeatId | null {
-    if (this.me.items.thief < 1) return null;
-    const q = this.richest();
-    if (!q) return null;
-    const amount = this.rules.thiefStealAmount;
-    return q.coins >= amount || q.coins >= Math.min(amount, this.s.thiefMin) ? q.seat : null;
-  }
-
   private itemValue(q: PlayerState): number {
     return ITEM_IDS.reduce((sum, id) => sum + q.items[id] * this.rules.items[id].price, 0);
   }
@@ -270,7 +253,7 @@ class Planner {
           break;
         case 'shop': {
           const minPrice = Math.min(...ITEM_IDS.map((id) => this.rules.items[id].price));
-          if (p.coins >= minPrice && (this.reserve() > 0 || p.items.thief === 0)) v += 3;
+          if (p.coins >= minPrice && (this.reserve() > 0 || p.items.princeTotem === 0)) v += 3;
           break;
         }
         case 'mystery':
@@ -388,7 +371,7 @@ class Planner {
     const shops = [...this.rules.board.keys()].filter((t) =>
       this.rules.board[t]!.effects.some((e) => e.kind === 'shop'),
     );
-    if (p.coins >= prices.shield.price + prices.thief.price + 2 && shops.length) {
+    if (p.coins >= prices.shield.price + prices.princeTotem.price + 2 && shops.length) {
       const dist = Math.min(...shops.map((t) => forwardDistance(p.position, t)));
       if (dist > this.rules.movement.rollSides || dist === 0) {
         const cands = shops.filter((t) => t !== p.position);
@@ -396,11 +379,7 @@ class Planner {
           const sh = cands.reduce((a, b) =>
             this.teleportValue(b) > this.teleportValue(a) ? b : a,
           );
-          const rich = this.richest();
-          if (
-            this.teleportValue(sh) > 0 &&
-            (p.items.shield === 0 || (p.items.thief === 0 && (rich?.coins ?? 0) >= 7))
-          )
+          if (this.teleportValue(sh) > 0 && (p.items.shield === 0 || p.items.princeTotem === 0))
             return sh;
         }
       }
@@ -425,12 +404,11 @@ class Planner {
 
   purchase(): Action | null {
     const p = this.me;
-    const price = (id: 'teleport' | 'shield' | 'thief') => this.rules.items[id].price;
-    const rich = this.richest();
+    const price = (id: 'teleport' | 'shield' | 'princeTotem') => this.rules.items[id].price;
     if (p.items.shield < this.s.wantShield && p.coins >= price('shield') && this.threatened())
       return { type: 'BUY_ITEM', item: 'shield' };
-    if (p.items.thief === 0 && rich && rich.coins >= this.s.thiefMin && p.coins >= price('thief'))
-      return { type: 'BUY_ITEM', item: 'thief' };
+    if (p.items.princeTotem === 0 && p.coins >= price('princeTotem'))
+      return { type: 'BUY_ITEM', item: 'princeTotem' };
     if (p.items.teleport < this.s.wantTeleport && p.coins >= price('teleport') + this.s.tpBuySpare)
       return { type: 'BUY_ITEM', item: 'teleport' };
     if (
@@ -462,8 +440,6 @@ function* preferences(ctx: DecisionContext, style: HeuristicStyle): Generator<Ac
       yield { type: 'CHOOSE_TRAINING_STAT', stat: plan.trainingChoice() };
       return;
     case 'PRE_ROLL': {
-      const thief = plan.thiefTarget();
-      if (thief !== null) yield { type: 'USE_THIEF', target: thief };
       const dragon = plan.dragonMove();
       if (dragon) yield dragon;
       const up = plan.upgradeToBuy();
@@ -480,12 +456,10 @@ function* preferences(ctx: DecisionContext, style: HeuristicStyle): Generator<Ac
       return;
     }
     case 'POST_MOVE': {
-      if (view.turn.canBuy) {
+      if (legal.some((action) => action.type === 'BUY_ITEM')) {
         const buy = plan.purchase();
         if (buy) yield buy;
       }
-      const thief = plan.thiefTarget();
-      if (thief !== null) yield { type: 'USE_THIEF', target: thief };
       if (view.players[seat]!.items.teleport > 0 && view.turn.teleportsUsed === 0) {
         const t = plan.teleportTarget(false);
         if (t !== null) yield { type: 'USE_TELEPORT', tile: t };

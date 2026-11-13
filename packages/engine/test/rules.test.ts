@@ -27,8 +27,9 @@ describe('DEFAULT_RULES matches docs/game-design.md', () => {
     });
     expect(DEFAULT_RULES.items.teleport).toEqual({ price: 6, perTurnLimit: null });
     expect(DEFAULT_RULES.items.shield.price).toBe(6);
-    expect(DEFAULT_RULES.items.thief).toEqual({ price: 5, perTurnLimit: 1 });
-    expect(DEFAULT_RULES.thiefStealAmount).toBe(10);
+    expect(DEFAULT_RULES.items.princeTotem).toEqual({ price: 15, perTurnLimit: null });
+    expect(DEFAULT_RULES.princeTotemMaxHpBonus).toBe(15);
+    expect(DEFAULT_RULES.maxItemsBoughtPerTurn).toBe(3);
   });
 
   it('gives only the archer scouting supplies at game start', () => {
@@ -128,7 +129,7 @@ describe('DEFAULT_RULES matches docs/game-design.md', () => {
   });
 
   it('carries the balance version', () => {
-    expect(DEFAULT_RULES.version).toBe('rush-11');
+    expect(DEFAULT_RULES.version).toBe('rush-12');
   });
 
   it('is frozen and valid', () => {
@@ -143,5 +144,7 @@ describe('DEFAULT_RULES matches docs/game-design.md', () => {
     expect(() => validateRules(withRules({ pvpWinBonusCoins: -1 }))).toThrow();
     expect(() => validateRules(withRules({ coinShortfallHpPerCoin: -1 }))).toThrow();
     expect(() => validateRules(withRules({ movement: { rollSides: 25 } }))).toThrow();
+    expect(() => validateRules(withRules({ maxItemsBoughtPerTurn: -1 }))).toThrow();
+    expect(() => validateRules(withRules({ princeTotemMaxHpBonus: 0 }))).toThrow();
   });
 });

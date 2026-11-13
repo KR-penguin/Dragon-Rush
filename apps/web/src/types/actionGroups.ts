@@ -11,7 +11,6 @@ export interface ActionGroups {
   readonly upgrades: readonly UpgradeStat[];
   readonly buys: readonly ItemId[];
   readonly teleportTiles: readonly number[];
-  readonly thiefTargets: readonly SeatId[];
   readonly moveDeltas: readonly MoveDelta[];
   readonly pvpTargets: readonly SeatId[];
   readonly shieldChoices: readonly boolean[];
@@ -25,7 +24,6 @@ export const EMPTY_GROUPS: ActionGroups = {
   upgrades: [],
   buys: [],
   teleportTiles: [],
-  thiefTargets: [],
   moveDeltas: [],
   pvpTargets: [],
   shieldChoices: [],
@@ -39,7 +37,6 @@ export function groupActions(legal: readonly Action[]): ActionGroups {
   const upgrades: UpgradeStat[] = [];
   const buys: ItemId[] = [];
   const teleportTiles: number[] = [];
-  const thiefTargets: SeatId[] = [];
   const moveDeltas: MoveDelta[] = [];
   const pvpTargets: SeatId[] = [];
   const shieldChoices: boolean[] = [];
@@ -63,9 +60,6 @@ export function groupActions(legal: readonly Action[]): ActionGroups {
         break;
       case 'USE_TELEPORT':
         teleportTiles.push(a.tile);
-        break;
-      case 'USE_THIEF':
-        thiefTargets.push(a.target);
         break;
       case 'ADJUST_MOVE':
         moveDeltas.push(a.delta);
@@ -91,7 +85,6 @@ export function groupActions(legal: readonly Action[]): ActionGroups {
     upgrades,
     buys,
     teleportTiles,
-    thiefTargets,
     moveDeltas,
     pvpTargets,
     shieldChoices,

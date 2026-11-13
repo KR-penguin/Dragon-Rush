@@ -10,6 +10,7 @@ import {
   type UpgradeStat,
 } from '@dragon-rush/engine';
 import type { MoveDelta } from './actionGroups';
+import { itemDescription } from './labels';
 import { playerOf } from './playerView';
 import { effectChips, type EffectChip } from './tileView';
 
@@ -82,6 +83,7 @@ export interface ShopRow {
   readonly price: number;
   readonly owned: number;
   readonly buyable: boolean;
+  readonly description: string;
 }
 
 export function shopRows(state: PublicGameState, seat: SeatId, buys: readonly ItemId[]): ShopRow[] {
@@ -91,6 +93,7 @@ export function shopRows(state: PublicGameState, seat: SeatId, buys: readonly It
     price: state.rules.items[item].price,
     owned: p.items[item],
     buyable: buys.includes(item),
+    description: itemDescription(item, state.rules),
   }));
 }
 

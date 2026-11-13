@@ -2,7 +2,7 @@ import type { Action } from '@dragon-rush/engine';
 import { createHeuristicBot } from '../bots/heuristic/heuristicBot';
 import { ACTION_DIM, ACT_VERSION, decodeAction, maskFromLegal } from '../codec/actions';
 import { encodeObservation } from '../obs/encode';
-import { OBS_DIM, OBS_VERSION } from '../obs/layout';
+import { OBS_DIM, OBS_VERSION } from '../obs/layoutV5';
 import type { DecisionContext, Policy, PolicyModel } from '../policy';
 
 export interface ModelPolicyOptions {

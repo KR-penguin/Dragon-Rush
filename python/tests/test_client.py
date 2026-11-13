@@ -16,11 +16,11 @@ KW = dict(server_cmd=SERVER, cwd=str(ROOT))
 
 def test_single_env_shapes_and_episode():
     with RPGBoardEnv(num_players=3, max_rounds=60, **KW) as env:
-        assert env.obs_version == "obs_v4" and env.act_version == "act_v3"
-        assert env.obs_dim == 498 and env.action_dim == 47
+        assert env.obs_version == "obs_v5" and env.act_version == "act_v4"
+        assert env.obs_dim == 498 and env.action_dim == 44
         obs, info = env.reset(seed=1)
         assert obs.shape == (498,) and obs.dtype == np.float32
-        assert info["action_mask"].shape == (47,) and info["action_mask"].dtype == bool
+        assert info["action_mask"].shape == (44,) and info["action_mask"].dtype == bool
         rng = np.random.default_rng(0)
         done, steps = False, 0
         while not done:
@@ -46,7 +46,7 @@ def test_vec_env_selfplay_rewards():
     with RPGBoardVecEnv(num_envs=4, mode="selfplay", num_players=[2, 4], **KW) as env:
         obs, info = env.reset(seed=3)
         assert obs.shape == (4, 498)
-        assert info["action_mask"].shape == (4, 47)
+        assert info["action_mask"].shape == (4, 44)
         rng = np.random.default_rng(1)
         for _ in range(300):
             actions = [int(rng.choice(np.flatnonzero(m))) for m in info["action_mask"]]

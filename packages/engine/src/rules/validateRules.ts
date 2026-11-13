@@ -86,6 +86,10 @@ export function validateRules(rules: RulesConfig): void {
     fail('archerStartingCoinsBonus must be a non-negative safe integer');
   if (!Number.isSafeInteger(rules.maxPaidUpgradesPerTurn) || rules.maxPaidUpgradesPerTurn < 0)
     fail('maxPaidUpgradesPerTurn must be a non-negative safe integer');
+  if (!Number.isSafeInteger(rules.maxItemsBoughtPerTurn) || rules.maxItemsBoughtPerTurn < 0)
+    fail('maxItemsBoughtPerTurn must be a non-negative safe integer');
+  if (!Number.isSafeInteger(rules.princeTotemMaxHpBonus) || rules.princeTotemMaxHpBonus < 1)
+    fail('princeTotemMaxHpBonus must be a positive safe integer');
 }
 
 export function validateSetup(setup: GameSetup): void {

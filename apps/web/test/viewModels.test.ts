@@ -65,11 +65,11 @@ describe('decision view models', () => {
 
   it('lists shop items with rule prices and owned counts', () => {
     const s = game();
-    const rows = shopRows(s, 0, ['thief']);
-    expect(rows.map((r) => r.item)).toEqual(['teleport', 'shield', 'thief']);
+    const rows = shopRows(s, 0, ['princeTotem']);
+    expect(rows.map((r) => r.item)).toEqual(['teleport', 'shield', 'princeTotem']);
     expect(rows.find((r) => r.item === 'shield')!.owned).toBe(0);
     expect(rows.find((r) => r.item === 'teleport')!.price).toBe(DEFAULT_RULES.items.teleport.price);
-    expect(rows.filter((r) => r.buyable).map((r) => r.item)).toEqual(['thief']);
+    expect(rows.filter((r) => r.buyable).map((r) => r.item)).toEqual(['princeTotem']);
   });
 
   it('summarises opponents for choice dialogs', () => {

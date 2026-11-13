@@ -1,4 +1,12 @@
-import type { ItemId, JobId, OutcomeKind, Phase, TileId, UpgradeStat } from '@dragon-rush/engine';
+import type {
+  ItemId,
+  JobId,
+  OutcomeKind,
+  Phase,
+  RulesConfig,
+  TileId,
+  UpgradeStat,
+} from '@dragon-rush/engine';
 
 export const JOB_LABEL: Record<JobId, string> = {
   swordsman: '검사',
@@ -19,14 +27,21 @@ export const JOB_PASSIVE: Record<JobId, string> = {
 export const ITEM_LABEL: Record<ItemId, string> = {
   teleport: '텔레포트',
   shield: '방어막',
-  thief: '도둑',
+  princeTotem: '왕자의 토템',
 };
 export const ITEM_DESC: Record<ItemId, string> = {
   teleport:
     '선택한 칸까지 시계 방향으로 이동. 출발 칸을 지나거나 도착하면 출발 보너스 획득 (일회용)',
   shield: '결투가 성립할 때 전투를 취소 (일회용)',
-  thief: '상대 1명의 코인 최대 10개를 훔침 (일회용, 턴당 1회)',
+  princeTotem:
+    '전투 시작 시 1개 자동 소모. 이번 전투 최대 체력 증가 및 체력 완전 회복. 종료 시 원래 최대 체력으로 복귀',
 };
+
+export function itemDescription(item: ItemId, rules: RulesConfig): string {
+  return item === 'princeTotem'
+    ? `전투 시작 시 1개 자동 소모. 이번 전투 최대 체력 +${rules.princeTotemMaxHpBonus}, 체력 완전 회복. 종료 시 원래 최대 체력으로 복귀`
+    : ITEM_DESC[item];
+}
 
 export const STAT_LABEL: Record<UpgradeStat | 'atk' | 'def', string> = {
   atk: '공격력',

@@ -12,7 +12,6 @@ export const ActionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('CHOOSE_TRAINING_STAT'), stat }).strict(),
   z.object({ type: z.literal('BUY_ITEM'), item: z.enum(ITEM_IDS) }).strict(),
   z.object({ type: z.literal('USE_TELEPORT'), tile: z.number().int().min(0).max(23) }).strict(),
-  z.object({ type: z.literal('USE_THIEF'), target: seatId }).strict(),
   z.object({ type: z.literal('CHOOSE_PVP_TARGET'), target: seatId }).strict(),
   z
     .object({

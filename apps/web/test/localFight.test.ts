@@ -152,15 +152,29 @@ describe('real-time fights in local play', () => {
     const defender = start.publicState.players.find((p) => p.seat !== arriver)!.seat;
     const from = start.publicState.players.find((p) => p.seat === arriver)!.position;
     const tile = start.publicState.rules.board.findIndex((t, i) => !t.safe && i !== from);
-    g.client.debugPatchPlayer(defender, { position: tile });
-    g.client.debugPatchPlayer(arriver, { items: { teleport: 1 } });
+    const defenderMaxHp = start.publicState.players.find((p) => p.seat === defender)!.maxHp;
+    g.client.debugPatchPlayer(defender, {
+      position: tile,
+      hp: 1,
+      items: { shield: 0, princeTotem: 1 },
+    });
+    g.client.debugPatchPlayer(arriver, { items: { teleport: 1, shield: 0, princeTotem: 0 } });
     await g.client.submit({ type: 'USE_TELEPORT', tile }, g.latest().version);
     for (let i = 0; i < 5 && !g.latest().fight; i++) {
       const u = g.latest();
       await g.client.submit(boardStep(u), u.version);
     }
     const fight = g.latest().fight as PendingFight;
-    expect(fight.request).toEqual({ kind: 'duel', a: arriver, b: defender });
+    expect(fight.request).toEqual({
+      kind: 'duel',
+      a: arriver,
+      b: defender,
+      princeTotemBonusB: start.publicState.rules.princeTotemMaxHpBonus,
+    });
+    expect(fight.setup.b).toMatchObject({
+      hp: defenderMaxHp + start.publicState.rules.princeTotemMaxHpBonus,
+      maxHp: defenderMaxHp + start.publicState.rules.princeTotemMaxHpBonus,
+    });
     expect(fight.sides.map((s) => s.control)).toEqual(['keyboard-p1', 'keyboard-p2']);
 
     const out = simulateFight(fight.setup, fight.seed, [scripted, idle]);
@@ -173,6 +187,8 @@ describe('real-time fights in local play', () => {
     const winner = after.publicState.players.find((p) => p.seat === winnerSeat)!;
     expect(winner.hp).toBe(winner.maxHp);
     expect(after.publicState.players.find((p) => p.seat === loserSeat)!.alive).toBe(false);
+    expect(after.publicState.players.find((p) => p.seat === defender)!.maxHp).toBe(defenderMaxHp);
+    expect(after.publicState.players.find((p) => p.seat === defender)!.items.princeTotem).toBe(0);
     expect(eventTypes(after)).toContain('PlayerEliminated');
   });
 
@@ -226,13 +242,13 @@ describe('bot-only fights', () => {
     g.client.debugPatchPlayer(arriver, {
       position: 23,
       coins: 0,
-      items: { teleport: 1, shield: 0, thief: 0 },
+      items: { teleport: 1, shield: 0, princeTotem: 0 },
     });
     g.client.debugPatchPlayer(defender, {
       position: 1,
       coins: 0,
       hp: 1,
-      items: { teleport: 0, shield: 0, thief: 0 },
+      items: { teleport: 0, shield: 0, princeTotem: 0 },
     });
     for (let i = 0; i < 12; i++) {
       g.sched.flush();

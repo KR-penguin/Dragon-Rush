@@ -1,7 +1,7 @@
 export const JOB_IDS = ['swordsman', 'archer', 'mage', 'ninja', 'berserker'] as const;
 export type JobId = (typeof JOB_IDS)[number];
 
-export const ITEM_IDS = ['teleport', 'shield', 'thief'] as const;
+export const ITEM_IDS = ['teleport', 'shield', 'princeTotem'] as const;
 export type ItemId = (typeof ITEM_IDS)[number];
 
 export const UPGRADE_STATS = ['atk', 'def', 'maxHp'] as const;
@@ -104,6 +104,7 @@ export interface RulesConfig {
   readonly eventHpFloor: number;
   readonly coinShortfallHpPerCoin: number;
   readonly maxPaidUpgradesPerTurn: number;
+  readonly maxItemsBoughtPerTurn: number;
   readonly jobs: Readonly<Record<JobId, JobDef>>;
   readonly passives: {
     readonly indomitableUses: number;
@@ -122,7 +123,7 @@ export interface RulesConfig {
     >
   >;
   readonly items: Readonly<Record<ItemId, ItemDef>>;
-  readonly thiefStealAmount: number;
+  readonly princeTotemMaxHpBonus: number;
   readonly board: readonly TileDef[];
   readonly boardVariation: {
     readonly fixedTiles: readonly number[];
@@ -179,7 +180,7 @@ export interface TurnContext {
   rolled: boolean;
   dice: number | null;
   teleportsUsed: number;
-  thiefUsed: boolean;
+  itemsBought: number;
   canBuy: boolean;
 }
 
@@ -197,6 +198,9 @@ export interface CombatRequest {
   a: SeatId;
   /** Defender seat, null for the dragon. */
   b: SeatId | null;
+  /** Temporary maximum-HP bonuses to remove when this fight ends. */
+  princeTotemBonusA?: number;
+  princeTotemBonusB?: number;
 }
 
 /** Outcome of an externally resolved fight, validated by applyCombatResult. */
@@ -256,7 +260,6 @@ export type Action =
   | { type: 'CHOOSE_TRAINING_STAT'; stat: UpgradeStat }
   | { type: 'BUY_ITEM'; item: ItemId }
   | { type: 'USE_TELEPORT'; tile: number }
-  | { type: 'USE_THIEF'; target: SeatId }
   | { type: 'CHOOSE_PVP_TARGET'; target: SeatId }
   | { type: 'ADJUST_MOVE'; delta: -1 | 0 | 1 }
   | { type: 'SHIELD_DECISION'; use: boolean };
@@ -313,7 +316,6 @@ export type GameEvent =
     }
   | { type: 'ItemBought'; seat: SeatId; item: ItemId; price: number; coinsAfter: number }
   | { type: 'ItemUsed'; seat: SeatId; item: ItemId; tile?: number; target?: SeatId }
-  | { type: 'CoinsStolen'; from: SeatId; to: SeatId; amount: number }
   | { type: 'PvpTriggered'; arriver: SeatId; candidates: SeatId[] }
   | { type: 'PvpTargetChosen'; arriver: SeatId; target: SeatId }
   | { type: 'ShieldUsed'; seat: SeatId; against: SeatId }

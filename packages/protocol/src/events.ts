@@ -1,6 +1,6 @@
 /** Bump only on breaking changes; clients with another version are refused at handshake. */
 /** v2: pending.phase may be COMBAT, real-time fight:* messages, room option quickCombat. */
-export const PROTOCOL_VERSION = 2;
+export const PROTOCOL_VERSION = 3;
 
 export const C2S = {
   roomCreate: 'room:create',

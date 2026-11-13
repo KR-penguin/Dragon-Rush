@@ -283,11 +283,22 @@ describe('event → effect mapping', () => {
       at: { kind: 'hud', seat: 0, slot: 'panel' },
     });
     expect(sounds(up)).toEqual(['upgrade']);
-    const stolen = fxForEvent({ type: 'CoinsStolen', from: 1, to: 0, amount: 7 }, ctx());
-    expect(ofType(stolen, 'coins')[0]).toMatchObject({
-      from: { kind: 'seat', seat: 1 },
-      to: { kind: 'hud', seat: 0, slot: 'coins' },
-    });
+    const totem = fxForEvent({ type: 'ItemUsed', seat: 0, item: 'princeTotem' }, ctx());
+    expect(ofType(totem, 'text')).toContainEqual(
+      expect.objectContaining({ kind: 'callout', text: '왕자의 토템' }),
+    );
+  });
+
+  it('ends a temporary maximum HP bonus without a new upgrade effect', () => {
+    const cues = fxForEvent(
+      { type: 'EffectApplied', seat: 0, effect: 'maxHp', delta: -15, after: 40 },
+      ctx(),
+    );
+    expect(ofType(cues, 'text')).toContainEqual(
+      expect.objectContaining({ kind: 'callout', text: '최대 HP 복귀' }),
+    );
+    expect(ofType(cues, 'burst')).toEqual([]);
+    expect(sounds(cues)).toEqual([]);
   });
 
   it('CombatStarted: trauma 0.55, a governed clash flash and a roar for the dragon', () => {

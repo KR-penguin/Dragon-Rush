@@ -89,7 +89,7 @@ export function playGame(opts: PlayGameOptions): GameRecord {
     shieldCancels: 0,
     dragonAttempts: 0,
     dragonWins: 0,
-    purchases: { teleport: 0, shield: 0, thief: 0 },
+    purchases: { teleport: 0, shield: 0, princeTotem: 0 },
     turns: Array.from({ length: n }, () => 0),
     netCoins: Array.from({ length: n }, () => 0),
     combatTicks: fights.reduce((a, f) => a + (f.ticks ?? 0), 0),

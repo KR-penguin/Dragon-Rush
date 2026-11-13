@@ -24,7 +24,6 @@ const DURATION: Partial<Record<GameEvent['type'], number>> = {
   CombatEnded: 700,
   PlayerEliminated: 900,
   ShieldUsed: 600,
-  CoinsStolen: 500,
   StatUpgraded: 200,
   ItemBought: 200,
   GameEnded: 400,
@@ -82,8 +81,6 @@ export function describeEvent(
       return `${name(e.seat)} ${ITEM_LABEL[e.item]} 구매 (-${e.price}코인)`;
     case 'ItemUsed':
       return e.item === 'teleport' ? null : `${name(e.seat)} ${ITEM_LABEL[e.item]} 사용`;
-    case 'CoinsStolen':
-      return `${name(e.to)}이(가) ${name(e.from)}의 코인 ${e.amount}개를 훔쳤습니다`;
     case 'PvpTriggered':
       return `${name(e.arriver)}이(가) ${e.candidates.map(name).join(', ')}와(과) 같은 칸에 멈췄습니다`;
     case 'PvpTargetChosen':
@@ -129,7 +126,7 @@ function describeEffect(
     case 'stat':
       return `${n} ${STAT_LABEL[e.stat ?? 'atk']} +${e.delta}`;
     case 'maxHp':
-      return `${n} 최대 HP +${e.delta}`;
+      return `${n} 최대 HP ${e.delta > 0 ? '+' : ''}${e.delta}`;
     case 'skipTurn':
       return `${n} 다음 턴에 쉽니다`;
     case 'randomItem':
@@ -142,7 +139,6 @@ function describeEffect(
 /** The seat an event is mainly about (for seat-coloured toasts), or null. */
 export function eventSeat(e: GameEvent): SeatId | null {
   switch (e.type) {
-    case 'CoinsStolen':
     case 'LootTransferred':
       return e.to;
     case 'PvpTriggered':
@@ -191,8 +187,6 @@ export function eventIcon(e: GameEvent): IconName {
       return 'shop';
     case 'ItemUsed':
       return ITEM_ICON_NAME[e.item];
-    case 'CoinsStolen':
-      return 'thief';
     case 'PvpTriggered':
     case 'PvpTargetChosen':
     case 'CombatHit':
@@ -227,7 +221,7 @@ export function applyEventToDisplay(display: PublicGameState, e: GameEvent): Pub
   });
   switch (e.type) {
     case 'TurnStarted':
-      return { ...display, turn: { ...display.turn, paidUpgradesUsed: 0 } };
+      return { ...display, turn: { ...display.turn, paidUpgradesUsed: 0, itemsBought: 0 } };
     case 'Moved':
       return patchPlayer(e.seat, { position: e.to });
     case 'StartBonus':
@@ -238,7 +232,10 @@ export function applyEventToDisplay(display: PublicGameState, e: GameEvent): Pub
       if (e.effect === 'stat' && e.stat) return patchPlayer(e.seat, { [e.stat]: e.after });
       if (e.effect === 'maxHp') {
         const hp = display.players.find((p) => p.seat === e.seat)!.hp;
-        return patchPlayer(e.seat, { maxHp: e.after, hp: hp + e.delta });
+        return patchPlayer(e.seat, {
+          maxHp: e.after,
+          hp: e.delta < 0 ? Math.min(hp, e.after) : hp + e.delta,
+        });
       }
       return display;
     case 'StatUpgraded':
@@ -259,7 +256,10 @@ export function applyEventToDisplay(display: PublicGameState, e: GameEvent): Pub
           : { ...display.turn, paidUpgradesUsed: display.turn.paidUpgradesUsed + 1 },
       };
     case 'ItemBought':
-      return patchPlayer(e.seat, { coins: e.coinsAfter });
+      return {
+        ...patchPlayer(e.seat, { coins: e.coinsAfter }),
+        turn: { ...display.turn, itemsBought: display.turn.itemsBought + 1 },
+      };
     case 'CombatHit':
       return typeof e.defender === 'number'
         ? patchPlayer(e.defender, { hp: Math.max(0, e.hpAfter) })

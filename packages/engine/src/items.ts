@@ -47,18 +47,30 @@ export function buyItem(ctx: Ctx, item: ItemId): void {
   const price = ctx.s.rules.items[item].price;
   p.coins -= price;
   p.items[item] += 1;
+  ctx.s.turn.itemsBought += 1;
   emit(ctx, { type: 'ItemBought', seat, item, price, coinsAfter: p.coins });
 }
 
-export function useThief(ctx: Ctx, target: SeatId): void {
-  const seat = ctx.s.current;
+export function activatePrinceTotem(ctx: Ctx, seat: SeatId): number {
   const p = playerAt(ctx.s, seat);
-  const victim = playerAt(ctx.s, target);
-  p.items.thief -= 1;
-  ctx.s.turn.thiefUsed = true;
-  const amount = Math.min(ctx.s.rules.thiefStealAmount, victim.coins);
-  victim.coins -= amount;
-  p.coins += amount;
-  emit(ctx, { type: 'ItemUsed', seat, item: 'thief', target });
-  emit(ctx, { type: 'CoinsStolen', from: target, to: seat, amount });
+  if (p.items.princeTotem < 1) return 0;
+  const bonus = ctx.s.rules.princeTotemMaxHpBonus;
+  const hpBefore = p.hp;
+  p.items.princeTotem -= 1;
+  p.maxHp += bonus;
+  p.hp = p.maxHp;
+  emit(ctx, { type: 'ItemUsed', seat, item: 'princeTotem' });
+  emit(ctx, { type: 'EffectApplied', seat, effect: 'maxHp', delta: bonus, after: p.maxHp });
+  emit(ctx, { type: 'EffectApplied', seat, effect: 'hp', delta: p.hp - hpBefore, after: p.hp });
+  return bonus;
+}
+
+export function restorePrinceTotem(ctx: Ctx, seat: SeatId, bonus: number | undefined): void {
+  if (bonus === undefined) return;
+  const p = playerAt(ctx.s, seat);
+  const hpBefore = p.hp;
+  p.maxHp -= bonus;
+  p.hp = Math.min(p.hp, p.maxHp);
+  emit(ctx, { type: 'EffectApplied', seat, effect: 'maxHp', delta: -bonus, after: p.maxHp });
+  emit(ctx, { type: 'EffectApplied', seat, effect: 'hp', delta: p.hp - hpBefore, after: p.hp });
 }

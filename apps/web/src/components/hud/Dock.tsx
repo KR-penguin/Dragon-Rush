@@ -1,8 +1,8 @@
-import { ITEM_IDS, type ItemId, type UpgradeStat } from '@dragon-rush/engine';
+import { ITEM_IDS, type ItemId, type RulesConfig, type UpgradeStat } from '@dragon-rush/engine';
 import { useState } from 'react';
 import type { ActionGroups } from '../../types/actionGroups';
 import type { StatOption } from '../../types/decisionView';
-import { ITEM_DESC, ITEM_LABEL } from '../../types/labels';
+import { itemDescription, ITEM_LABEL } from '../../types/labels';
 import { DiceTray, type DiceRoll } from '../board/DiceTray';
 import { ItemArt } from '../icons/Art';
 import { GameIcon } from '../icons/GameIcon';
@@ -24,11 +24,11 @@ interface DockProps {
   /** Items of the seat deciding here, or null. */
   items: Readonly<Record<ItemId, number>> | null;
   coins: number;
+  rules: RulesConfig;
   onRoll: () => void;
   onEndTurn: () => void;
   onDragon: () => void;
   onTeleport: () => void;
-  onThief: () => void;
   onShop: () => void;
   onUpgrade: (stat: UpgradeStat) => void;
 }
@@ -39,7 +39,7 @@ export function Dock(props: DockProps) {
   const [anvilOpen, setAnvilOpen] = useState(false);
   const itemUsable: Record<ItemId, (() => void) | null> = {
     teleport: groups.teleportTiles.length > 0 ? props.onTeleport : null,
-    thief: groups.thiefTargets.length > 0 ? props.onThief : null,
+    princeTotem: null,
     shield: null,
   };
   const anyUpgrade = props.upgrades?.some((o) => o.legal) ?? false;
@@ -116,7 +116,7 @@ export function Dock(props: DockProps) {
                   className={`item-card${n > 0 ? '' : ' is-empty'}${use ? ' is-usable' : ''}`}
                   disabled={!use || locked}
                   onClick={use ?? undefined}
-                  title={`${ITEM_LABEL[item]}: ${ITEM_DESC[item]}`}
+                  title={`${ITEM_LABEL[item]}: ${itemDescription(item, props.rules)}`}
                 >
                   <ItemArt item={item} className="item-card-art" />
                   <span className="item-card-name">{ITEM_LABEL[item]}</span>

@@ -6,27 +6,30 @@ import {
   OBS_DIM,
   OBS_V3_LAYOUT,
   OBS_V4_LAYOUT,
+  OBS_V5_LAYOUT,
   OBS_VERSION,
 } from '../src/index';
 import { newGame, view, walk } from './helpers';
 
 const field = (name: string) => {
-  const f = OBS_V4_LAYOUT.find((x) => x.name === name);
+  const f = OBS_V5_LAYOUT.find((x) => x.name === name);
   if (!f) throw new Error(`no field ${name}`);
   return f;
 };
 
-describe('obs_v4', () => {
-  it('keeps the 258 legacy fields and appends 24 ten-scalar tile blocks', () => {
-    expect(OBS_VERSION).toBe('obs_v4');
+describe('obs_v5', () => {
+  it('versions the replaced item and purchase fields while preserving frozen layouts', () => {
+    expect(OBS_VERSION).toBe('obs_v5');
     expect(OBS_DIM).toBe(498);
     let offset = 0;
-    for (const f of OBS_V4_LAYOUT) {
+    for (const f of OBS_V5_LAYOUT) {
       expect(f.offset).toBe(offset);
       offset += f.length;
     }
     expect(offset).toBe(498);
     expect(OBS_V4_LAYOUT.slice(0, OBS_V3_LAYOUT.length)).toEqual(OBS_V3_LAYOUT);
+    expect(OBS_V4_LAYOUT.find((f) => f.offset === 243)?.name).toBe('g.thiefUsed');
+    expect(field('g.itemsBoughtRemaining').offset).toBe(243);
     expect(OBS_V3_LAYOUT.at(-1)).toEqual({
       name: 'g.paidUpgradesRemaining',
       offset: 257,
@@ -216,5 +219,19 @@ describe('obs_v4', () => {
     expect([...maskFromLegal(view(state), 0, getLegalActions(state)).slice(3, 6)]).toEqual([
       0, 0, 0,
     ]);
+  });
+  it('exposes prince totem inventory, price and the remaining shop allowance', () => {
+    const initial = view(newGame(2, 1));
+    initial.players[0]!.items.princeTotem = 2;
+    expect(encodeObservation(initial, 0)[field('self.itemCount').offset + 2]).toBeCloseTo(2 / 3);
+    expect(encodeObservation(initial, 0)[field('self.hasItem').offset + 2]).toBe(1);
+    expect(encodeObservation(initial, 0)[field('g.itemPrice').offset + 2]).toBeCloseTo(15 / 50);
+    for (let used = 0; used <= 3; used++) {
+      const obs = encodeObservation(
+        { ...initial, turn: { ...initial.turn, itemsBought: used } },
+        0,
+      );
+      expect(obs[field('g.itemsBoughtRemaining').offset]).toBeCloseTo((3 - used) / 3);
+    }
   });
 });

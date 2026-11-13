@@ -75,7 +75,7 @@ export function soundCuesForEvent(e: GameEvent, ctx: SoundContext): SoundCue[] {
           return e.delta > 0 ? [{ name: 'heal' }] : [];
         case 'stat':
         case 'maxHp':
-          return [{ name: 'upgrade' }];
+          return e.delta > 0 ? [{ name: 'upgrade' }] : [];
         case 'randomItem':
           return [{ name: 'item_use' }];
         default:
@@ -86,7 +86,7 @@ export function soundCuesForEvent(e: GameEvent, ctx: SoundContext): SoundCue[] {
     case 'ItemBought':
       return [{ name: 'buy' }];
     case 'ItemUsed':
-      return e.item === 'thief' ? [{ name: 'item_use' }] : [];
+      return e.item === 'princeTotem' ? [{ name: 'item_use' }] : [];
     case 'PvpTriggered':
       return [{ name: 'swing' }];
     case 'ShieldUsed':

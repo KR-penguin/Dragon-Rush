@@ -32,7 +32,6 @@ describe('groupActions', () => {
       { type: 'BUY_ITEM', item: 'shield' },
       { type: 'USE_TELEPORT', tile: 4 },
       { type: 'USE_TELEPORT', tile: 9 },
-      { type: 'USE_THIEF', target: 1 },
       { type: 'ADJUST_MOVE', delta: 1 },
       { type: 'ADJUST_MOVE', delta: -1 },
       { type: 'ADJUST_MOVE', delta: 0 },
@@ -46,7 +45,6 @@ describe('groupActions', () => {
     expect(g.upgrades).toEqual(['def', 'maxHp']);
     expect(g.buys).toEqual(['shield']);
     expect(g.teleportTiles).toEqual([4, 9]);
-    expect(g.thiefTargets).toEqual([1]);
     expect(g.moveDeltas).toEqual([-1, 0, 1]);
     expect(g.pvpTargets).toEqual([2]);
     expect(g.shieldChoices).toEqual([false, true]);
@@ -208,7 +206,6 @@ describe('activeDialog', () => {
 
   it('opens user requests and leaves teleport to the board', () => {
     expect(activeDialog(inputs({ request: 'dragon' }))).toBe('dragon');
-    expect(activeDialog(inputs({ request: 'thief', phase: 'POST_MOVE' }))).toBe('thief');
     expect(
       activeDialog(inputs({ request: 'teleport', phase: 'POST_MOVE', shopAvailable: true })),
     ).toBeNull();

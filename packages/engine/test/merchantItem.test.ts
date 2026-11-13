@@ -14,7 +14,7 @@ function visit(seed: number, tile: number, rules = DEFAULT_RULES) {
 
 describe('random item events', () => {
   it.each([
-    [1, 'thief'],
+    [1, 'princeTotem'],
     [2, 'shield'],
     [7, 'teleport'],
   ] as const)('merchant seed %i grants %s and reports the inventory result', (seed, expected) => {
@@ -36,9 +36,10 @@ describe('random item events', () => {
       delta: 1,
       after: first.state.players[0]!.items[expected],
     });
-    const afterTeleport = { teleport: 0, shield: 0, thief: 0 };
+    const afterTeleport = { teleport: 0, shield: 0, princeTotem: 0 };
     afterTeleport[expected] += 1;
     expect(first.state.players[0]!.items).toEqual(afterTeleport);
+    expect(first.state.turn.itemsBought).toBe(0);
   });
 
   it('uses the same three-item grant for the lost bag mystery card', () => {
@@ -57,6 +58,6 @@ describe('random item events', () => {
       seen.add(grant.item);
       expect(result.state.players[0]!.items[grant.item]).toBe(grant.after);
     }
-    expect(seen).toEqual(new Set<ItemId>(['teleport', 'shield', 'thief']));
+    expect(seen).toEqual(new Set<ItemId>(['teleport', 'shield', 'princeTotem']));
   });
 });

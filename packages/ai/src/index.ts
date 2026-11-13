@@ -1,6 +1,4 @@
 export {
-  OBS_VERSION,
-  OBS_DIM,
   OBS_V4_LAYOUT,
   OBS_V4_SCALES,
   OBS_V3_LAYOUT,
@@ -9,6 +7,7 @@ export {
   OBS_V2_SCALES,
   type ObsField,
 } from './obs/layout';
+export { OBS_VERSION, OBS_DIM, OBS_V5_LAYOUT, OBS_V5_SCALES } from './obs/layoutV5';
 export { encodeObservation } from './obs/encode';
 export {
   ACT_VERSION,

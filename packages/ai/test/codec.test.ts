@@ -12,14 +12,16 @@ import {
 } from '../src/index';
 import { newGame, view, walk } from './helpers';
 
-describe('act_v3 codec', () => {
-  it('has 47 named actions', () => {
-    expect(ACT_VERSION).toBe('act_v3');
-    expect(ACTION_DIM).toBe(47);
-    expect(ACTION_NAMES).toHaveLength(47);
-    expect(new Set(ACTION_NAMES).size).toBe(47);
+describe('act_v4 codec', () => {
+  it('has 44 named actions without thief targets', () => {
+    expect(ACT_VERSION).toBe('act_v4');
+    expect(ACTION_DIM).toBe(44);
+    expect(ACTION_NAMES).toHaveLength(44);
+    expect(new Set(ACTION_NAMES).size).toBe(44);
+    expect(ACTION_NAMES[8]).toBe('BUY_PRINCE_TOTEM');
+    expect(ACTION_NAMES.some((name) => name.includes('THIEF'))).toBe(false);
     expect(ACTION_NAMES[9]).toBe('TELEPORT_T00');
-    expect(ACTION_NAMES[46]).toBe('TRAIN_MAXHP');
+    expect(ACTION_NAMES[43]).toBe('TRAIN_MAXHP');
   });
 
   it('maps legal actions one-to-one with the mask and round-trips', () => {

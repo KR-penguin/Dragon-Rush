@@ -22,7 +22,7 @@ const merchantTile = DEFAULT_RULES.board.findIndex((tile) => tile.id === 'WANDER
 const labels: Record<ItemId, string> = {
   teleport: '텔레포트',
   shield: '방어막',
-  thief: '도둑',
+  princeTotem: '왕자의 토템',
 };
 
 describe('random item event presentation', () => {
@@ -32,10 +32,12 @@ describe('random item event presentation', () => {
     const { events } = applyAction(state, { type: 'USE_TELEPORT', tile: merchantTile });
     const index = events.findIndex((event) => event.type === 'TileResolved');
     expect(index).toBeGreaterThanOrEqual(0);
-    expect(eventCardFor(events[index]!, rules, events.slice(index + 1))?.reward).toBe('도둑 획득');
+    expect(eventCardFor(events[index]!, rules, events.slice(index + 1))?.reward).toBe(
+      '왕자의 토템 획득',
+    );
   });
 
-  it.each(['teleport', 'shield', 'thief'] as const)(
+  it.each(['teleport', 'shield', 'princeTotem'] as const)(
     'shows the granted %s item on the merchant card and event line',
     (item) => {
       const grant = {
@@ -83,11 +85,11 @@ describe('random item event presentation', () => {
       type: 'EffectApplied' as const,
       seat: 0,
       effect: 'randomItem' as const,
-      item: 'thief' as const,
+      item: 'princeTotem' as const,
       delta: 1,
       after: 1,
     };
-    expect(eventCardFor(drawn, DEFAULT_RULES, [grant])?.reward).toBe('도둑 획득');
+    expect(eventCardFor(drawn, DEFAULT_RULES, [grant])?.reward).toBe('왕자의 토템 획득');
     expect(
       eventCardFor(drawn, DEFAULT_RULES, [{ type: 'TurnEnded', seat: 0 }, grant])?.reward,
     ).toBeUndefined();

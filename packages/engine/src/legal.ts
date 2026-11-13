@@ -1,14 +1,7 @@
 import { BOARD_SIZE } from './board';
 import { playerAt } from './ctx';
 import { canAffordUpgrade } from './economy';
-import {
-  ITEM_IDS,
-  UPGRADE_STATS,
-  type Action,
-  type Phase,
-  type PublicGameState,
-  type SeatId,
-} from './types';
+import { ITEM_IDS, UPGRADE_STATS, type Action, type Phase, type PublicGameState } from './types';
 
 type LegalGenerator = (s: PublicGameState) => Action[];
 
@@ -19,21 +12,6 @@ const upgrades = (s: PublicGameState): Action[] => {
     type: 'UPGRADE' as const,
     stat,
   }));
-};
-
-const thieves = (s: PublicGameState): Action[] => {
-  const seat = s.current;
-  const p = playerAt(s, seat);
-  const limit = s.rules.items.thief.perTurnLimit;
-  if (p.items.thief < 1 || (limit !== null && s.turn.thiefUsed && limit <= 1)) return [];
-  const n = s.players.length;
-  const out: Action[] = [];
-  for (let k = 1; k < n; k++) {
-    const target: SeatId = (seat + k) % n;
-    const t = playerAt(s, target);
-    if (t.alive && t.coins >= 1) out.push({ type: 'USE_THIEF', target });
-  }
-  return out;
 };
 
 const teleports = (s: PublicGameState): Action[] => {
@@ -49,7 +27,7 @@ const teleports = (s: PublicGameState): Action[] => {
 };
 
 const purchases = (s: PublicGameState): Action[] => {
-  if (!s.turn.canBuy) return [];
+  if (!s.turn.canBuy || s.turn.itemsBought >= s.rules.maxItemsBoughtPerTurn) return [];
   const p = playerAt(s, s.current);
   return ITEM_IDS.filter((item) => p.coins >= s.rules.items[item].price).map((item) => ({
     type: 'BUY_ITEM' as const,
@@ -63,7 +41,6 @@ const LEGAL_BY_PHASE: Record<Phase, LegalGenerator> = {
     s.turn.resting ? { type: 'END_TURN' } : { type: 'ROLL_DICE' },
     { type: 'CHALLENGE_DRAGON' },
     ...upgrades(s),
-    ...thieves(s),
     ...teleports(s),
   ],
   MOVE_ADJUST: (s) => {
@@ -82,13 +59,7 @@ const LEGAL_BY_PHASE: Record<Phase, LegalGenerator> = {
   ],
   TRAINING_CHOICE: () =>
     UPGRADE_STATS.map((stat) => ({ type: 'CHOOSE_TRAINING_STAT' as const, stat })),
-  POST_MOVE: (s) => [
-    { type: 'END_TURN' },
-    ...purchases(s),
-    ...upgrades(s),
-    ...thieves(s),
-    ...teleports(s),
-  ],
+  POST_MOVE: (s) => [{ type: 'END_TURN' }, ...purchases(s), ...upgrades(s), ...teleports(s)],
   // A pending fight is settled by applyCombatResult / resolveCombatWithDice, never by a board action.
   COMBAT: () => [],
 };
@@ -107,7 +78,6 @@ export function actionKey(action: Action): string {
       return `${action.type}:${action.item}`;
     case 'USE_TELEPORT':
       return `${action.type}:${action.tile}`;
-    case 'USE_THIEF':
     case 'CHOOSE_PVP_TARGET':
       return `${action.type}:${action.target}`;
     case 'ADJUST_MOVE':

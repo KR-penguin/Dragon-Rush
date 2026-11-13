@@ -56,10 +56,10 @@ export function needsHandoff(
 export const shopVisitKey = (state: PublicGameState): string =>
   `${state.round}:${state.current}:${state.turn.teleportsUsed}:${state.players[state.current]?.position ?? -1}`;
 
-export type UserRequest = 'dragon' | 'thief' | 'shop' | 'teleport';
+export type UserRequest = 'dragon' | 'shop' | 'teleport';
 
 export type DialogKind =
-  'handoff' | 'moveAdjust' | 'pvpTarget' | 'shield' | 'training' | 'shop' | 'thief' | 'dragon';
+  'handoff' | 'moveAdjust' | 'pvpTarget' | 'shield' | 'training' | 'shop' | 'dragon';
 
 export interface DialogInputs {
   readonly canAct: boolean;
