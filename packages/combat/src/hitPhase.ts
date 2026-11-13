@@ -3,12 +3,12 @@ import { arcHit, circleHit, dragonHurtCircles } from './geometry';
 import { hitDragon, hitFighter, type HitDesc } from './hits';
 import { angleDiff, atan2i } from './math';
 import type { DashId, HitSpec, MoveId } from './rules';
-import type { HitKind } from './types';
+import type { FighterState, HitKind } from './types';
 import type { Ctx, MFighter } from './work';
 
 /** A melee hitbox that overlaps its target this tick, gathered before any hit is applied. */
 interface Intent {
-  readonly f: MFighter;
+  readonly f: FighterState;
   readonly bit: number;
   readonly kind: HitKind;
   readonly hit: HitSpec;
@@ -44,7 +44,7 @@ function intentOf(c: Ctx, f: MFighter): Intent | null {
     const o = overlap(c, f, (tx, ty, tr) => circleHit(f.x, f.y, reach, tx, ty, tr));
     return o.hit
       ? {
-          f,
+          f: { ...f },
           bit: 1,
           kind: f.move as DashId,
           hit: dash.contact,
@@ -63,7 +63,7 @@ function intentOf(c: Ctx, f: MFighter): Intent | null {
   );
   if (!o.hit) return null;
   return {
-    f,
+    f: { ...f },
     bit: 1 << idx,
     kind: f.move as MoveId,
     hit: spec.hit,
@@ -117,7 +117,10 @@ function apply(c: Ctx, it: Intent): void {
     const power = backstab ? Math.round((base.power * pct) / 100) : base.power;
     out = hitFighter(c, o, { ...base, power, backstab, dir });
   }
-  if (out !== 'immune') f.moveHits |= it.bit;
+  if (out !== 'immune') {
+    const source = f.side === 'a' ? c.s.a : c.s.b;
+    if (source) source.moveHits |= it.bit;
+  }
 }
 
 /**

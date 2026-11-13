@@ -22,6 +22,7 @@ import type {
   ShotMoveSpec,
 } from './rules';
 import { BTN_ATTACK, BTN_DASH, BTN_SKILL, type FighterInput, type MoveDir } from './types';
+import { moveTotal } from './timing';
 import {
   emit,
   entityId,
@@ -125,21 +126,6 @@ export function locomote(c: Ctx, f: MFighter, dir: MoveDir, pct: number): void {
 
 function brake(c: Ctx, f: MFighter): void {
   locomote(c, f, 0, 0);
-}
-
-export function moveTotal(spec: MoveSpec): number {
-  switch (spec.type) {
-    case 'melee':
-      return spec.startup + spec.active + spec.recovery;
-    case 'parry':
-      return spec.startup + spec.active + spec.recovery;
-    case 'shot':
-      return spec.startup + 1 + spec.recovery;
-    case 'rune':
-      return spec.startup + spec.holdTicks + 1 + spec.recovery;
-    case 'draw':
-      return Number.MAX_SAFE_INTEGER;
-  }
 }
 
 /** Aim point of the opponent (fighter centre, or the dragon's head while lowered / its centre). */

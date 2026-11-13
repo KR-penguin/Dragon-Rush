@@ -141,6 +141,28 @@ describe('회피 Evade (ninja)', () => {
 });
 
 describe('광폭화 Rage (berserker)', () => {
+  it('uses the same pre-hit rage state for simultaneous melee attacks', () => {
+    const fighter: FighterSetup = {
+      job: 'berserker',
+      hp: 51,
+      maxHp: 100,
+      atk: 5,
+      def: 5,
+      indomitableAvailable: false,
+    };
+    const script = (move: number) =>
+      Array.from({ length: 120 }, (_, tick) =>
+        tick < 90 ? input(move) : tick === 90 ? input(0, 'a') : idle,
+      );
+    const fight = play(createCombat(duel(fighter, fighter), 42), script(3), script(7), 120);
+    const hits = eventsOf(fight.events, 'Hit');
+    expect(hits).toHaveLength(2);
+    expect(hits[0]!.tick).toBe(hits[1]!.tick);
+    expect(hits.map((hit) => hit.rage)).toEqual([false, false]);
+    expect(hits[0]!.dmg).toBe(hits[1]!.dmg);
+    expect(fight.final.a.hpQ8).toBe(fight.final.b!.hpQ8);
+  });
+
   it('turns on at hp <= 50% with an event and multiplies ATK by 13/10', () => {
     const berserker: FighterSetup = { ...baseFighter('berserker'), hp: 24 };
     const p = play(closeDuel(baseFighter('swordsman'), berserker, 50), [input(3, 'a')], [], 30);

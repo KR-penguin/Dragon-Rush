@@ -115,8 +115,9 @@ describe('determinism and purity', () => {
 });
 
 describe('invariants (seeded fuzz)', () => {
-  it('keeps fighters in the arena, hp <= maxHp, and ends by the time limit', () => {
-    for (let seed = 0; seed < 25; seed++) {
+  it.each(Array.from({ length: 25 }, (_, seed) => seed))(
+    'duel seed %i keeps fighters in bounds and ends by the time limit',
+    async (seed) => {
       const jobs = JOB_IDS;
       const ja = jobs[seed % 5]!;
       const jb = jobs[(seed * 3 + 1) % 5]!;
@@ -125,19 +126,29 @@ describe('invariants (seeded fuzz)', () => {
         randomInputs(seed, 2700),
         randomInputs(seed + 50, 2700),
       );
-      for (const s of p.states) checkInvariants(s);
+      for (const [tick, state] of p.states.entries()) {
+        checkInvariants(state);
+        if (tick % 128 === 0) await new Promise<void>((resolve) => setImmediate(resolve));
+      }
       expect(p.final.outcome).not.toBeNull();
       expect(p.final.tick).toBeLessThanOrEqual(DEFAULT_COMBAT_RULES.timeLimit.duel);
-    }
-    for (let seed = 0; seed < 5; seed++) {
+    },
+  );
+
+  it.each(Array.from({ length: 5 }, (_, seed) => seed))(
+    'dragon seed %i keeps fighters in bounds and ends by the time limit',
+    async (seed) => {
       const p = play(
         createCombat(dragonFight(JOB_IDS[seed]!), seed),
         randomInputs(seed, DEFAULT_COMBAT_RULES.timeLimit.dragonFight),
       );
-      for (const s of p.states) checkInvariants(s);
+      for (const [tick, state] of p.states.entries()) {
+        checkInvariants(state);
+        if (tick % 128 === 0) await new Promise<void>((resolve) => setImmediate(resolve));
+      }
       expect(p.final.outcome).not.toBeNull();
-    }
-  });
+    },
+  );
 
   it('every event carries the tick it happened on and a unique, stable id', () => {
     const p = play(newDuel('swordsman', 'ninja', 5), randomInputs(5, 2000), randomInputs(6, 2000));

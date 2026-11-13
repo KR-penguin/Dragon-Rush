@@ -101,6 +101,7 @@ class _CombatBase:
         if seed is not None:
             params["seed"] = int(seed)
         result = self._proc.call("reset", params)
+        self.combat_rules_version = result["combat_rules_version"]
         self.combat_rules_hash = result["combat_rules_hash"]
         return result["envs"]
 

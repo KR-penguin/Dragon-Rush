@@ -214,11 +214,25 @@ describe('bot-only fights', () => {
   it('resolves a shared-tile bot duel with no shield used', async () => {
     const g = open({
       seed: 0,
+      debug: true,
       maxRounds: 25,
       seats: [
         { name: 'R1', job: 'berserker', kind: 'bot', botName: 'heuristic:aggro' },
         { name: 'R2', job: 'swordsman', kind: 'bot', botName: 'heuristic:aggro' },
       ],
+    });
+    const arriver = g.latest().pending!.actor;
+    const defender = g.latest().publicState.players.find((player) => player.seat !== arriver)!.seat;
+    g.client.debugPatchPlayer(arriver, {
+      position: 23,
+      coins: 0,
+      items: { teleport: 1, shield: 0, thief: 0 },
+    });
+    g.client.debugPatchPlayer(defender, {
+      position: 1,
+      coins: 0,
+      hp: 1,
+      items: { teleport: 0, shield: 0, thief: 0 },
     });
     for (let i = 0; i < 12; i++) {
       g.sched.flush();
@@ -228,9 +242,7 @@ describe('bot-only fights', () => {
       if (g.updates.some((u) => eventTypes(u).includes('PlayerEliminated'))) break;
     }
     const events = g.updates.flatMap((u) => u.events);
-    const started = events.findIndex(
-      (e) => e.type === 'CombatStarted' && e.kind === 'duel',
-    );
+    const started = events.findIndex((e) => e.type === 'CombatStarted' && e.kind === 'duel');
     const landed = events.reduce(
       (found, e, i) => (i < started && e.type === 'PvpTriggered' ? i : found),
       -1,

@@ -26,6 +26,7 @@ export {
   scaleDragonSetup,
 } from './step';
 export { combatResult } from './result';
+export { moveTotal } from './timing';
 export {
   COMBAT_PACK_VERSION,
   serializeCombatState,

@@ -35,7 +35,7 @@ describe('designed matchup chart', () => {
 
 describe('duel balance (balanced bots, base stats)', () => {
   const rates = new Map<string, number>();
-  const rate = (i: JobId, j: JobId): number => {
+  const rate = async (i: JobId, j: JobId): Promise<number> => {
     const k = `${i}:${j}`;
     if (!rates.has(k)) {
       const bots = [10, 16].map((reaction) => createCombatBot('balanced', { reaction }));
@@ -54,6 +54,7 @@ describe('duel balance (balanced bots, base stats)', () => {
         );
         if (asA.result.winner === 'a') wins++;
         if (asB.result.winner === 'b') wins++;
+        if (seed % 25 === 0) await new Promise<void>((resolve) => setImmediate(resolve));
       }
       const r = wins / (MATCHUP_N * 2);
       rates.set(k, r);
@@ -62,30 +63,28 @@ describe('duel balance (balanced bots, base stats)', () => {
     return rates.get(k)!;
   };
 
-  it.each(JOBS)(
-    '%s keeps its two intended directions without a 70/30 cell',
-    async (job) => {
-      for (const edge of MATCHUPS[job]) {
-        const result = rate(job, edge.beats);
-        expect(result, `${job} > ${edge.beats}`).toBeGreaterThan(0.5);
-        expect(result, `${job} > ${edge.beats}`).toBeLessThan(0.7);
-        // Give the Vitest worker a turn to acknowledge progress during the 20,000-fight matrix.
-        await new Promise<void>((resolve) => setImmediate(resolve));
-      }
+  it.each(JOBS.flatMap((job) => MATCHUPS[job].map((edge) => [job, edge.beats] as const)))(
+    '%s > %s keeps its intended direction without a 70/30 cell',
+    async (job, opponent) => {
+      const result = await rate(job, opponent);
+      expect(result, `${job} > ${opponent}`).toBeGreaterThan(0.5);
+      expect(result, `${job} > ${opponent}`).toBeLessThan(0.7);
     },
-    50_000,
+    120_000,
   );
 
-  it('keeps each job near 50% across four opponents and mirrors even', () => {
-    for (const i of JOBS) {
-      const avg = mean(JOBS.filter((j) => j !== i).map((j) => rate(i, j)));
+  it.each(JOBS)(
+    '%s stays near 50% across four opponents and mirrors even',
+    async (i) => {
+      const avg = mean(await Promise.all(JOBS.filter((j) => j !== i).map((j) => rate(i, j))));
       expect(avg, i).toBeGreaterThan(0.47);
       expect(avg, i).toBeLessThan(0.53);
       const mirror = duelSeries(baseFighter(i), baseFighter(i), N, 7);
       expect(mirror.winsA / mirror.n, `${i} mirror`).toBeGreaterThan(0.3);
       expect(mirror.winsA / mirror.n, `${i} mirror`).toBeLessThan(0.7);
-    }
-  }, 120_000);
+    },
+    120_000,
+  );
 
   it('fights stay inside the time limit and usually end by KO', () => {
     const r = duelSeries(baseFighter('swordsman'), baseFighter('berserker'), 30, 3);

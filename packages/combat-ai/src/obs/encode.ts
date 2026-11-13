@@ -1,6 +1,7 @@
 import {
   cosQ14,
   isqrt,
+  moveTotal,
   Q,
   sinQ14,
   type CombatRules,
@@ -14,7 +15,7 @@ import {
 } from '@dragon-rush/combat';
 import { JOB_IDS } from '@dragon-rush/engine';
 import { CACT_BUTTON_DIM, CACT_MOVE_DIM, NO_MIRROR, type Mirror } from '../codec/actions';
-import { fighterOf, moveTotal } from '../mask';
+import { fighterOf } from '../mask';
 import { mirrorCombatObservation } from './mirror';
 import {
   COBS_DIM,

@@ -3,7 +3,6 @@ export {
   runBatch,
   deriveSeed,
   randomJobs,
-  autoResolveCombat,
   type GameRecord,
   type BatchOptions,
 } from './runner';

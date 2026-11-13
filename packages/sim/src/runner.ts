@@ -5,10 +5,8 @@ import {
   getLegalActions,
   ITEM_IDS,
   JOB_IDS,
-  resolveCombatWithDice,
   toPublicState,
   type GameEvent,
-  type GameState,
   type ItemId,
   type JobId,
   type OutcomeKind,
@@ -51,20 +49,6 @@ export interface PlayGameOptions {
   /** Scripted combat bot for the sim resolver (default `scripted:balanced`). */
   combatBot?: string;
   logFights?: boolean;
-}
-
-/** Dice resolver: settles a pending COMBAT with the board's dice duel, exactly like the old 'dice' mode. */
-export function autoResolveCombat(r: { state: GameState; events: GameEvent[] }): {
-  state: GameState;
-  events: GameEvent[];
-} {
-  let { state, events } = r;
-  while (state.pending?.phase === 'COMBAT') {
-    const settled = resolveCombatWithDice(state);
-    state = settled.state;
-    events = [...events, ...settled.events];
-  }
-  return { state, events };
 }
 
 export function playGame(opts: PlayGameOptions): GameRecord {

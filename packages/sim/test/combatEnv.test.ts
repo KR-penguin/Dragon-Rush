@@ -145,6 +145,69 @@ describe('combat env server (in-process)', () => {
     );
   });
 
+  it.each([
+    { jobs: { archer: { attack: 'nonexistent' } } },
+    { jobs: { archer: { dash: 'nonexistent' } } },
+    { moves: { slash1: { next: 'nonexistent' } } },
+    { moves: { draw: { full: 'slash1' } } },
+    { moves: { slash1: { type: 'shot' } } },
+    { arena: { duel: { w: 0 } } },
+    { tickHz: 0 },
+    { damage: { sDen: 0 } },
+    { inputBuffer: 1.5 },
+    { dashes: { dash: { charges: -1 } } },
+  ])('rejects invalid combat rule semantics before changing an initialized env: %j', (rules) => {
+    const server = new CombatEnvServer();
+    const baseline = new CombatEnvServer();
+    const params = { seed: 42, config: { mode_mix: { pvp: 1, dragon: 0 } } };
+    expect(call(server, 1, 'reset', params).ok).toBe(true);
+    expect(call(baseline, 1, 'reset', params).ok).toBe(true);
+    expect(
+      call(server, 2, 'reset', { ...params, config: { ...params.config, rules } }).error?.code,
+    ).toBe('BAD_CONFIG');
+    const actions = [
+      [
+        [0, 0],
+        [0, 0],
+      ],
+    ];
+    expect(call(server, 3, 'step', { actions })).toEqual(call(baseline, 3, 'step', { actions }));
+  });
+
+  it('accepts zero movement speed for stationary training', () => {
+    const server = new CombatEnvServer();
+    const reset = call(server, 1, 'reset', {
+      seed: 42,
+      encoding: 'json',
+      config: {
+        jobs: ['swordsman'],
+        mode_mix: { pvp: 1, dragon: 0 },
+        stat_sampler: 'start',
+        obs_delay: 0,
+        mirror: false,
+        rules: { jobs: { swordsman: { speed: 0 } } },
+      },
+    });
+    expect(reset.ok).toBe(true);
+    for (let step = 0; step < 120; step++) {
+      const result = call(server, step + 2, 'step', {
+        actions: [
+          [
+            [3, 0],
+            [7, 0],
+          ],
+        ],
+      });
+      expect(result.ok).toBe(true);
+      for (const [slot, obs] of result.result.envs[0]!.obs.entries()) {
+        expect((obs as number[]).every(Number.isFinite)).toBe(true);
+        expect((obs as number[]).slice(34, 36)).toEqual(
+          (reset.result.envs[0]!.obs[slot] as number[]).slice(34, 36),
+        );
+      }
+    }
+  });
+
   it('plays self-play episodes with auto reset, masks, shaping and terminal rewards', () => {
     const s = new CombatEnvServer();
     let r = call(s, 1, 'reset', {

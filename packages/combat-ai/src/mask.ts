@@ -1,5 +1,6 @@
 import {
   Q,
+  moveTotal,
   type CombatRules,
   type CombatState,
   type DashId,
@@ -28,21 +29,6 @@ const NEVER = Number.POSITIVE_INFINITY;
 
 export function fighterOf(state: CombatState, side: Side): FighterState | null {
   return side === 'a' ? state.a : state.b;
-}
-
-/** Total ticks of a move started at moveTick 0 (draws last until released). */
-export function moveTotal(spec: MoveSpec): number {
-  switch (spec.type) {
-    case 'melee':
-    case 'parry':
-      return spec.startup + spec.active + spec.recovery;
-    case 'shot':
-      return spec.startup + 1 + spec.recovery;
-    case 'rune':
-      return spec.startup + spec.holdTicks + 1 + spec.recovery;
-    case 'draw':
-      return NEVER;
-  }
 }
 
 /** Live tick (1 = the next one) on which an archer releasing now would be free again. */

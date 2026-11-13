@@ -77,7 +77,7 @@ exports[`golden replays > duel: FNV-1a state hash every 60 ticks and the result 
 
 exports[`golden replays > rules hash identifies DEFAULT_COMBAT_RULES 1`] = `
 {
-  "hash": 3953359580,
-  "version": "combat-8",
+  "hash": 2023122141,
+  "version": "combat-9",
 }
 `;

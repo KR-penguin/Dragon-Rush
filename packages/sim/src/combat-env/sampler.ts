@@ -9,6 +9,7 @@ import { NO_MIRROR, type Mirror } from '@dragon-rush/combat-ai';
 import { DEFAULT_RULES, JOB_IDS, type JobId } from '@dragon-rush/engine';
 import { StatDistSchema, type FighterSample } from '../statDist';
 import type { CombatEnvConfig } from './config';
+import { CombatRulesSchema } from './rulesSchema';
 
 export class CombatEnvError extends Error {
   constructor(
@@ -56,11 +57,9 @@ function mergeStrict(base: unknown, over: unknown, path: string): unknown {
 
 export function buildCombatRules(config: CombatEnvConfig): CombatRules {
   if (config.rules === 'default') return DEFAULT_COMBAT_RULES;
-  const merged = mergeStrict(DEFAULT_COMBAT_RULES, config.rules, '') as CombatRules;
-  if (merged.timeLimit.duel < 1 || merged.timeLimit.dragonFight < 1 || merged.inputBuffer < 1) {
-    throw new CombatEnvError('BAD_CONFIG', 'rules.timeLimit and rules.inputBuffer must be >= 1');
-  }
-  return merged;
+  const parsed = CombatRulesSchema.safeParse(mergeStrict(DEFAULT_COMBAT_RULES, config.rules, ''));
+  if (!parsed.success) throw new CombatEnvError('BAD_CONFIG', parsed.error.message);
+  return parsed.data;
 }
 
 /** Scales every dragon telegraph (curriculum); lock-on times keep their length so aiming stays fair. */
@@ -112,7 +111,11 @@ export const LAST_STAND_AVAILABLE = 0.9;
 export type StatSampler =
   | { readonly kind: 'uniform_board' }
   | { readonly kind: 'start' }
-  | { readonly kind: 'file'; readonly path: string; readonly samples: readonly FighterSample[] };
+  | {
+      readonly kind: 'file';
+      readonly path: string;
+      readonly pools: ReadonlyMap<string, readonly FighterSample[]>;
+    };
 
 export function parseStatSampler(spec: string, cwd: string = process.cwd()): StatSampler {
   if (spec === 'uniform_board') return { kind: 'uniform_board' };
@@ -133,7 +136,15 @@ export function parseStatSampler(spec: string, cwd: string = process.cwd()): Sta
     const parsed = StatDistSchema.safeParse(raw);
     if (!parsed.success)
       throw new CombatEnvError('BAD_CONFIG', `stat_sampler ${spec}: ${parsed.error.message}`);
-    return { kind: 'file', path, samples: parsed.data.fighters };
+    const pools = new Map<string, FighterSample[]>();
+    for (const fighter of parsed.data.fighters) {
+      for (const key of [fighter.job, `${fighter.job}:${fighter.kind}`]) {
+        const pool = pools.get(key);
+        if (pool) pool.push(fighter);
+        else pools.set(key, [fighter]);
+      }
+    }
+    return { kind: 'file', path, pools };
   }
   throw new CombatEnvError(
     'BAD_CONFIG',
@@ -172,8 +183,7 @@ export function sampleFighter(
       return { job, hp, maxHp, atk, def, indomitableAvailable: lastStand };
     }
     case 'file': {
-      const pool = sampler.samples.filter((f) => f.job === job && f.kind === kind);
-      const any = pool.length > 0 ? pool : sampler.samples.filter((f) => f.job === job);
+      const any = sampler.pools.get(`${job}:${kind}`) ?? sampler.pools.get(job) ?? [];
       const pick = any[Math.floor(random() * any.length)];
       if (!pick) return startFighter(job);
       return {

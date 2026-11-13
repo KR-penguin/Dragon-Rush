@@ -129,6 +129,14 @@ def test_version_mismatch():
     assert exc.value.code == "VERSION_MISMATCH"
 
 
+def test_reset_updates_the_effective_combat_rules_version():
+    with PvPCombatEnv(rules={"version": "custom-combat"}, **KW) as env:
+        default_hash = env.combat_rules_hash
+        env.reset(seed=42)
+        assert env.combat_rules_version == "custom-combat"
+        assert env.combat_rules_hash != default_hash
+
+
 def test_missing_build_is_reported(tmp_path):
     os.environ.pop("RPGBOARD_COMBAT_ENV_CMD", None)
     with pytest.raises(RPGBoardEnvError) as exc:

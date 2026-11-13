@@ -23,9 +23,10 @@
 | `COBS_VERSION` / `COBS_DIM` | `"cobs_v1"` / **160** | 관측 레이아웃·정규화 |
 | `CACT_VERSION` / `CACT_NVEC` / `CACT_FLAT_DIM` | `"cact_v1"` / **[9, 4]** / **36** | 행동 ↔ 입력 마스크 매핑 |
 | `COMBAT_ENV_PROTOCOL` (`packages/sim`) | `"rpgboard-combat-env/1"` | combat env 메시지 형식 |
-| `combat_rules_version` + `combat_rules_hash` | `DEFAULT_COMBAT_RULES.version`(현재 `"combat-8"`) + `hashCombatRules`(규칙 JSON의 FNV-1a 32비트) | 전투 수치 식별 |
+| `combat_rules_version` + `combat_rules_hash` | `DEFAULT_COMBAT_RULES.version`(현재 `"combat-9"`) + `hashCombatRules`(규칙 JSON의 FNV-1a 32비트) | 전투 수치 식별 |
 
 - 버전 정책은 보드와 같다([ai-interface-spec.md §2](ai-interface-spec.md)): 인덱스·길이·정규화·의미가 바뀌면 `cobs_v2`처럼 올리고, 기존 인덱스의 의미를 재사용하지 않는다. 수치(`DEFAULT_COMBAT_RULES`)만 바뀌면 버전은 그대로이고 `combat_rules_version`·hash가 바뀐다.
+- `combat-9`는 동시 근접 맞교환의 공격력·광폭 상태를 피해 적용 전 스냅샷으로 고정한다. 관측·행동 레이아웃은 그대로이며 전투 결과 분포와 규칙 hash가 바뀐다.
 
 ## 3. 결정 타이밍·반응 지연
 - 전투 학습 env의 sim은 60Hz. 두 좌석의 **학습 에이전트는 4 라이브 틱마다 동시에** 결정한다(`action_repeat` 4, 초당 15회). 히트스톱(전역 정지) 틱은 세지 않으며, 정지 중에는 결정을 요청하지 않는다. 로컬·온라인 실전의 스크립트 봇과 보드 `sim`의 스크립트 봇은 상성 보정 조건에 맞춰 매 틱 결정한다.
@@ -132,6 +133,7 @@
 - 실행: `node packages/sim/dist/combat-env-server.js` (= `pnpm combat-env-server`, 먼저 `pnpm build`). 보드 env 서버와 별도 프로세스이며, 메시지 형식은 보드와 같다([ai-interface-spec.md §7](ai-interface-spec.md)): 한 줄 요청 `{ id, cmd: info|reset|step|close, params? }` → `{ id, ok: true, result }` 또는 `{ id, ok: false, error: { code, message, env_index? } }`. stdout은 프로토콜 전용, 로그는 stderr. 오류 코드도 같다(`BAD_REQUEST`, `UNKNOWN_CMD`, `NOT_INITIALIZED`, `BAD_CONFIG`, `VERSION_MISMATCH`, `ILLEGAL_ACTION`, `EPISODE_OVER`, `INTERNAL`).
 - **info**: `protocol`, `cobs_version`, `cact_version`, `cobs_dim` 160, `cact_nvec` [9,4], `cact_flat_dim` 36, `tick_hz` 60, `combat_rules_version`, `combat_rules_hash`, `obs_layout`, `action_names` (`move`·`button`·`flat`), `bots`(`scripted:balanced|aggressive|cautious|idle|random|pool`).
 - **[구현] reset 결과**: `{ seed, n_ctrl, combat_rules_version, combat_rules_hash, envs }`(규칙을 덮어쓰면 hash가 달라진다).
+- Python 클라이언트의 `combat_rules_version`·`combat_rules_hash`도 reset 결과의 실제 값으로 갱신한다.
 
 **reset params**
 | 키 | 타입·기본값 | 설명 |
@@ -141,14 +143,14 @@
 | `config.opponent` | `"scripted:<name>"` \| `"external"`, `"scripted:pool"` | `p0`일 때 상대 좌석(이름은 §1). `external`은 `controlled: "both"`와만 쓴다(`p0`이면 `BAD_CONFIG`) |
 | `config.mode_mix` | `{pvp, dragon}`, `{pvp: 0.75, dragon: 0.25}` | 에피소드별 모드 확률 |
 | `config.jobs` | `"uniform"` \| 좌석별 목록(직업 id 또는 `"uniform"`, 1~2개), `"uniform"` | 같은 직업 대결 허용. 목록이 1개면 두 좌석 모두에 적용 |
-| `config.stat_sampler` | `"uniform_board"` \| `"start"` \| `"file:<path>"`, `"uniform_board"` | **[구현]** `uniform_board`: 현재도 유지된 직업 시작 스탯 + 강화 단계 균등 표본(결투 ATK·DEF +0~6, maxHp +0~5단계×6, HP 35~100% / 용전 ATK·DEF +3~9, maxHp +2~7단계, HP 60~100% / 검사 불굴 남음 90%; 과거 보드 휴리스틱 3000판 로그의 p5~p95를 덮도록 정함). `start`: 직업 시작 스탯. `file:<path>`: `stat_dist_v1` 파일(§10.3)에서 같은 직업·같은 전투 종류 표본. 보관된 `packages/sim/data/rush4_stat_dist_v1.json`은 과거 `rush-4` 분포이며 현행 `rush-11`/`combat-8` 분포가 아니다 |
+| `config.stat_sampler` | `"uniform_board"` \| `"start"` \| `"file:<path>"`, `"uniform_board"` | **[구현]** `uniform_board`: 현재도 유지된 직업 시작 스탯 + 강화 단계 균등 표본(결투 ATK·DEF +0~6, maxHp +0~5단계×6, HP 35~100% / 용전 ATK·DEF +3~9, maxHp +2~7단계, HP 60~100% / 검사 불굴 남음 90%; 과거 보드 휴리스틱 3000판 로그의 p5~p95를 덮도록 정함). `start`: 직업 시작 스탯. `file:<path>`: `stat_dist_v1` 파일(§10.3)에서 같은 직업·같은 전투 종류 표본. 보관된 `packages/sim/data/rush4_stat_dist_v1.json`은 과거 `rush-4` 분포이며 현행 `rush-11`/`combat-9` 분포가 아니다 |
 | `config.action_repeat` | int ≥ 1, 4 | §3 |
 | `config.obs_delay` | `[min, max]` 또는 int, `[4, 18]` | §3 |
 | `config.flat_actions` | bool, false | §5 |
 | `config.reward` | `{k_start: 0.5, k_end: 0.1, anneal_decisions: 0, approach: 0}` | §7. `anneal_decisions` 0 = k 고정 |
 | `config.dragon_curriculum` | `{hp_scale: [lo, hi], telegraph_scale: [lo, hi]}` \| null, null | 용전마다 범위에서 균등 표본(예: 시작 `[0.5,0.6]`/`[1.3,1.3]` → 끝 `[1,1]`/`[1,1]`) |
 | `config.mirror` | bool, true | §4 (용전은 x만) |
-| `config.rules` | `"default"` \| `DEFAULT_COMBAT_RULES` 부분 덮어쓰기 | 깊은 병합. 없는 키·다른 타입·배열 길이 불일치면 `BAD_CONFIG` |
+| `config.rules` | `"default"` \| `DEFAULT_COMBAT_RULES` 부분 덮어쓰기 | 깊은 병합 뒤 zod로 기술·대시 ID, 숫자 범위, 기술 참조, 경기장·시간 구간을 검증한다. 없는 키·다른 타입·배열 길이 불일치나 잘못된 의미면 `BAD_CONFIG`; 실패한 reset은 기존 env를 유지한다. 틱 속도는 60Hz 고정이다 |
 | `config.return_events` | bool, false | 전투 이벤트 포함(디버그·리플레이) |
 
 순수 결투는 `mode_mix: {pvp: 1, dragon: 0}`, 순수 용전은 `{pvp: 0, dragon: 1}`로 설정한다. Python의 `PvPCombatEnv`/`PvPCombatVecEnv`와 `DragonCombatEnv`/`DragonCombatVecEnv`는 이 구성을 고정하는 얇은 래퍼다. 용전 래퍼는 기본 `controlled="p0"`라 비활성 두 번째 슬롯이 없다. 세 과제의 실행·배열·리셋·JSON 준비물은 [AI 학습 환경 시작 가이드](training-environments.md)를 본다.
@@ -241,7 +243,7 @@ createCombatModelPolicy(model, { difficulty?: 'easy' | 'normal' | 'hard'; temper
 ## 12. 보드 env의 전투 해결 (`combat_resolver`)
 - 보드 env(`rpgboard-env/2`)의 선택값은 `config.combat_resolver: "sim" | "dice"`이며 기본값은 `"sim"`이다. 둘 다 생성된 24칸 맵의 효과를 담은 보드 관측 `obs_v4`(498)와 행동 `act_v3`(47)을 쓴다. 닌자의 −1/0/+1은 어느 선택이든 쿨다운 2를 시작해 다음 자기 턴에는 사용할 수 없다. reset 응답의 `combat_resolver`와 `expect.combat_resolver` 불일치는 `VERSION_MISMATCH`다.
 - 내부 `outcome_v1` 결과 예측기와 `outcome` resolver, 모델 JSON 로더·CLI는 제거됐다. 보드 학습은 실제 스크립트 전투 `sim`을 사용한다. 사용자 제공 보드 정책과 전투 정책 모델의 어댑터 계약은 유지한다.
-- **역사적 측정**: 삭제된 `outcome_v1`은 과거 `rush-3`/`combat-2` 분포로 적합·검증됐다. 당시 보정 수치와 20만 전투 표본은 현행 `rush-11`/`combat-8`의 성능이나 현재 사용 가능한 명령을 뜻하지 않는다. 이전 `stat_dist_v1` 파일은 역사적 전투 스탯 분포 자료로 남는다.
+- **역사적 측정**: 삭제된 `outcome_v1`은 과거 `rush-3`/`combat-2` 분포로 적합·검증됐다. 당시 보정 수치와 20만 전투 표본은 현행 `rush-11`/`combat-9`의 성능이나 현재 사용 가능한 명령을 뜻하지 않는다. 이전 `stat_dist_v1` 파일은 역사적 전투 스탯 분포 자료로 남는다.
 - **역사적 비교**: 과거 `rush-3`에서 제거된 결과 예측기를 보드 봇에 적용한 뒤 같은 시드·4인 8,000판을 실제 `sim` 전투로 다시 측정하면 중앙 6/p95 9라운드, 용 처치 종료 46.8%, 직업 승률 검/궁/마/닌/광 18.8/26.1/34.8/25.4/19.8%, 3라운드 안 탈락 22.6%였다([game-design.md §15](game-design.md)). 현재 예측기가 제거돼 같은 값은 재현되지 않는다. §15의 과거 `rush-7` 표도 현행 봇 기준선이 아니다.
 - `dice`는 선택형 빠른 전투의 `resolveCombatWithDice`다. 기본 `sim`은 `boardCombatSetup(state)`으로 보드 프로필을 옮겨 두 `scripted:balanced` 봇의 실제 전투를 끝까지 실행한다. 실시간 플레이의 정책은 별도 전투 모델 가중치가 없으면 스크립트 봇이다. `pnpm sim --combat sim` 또는 `pnpm sim --combat dice`로 비교한다.
 - 상성 보정 B의 **기본 5직업 시작 스탯은 rush-2에서도 그대로**다. `combat-2`의 balanced 봇 반응 10f/16f 합산 실측의 10개 우세 방향은 모두 통과했지만 목표 대·소 상성 승률 범위는 미달이고 5f 시험에는 일부 역전이 남아 있다([combat-design.md §5.1](combat-design.md)). UI Easy/Hard는 다른 스타일이므로 이 행렬의 통과 범위가 아니다.
