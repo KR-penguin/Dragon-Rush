@@ -2,6 +2,7 @@ import {
   NO_INPUT,
   createCombatBot,
   policyRandom,
+  type BotParams,
   type BotStyle,
   type CombatPolicy,
   type FighterInput,
@@ -16,11 +17,28 @@ export interface FightBotParams {
   readonly reaction: number;
   /** Decides every N ticks and holds the input in between (AI action repeat, combat-ai-spec). */
   readonly interval: number;
+  readonly behavior?: Omit<BotParams, 'reaction'>;
 }
 
-/** Scripted bots decide each tick; difficulty changes reaction delay and style. */
+const BEGINNER_BEHAVIOR: Omit<BotParams, 'reaction'> = {
+  dodge: 0.18,
+  dashDodge: 0.15,
+  poke: 0.005,
+  punish: 0.035,
+  fire: 0.008,
+  skill: 0.005,
+  gapClose: 0.006,
+  panicDash: 0.035,
+  parryRead: 0.04,
+  margin: 0,
+  spacing: 12,
+  rangeScale: 0.85,
+  quickShotRange: 200,
+};
+
+/** Difficulty changes decision quality while every scripted bot still decides each tick. */
 export const FIGHT_BOT_LEVELS: Readonly<Record<FightBotLevel, FightBotParams>> = {
-  easy: { style: 'cautious', reaction: 18, interval: 1 },
+  easy: { style: 'cautious', reaction: 36, interval: 1, behavior: BEGINNER_BEHAVIOR },
   normal: { style: 'balanced', reaction: 10, interval: 1 },
   hard: { style: 'aggressive', reaction: 6, interval: 1 },
 };
@@ -59,6 +77,6 @@ export function createFightBotSource(
   side: Side,
 ): FightInputSource {
   const p = FIGHT_BOT_LEVELS[level];
-  const policy = createCombatBot(p.style, { reaction: p.reaction });
+  const policy = createCombatBot(p.style, { ...p.behavior, reaction: p.reaction });
   return createPolicySource(policy, policyRandom(seed, side === 'a' ? 1 : 2), p.interval);
 }
