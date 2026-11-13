@@ -25,7 +25,7 @@ describe('DEFAULT_RULES matches docs/game-design.md', () => {
       def: { baseCost: 2, costStep: 1, amount: 1 },
       maxHp: { baseCost: 2, costStep: 1, amount: 6 },
     });
-    expect(DEFAULT_RULES.items.teleport).toEqual({ price: 6, perTurnLimit: null });
+    expect(DEFAULT_RULES.items.teleport).toEqual({ price: 24, perTurnLimit: 1 });
     expect(DEFAULT_RULES.items.shield.price).toBe(6);
     expect(DEFAULT_RULES.items.princeTotem).toEqual({ price: 15, perTurnLimit: null });
     expect(DEFAULT_RULES.princeTotemMaxHpBonus).toBe(15);
@@ -129,7 +129,7 @@ describe('DEFAULT_RULES matches docs/game-design.md', () => {
   });
 
   it('carries the balance version', () => {
-    expect(DEFAULT_RULES.version).toBe('rush-12');
+    expect(DEFAULT_RULES.version).toBe('rush-13');
   });
 
   it('is frozen and valid', () => {

@@ -12,7 +12,7 @@ import {
 } from '../src/index';
 
 /** Scripted choices on a fixed seed; external-mode fights are settled by the dice resolver without consuming a choice. */
-function replay(mode: CombatMode): { state: GameState; events: GameEvent[] } {
+function replay(mode: CombatMode, allowDragon = false): { state: GameState; events: GameEvent[] } {
   const created = createGameWithEvents(
     { seats: [{ job: 'berserker' }, { job: 'ninja' }, { job: 'mage' }] },
     withRules(
@@ -33,7 +33,10 @@ function replay(mode: CombatMode): { state: GameState; events: GameEvent[] } {
     }
     const legal = getLegalActions(state);
     const action = legal[(i * 7) % legal.length]!;
-    const r = applyAction(state, action.type === 'CHALLENGE_DRAGON' ? legal[0]! : action);
+    const r = applyAction(
+      state,
+      action.type === 'CHALLENGE_DRAGON' && !allowDragon ? legal[0]! : action,
+    );
     state = r.state;
     events.push(...r.events);
     i++;
@@ -50,8 +53,8 @@ describe('engine golden event log', () => {
   });
 
   it('gives the same event log in external mode when fights are settled by resolveCombatWithDice', () => {
-    const dice = replay('dice');
-    const external = replay('external');
+    const dice = replay('dice', true);
+    const external = replay('external', true);
     expect(external.events.filter((e) => e.type === 'CombatStarted').length).toBeGreaterThan(0);
     expect(external.events).toEqual(dice.events);
     expect({ ...external.state, rules: null }).toEqual({ ...dice.state, rules: null });

@@ -22,7 +22,7 @@ describe('env server (in-process)', () => {
       obs_dim: 498,
       action_dim: 44,
       obs_version: 'obs_v5',
-      act_version: 'act_v4',
+      act_version: 'act_v5',
     });
     expect(r.result.action_names).toHaveLength(44);
     expect(r.result.action_names[0]).toBe('ROLL_DICE');
@@ -190,6 +190,9 @@ describe('env server (in-process)', () => {
     const s = new EnvServer();
     expect(call(s, 1, 'reset', { config: { mode: 'weird' } }).error?.code).toBe('BAD_CONFIG');
     expect(call(s, 2, 'reset', { expect: { obs_version: 'obs_v9' } }).error?.code).toBe(
+      'VERSION_MISMATCH',
+    );
+    expect(call(s, 3, 'reset', { expect: { act_version: 'act_v4' } }).error?.code).toBe(
       'VERSION_MISMATCH',
     );
   });

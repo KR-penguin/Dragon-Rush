@@ -16,7 +16,7 @@ KW = dict(server_cmd=SERVER, cwd=str(ROOT))
 
 def test_single_env_shapes_and_episode():
     with RPGBoardEnv(num_players=3, max_rounds=60, **KW) as env:
-        assert env.obs_version == "obs_v5" and env.act_version == "act_v4"
+        assert env.obs_version == "obs_v5" and env.act_version == "act_v5"
         assert env.obs_dim == 498 and env.action_dim == 44
         obs, info = env.reset(seed=1)
         assert obs.shape == (498,) and obs.dtype == np.float32
@@ -73,6 +73,7 @@ def test_same_seed_same_trajectory():
 @pytest.mark.parametrize("expected", [
     {"expect_obs_version": "obs_v3"},
     {"expect_act_version": "act_v2"},
+    {"expect_act_version": "act_v4"},
     {"expect_obs_version": "obs_v9"},
 ])
 def test_version_mismatch(expected):

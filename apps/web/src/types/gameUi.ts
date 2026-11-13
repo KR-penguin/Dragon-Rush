@@ -52,7 +52,7 @@ export function needsHandoff(
   );
 }
 
-/** Identifies one shop visit: a new turn or a teleport makes a new visit. */
+/** Identifies the current shop visit from the turn and landing state. */
 export const shopVisitKey = (state: PublicGameState): string =>
   `${state.round}:${state.current}:${state.turn.teleportsUsed}:${state.players[state.current]?.position ?? -1}`;
 

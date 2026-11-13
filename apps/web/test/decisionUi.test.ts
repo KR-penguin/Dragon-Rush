@@ -154,10 +154,17 @@ describe('decision gating', () => {
     expect(needsHandoff([0, 1], null, 0)).toBe(false);
   });
 
-  it('changes the shop visit key on a new turn or teleport', () => {
+  it('changes the shop visit key on a new turn or landing', () => {
     const s = base();
     const k = shopVisitKey(s);
-    expect(shopVisitKey({ ...s, turn: { ...s.turn, teleportsUsed: 1 } })).not.toBe(k);
+    expect(
+      shopVisitKey({
+        ...s,
+        players: s.players.map((player) =>
+          player.seat === s.current ? { ...player, position: 6 } : player,
+        ),
+      }),
+    ).not.toBe(k);
     expect(shopVisitKey({ ...s, round: 2 })).not.toBe(k);
     expect(shopVisitKey({ ...s, turn: { ...s.turn, canBuy: true } })).toBe(k);
   });
@@ -206,8 +213,6 @@ describe('activeDialog', () => {
 
   it('opens user requests and leaves teleport to the board', () => {
     expect(activeDialog(inputs({ request: 'dragon' }))).toBe('dragon');
-    expect(
-      activeDialog(inputs({ request: 'teleport', phase: 'POST_MOVE', shopAvailable: true })),
-    ).toBeNull();
+    expect(activeDialog(inputs({ request: 'teleport', phase: 'PRE_ROLL' }))).toBeNull();
   });
 });

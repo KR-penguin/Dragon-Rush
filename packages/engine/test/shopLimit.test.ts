@@ -2,12 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { getLegalActions, IllegalActionError, withRules } from '../src/index';
 import { act, deepFreeze, DICE_RULES, newGame, patch } from './helpers';
 
-function shopVisit() {
-  const state = patch(newGame(['swordsman', 'archer'], 5), (draft) => {
+function shopVisit(rules = DICE_RULES) {
+  const state = patch(newGame(['swordsman', 'archer'], 42, rules), (draft) => {
     draft.players[0]!.coins = 100;
-    draft.players[0]!.items.teleport = 3;
   });
-  return act(deepFreeze(state), { type: 'USE_TELEPORT', tile: 6 }).state;
+  return act(deepFreeze(state), { type: 'ROLL_DICE' }).state;
 }
 
 describe('shop purchases per turn', () => {
@@ -21,17 +20,21 @@ describe('shop purchases per turn', () => {
     expect(() => act(deepFreeze(state), { type: 'BUY_ITEM', item: 'shield' })).toThrow(
       IllegalActionError,
     );
-    expect(state.players[0]!.coins).toBe(73);
+    expect(state.players[0]!.coins).toBe(55);
   });
 
-  it('keeps the total across visits to different shops during the same turn', () => {
+  it('keeps the total when a shop state changes position during the same turn', () => {
     let state = act(shopVisit(), { type: 'BUY_ITEM', item: 'shield' }).state;
     state = act(state, { type: 'BUY_ITEM', item: 'teleport' }).state;
-    state = act(state, { type: 'USE_TELEPORT', tile: 18 }).state;
+    state = patch(state, (draft) => {
+      draft.players[0]!.position = 18;
+    });
     expect(state.turn.itemsBought).toBe(2);
     expect(getLegalActions(state)).toContainEqual({ type: 'BUY_ITEM', item: 'shield' });
     state = act(state, { type: 'BUY_ITEM', item: 'shield' }).state;
-    state = act(state, { type: 'USE_TELEPORT', tile: 6 }).state;
+    state = patch(state, (draft) => {
+      draft.players[0]!.position = 6;
+    });
     expect(state.turn.canBuy).toBe(true);
     expect(state.turn.itemsBought).toBe(3);
     expect(getLegalActions(state).some((action) => action.type === 'BUY_ITEM')).toBe(false);
@@ -50,17 +53,17 @@ describe('shop purchases per turn', () => {
     state = act(state, { type: 'END_TURN' }).state;
     expect(state.current).toBe(0);
     expect(state.turn.itemsBought).toBe(0);
-    state = act(state, { type: 'USE_TELEPORT', tile: 18 }).state;
+    state = patch(state, (draft) => {
+      draft.players[0]!.position = 18;
+      draft.turn.canBuy = true;
+      draft.pending = { actor: 0, phase: 'POST_MOVE' };
+    });
     expect(getLegalActions(state)).toContainEqual({ type: 'BUY_ITEM', item: 'shield' });
   });
 
   it('uses the configured purchase limit', () => {
     const rules = withRules({ maxItemsBoughtPerTurn: 1 }, DICE_RULES);
-    let state = patch(newGame(['swordsman', 'archer'], 5, rules), (draft) => {
-      draft.players[0]!.coins = 100;
-      draft.players[0]!.items.teleport = 1;
-    });
-    state = act(state, { type: 'USE_TELEPORT', tile: 6 }).state;
+    let state = shopVisit(rules);
     state = act(state, { type: 'BUY_ITEM', item: 'shield' }).state;
     expect(getLegalActions(state).some((action) => action.type === 'BUY_ITEM')).toBe(false);
   });

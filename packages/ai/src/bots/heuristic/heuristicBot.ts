@@ -339,14 +339,18 @@ class Planner {
     return wp < 0.5;
   }
 
-  teleportTarget(preRoll: boolean): number | null {
+  teleportTarget(legal: readonly Action[]): number | null {
     const p = this.me;
+    const targets = new Set(
+      legal.flatMap((action) => (action.type === 'USE_TELEPORT' ? [action.tile] : [])),
+    );
+    if (targets.size === 0) return null;
     const safe = (t: number) => this.rules.board[t]!.safe;
     if (this.view.round > this.rules.pvpGraceRounds) {
       let best: number | null = null;
       let bestV = 0;
       for (const q of this.opponents()) {
-        if (safe(q.position) || q.position === p.position) continue;
+        if (!targets.has(q.position) || safe(q.position)) continue;
         if (this.opponents().filter((x) => x.position === q.position).length > 1) continue;
         const wp = this.duelWp(p, q);
         if (q.items.shield > 0 && wp > 0.5) continue;
@@ -361,27 +365,23 @@ class Planner {
       if (best !== null) return best;
     }
     if (p.hp <= p.maxHp * this.s.innFrac && p.maxHp - p.hp >= 12) {
-      for (let t = 0; t < BOARD_SIZE; t++) {
+      for (const t of targets) {
         const heal = this.rules.board[t]!.effects.some((e) => e.kind === 'hp' && e.amount >= 15);
-        if (heal && t !== p.position && this.teleportValue(t) > 0) return t;
+        if (heal && this.teleportValue(t) > 0) return t;
       }
     }
-    if (!preRoll) return null;
     const prices = this.rules.items;
-    const shops = [...this.rules.board.keys()].filter((t) =>
-      this.rules.board[t]!.effects.some((e) => e.kind === 'shop'),
+    const shops = [...targets].filter((tile) =>
+      this.rules.board[tile]!.effects.some((effect) => effect.kind === 'shop'),
     );
     if (p.coins >= prices.shield.price + prices.princeTotem.price + 2 && shops.length) {
-      const dist = Math.min(...shops.map((t) => forwardDistance(p.position, t)));
-      if (dist > this.rules.movement.rollSides || dist === 0) {
-        const cands = shops.filter((t) => t !== p.position);
-        if (cands.length) {
-          const sh = cands.reduce((a, b) =>
-            this.teleportValue(b) > this.teleportValue(a) ? b : a,
-          );
-          if (this.teleportValue(sh) > 0 && (p.items.shield === 0 || p.items.princeTotem === 0))
-            return sh;
-        }
+      const distance = Math.min(...shops.map((tile) => forwardDistance(p.position, tile)));
+      if (distance > this.rules.movement.rollSides) {
+        const shop = shops.reduce((a, b) =>
+          this.teleportValue(b) > this.teleportValue(a) ? b : a,
+        );
+        if (this.teleportValue(shop) > 0 && (p.items.shield === 0 || p.items.princeTotem === 0))
+          return shop;
       }
     }
     let rollEv = 0;
@@ -390,8 +390,7 @@ class Planner {
     rollEv /= this.rules.movement.rollSides;
     let bt: number | null = null;
     let bv = -Infinity;
-    for (let t = 0; t < BOARD_SIZE; t++) {
-      if (t === p.position) continue;
+    for (const t of targets) {
       const v = this.teleportValue(t);
       if (v > bv) {
         bt = t;
@@ -448,8 +447,8 @@ function* preferences(ctx: DecisionContext, style: HeuristicStyle): Generator<Ac
         yield { type: 'END_TURN' };
         return;
       }
-      if (view.players[seat]!.items.teleport > 0) {
-        const t = plan.teleportTarget(true);
+      if (legal.some((action) => action.type === 'USE_TELEPORT')) {
+        const t = plan.teleportTarget(legal);
         if (t !== null) yield { type: 'USE_TELEPORT', tile: t };
       }
       yield { type: 'ROLL_DICE' };
@@ -459,10 +458,6 @@ function* preferences(ctx: DecisionContext, style: HeuristicStyle): Generator<Ac
       if (legal.some((action) => action.type === 'BUY_ITEM')) {
         const buy = plan.purchase();
         if (buy) yield buy;
-      }
-      if (view.players[seat]!.items.teleport > 0 && view.turn.teleportsUsed === 0) {
-        const t = plan.teleportTarget(false);
-        if (t !== null) yield { type: 'USE_TELEPORT', tile: t };
       }
       const up = plan.upgradeToBuy();
       if (up) yield { type: 'UPGRADE', stat: up };

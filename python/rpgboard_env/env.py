@@ -11,7 +11,7 @@ from ._process import ServerProcess
 from .errors import RPGBoardEnvError
 
 OBS_VERSION = "obs_v5"
-ACT_VERSION = "act_v4"
+ACT_VERSION = "act_v5"
 ENV_PROTOCOL = "rpgboard-env/2"
 
 

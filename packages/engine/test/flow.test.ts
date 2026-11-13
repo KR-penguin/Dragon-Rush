@@ -177,9 +177,9 @@ describe('movement and tiles', () => {
   });
 
   it('shop arrival enables purchases in POST_MOVE', () => {
-    let s = withTeleport(newGame(['swordsman', 'archer'], 5));
+    let s = newGame(['swordsman', 'archer'], 42);
     s = setPlayer(s, 0, { coins: 20 });
-    const r1 = act(s, { type: 'USE_TELEPORT', tile: 6 });
+    const r1 = act(s, { type: 'ROLL_DICE' });
     expect(r1.state.turn.canBuy).toBe(true);
     const r2 = act(r1.state, { type: 'BUY_ITEM', item: 'princeTotem' });
     expect(r2.state.players[0]!.items.princeTotem).toBe(1);
@@ -187,8 +187,8 @@ describe('movement and tiles', () => {
   });
 
   it('waits at an unaffordable shop so the visit can be shown', () => {
-    const s = setPlayer(withTeleport(newGame(['swordsman', 'archer'], 5)), 0, { coins: 0 });
-    const landing = act(s, { type: 'USE_TELEPORT', tile: 6 });
+    const s = setPlayer(newGame(['swordsman', 'archer'], 42), 0, { coins: 0 });
+    const landing = act(s, { type: 'ROLL_DICE' });
     expect(eventsOf(landing.events, 'TileResolved')).toEqual([
       { type: 'TileResolved', seat: 0, tile: 6, tileId: 'SHOP' },
     ]);
@@ -213,13 +213,13 @@ describe('movement and tiles', () => {
     const rules = withRules({
       board: DEFAULT_RULES.board.map((tile) => ({ ...tile, safe: true })),
     });
-    let s = setPlayer(withTeleport(newGame(['swordsman', 'archer'], 5, rules)), 0, {
+    let s = setPlayer(newGame(['swordsman', 'archer'], 42, rules), 0, {
       coins: 100,
     });
     s = act(s, { type: 'UPGRADE', stat: 'atk' }).state;
     s = act(s, { type: 'UPGRADE', stat: 'def' }).state;
     expect(s.turn.paidUpgradesUsed).toBe(2);
-    s = act(s, { type: 'USE_TELEPORT', tile: 6 }).state;
+    s = act(s, { type: 'ROLL_DICE' }).state;
     expect(s.pending?.phase).toBe('POST_MOVE');
     s = act(s, { type: 'UPGRADE', stat: 'maxHp' }).state;
     expect(s.turn.paidUpgradesUsed).toBe(3);
@@ -238,15 +238,20 @@ describe('movement and tiles', () => {
       coins: 100,
       items: { teleport: 2, shield: 0, princeTotem: 0 },
     });
-    for (const stat of ['atk', 'def', 'maxHp'] as const) {
+    for (const stat of ['atk', 'def'] as const) {
       s = act(s, { type: 'UPGRADE', stat }).state;
     }
     const trained = act(s, { type: 'USE_TELEPORT', tile: 5 }).state;
     expect(trained.pending?.phase).toBe('TRAINING_CHOICE');
     s = act(trained, { type: 'CHOOSE_TRAINING_STAT', stat: 'def' }).state;
     expect(s.players[0]!.upgradeLevels.def).toBe(2);
-    expect(s.turn.paidUpgradesUsed).toBe(3);
-    expect(getLegalActions(s).some((a) => a.type === 'UPGRADE')).toBe(false);
+    expect(s.turn.paidUpgradesUsed).toBe(2);
+    expect(getLegalActions(s)).toContainEqual({ type: 'UPGRADE', stat: 'maxHp' });
+    const paid = act(s, { type: 'UPGRADE', stat: 'maxHp' });
+    expect(eventsOf(paid.events, 'StatUpgraded')).toMatchObject([
+      { seat: 0, stat: 'maxHp', free: false },
+    ]);
+    expect(paid.state.current).toBe(1);
   });
 
   it('applies the blacksmith DEF bonus immediately on landing', () => {
@@ -459,6 +464,7 @@ describe('items', () => {
     const s = withTeleport(newGame(['swordsman', 'archer'], 5));
     const tiles = getLegalActions(s).filter((a) => a.type === 'USE_TELEPORT');
     expect(tiles).toHaveLength(23);
+    expect(tiles).not.toContainEqual({ type: 'USE_TELEPORT', tile: s.players[0]!.position });
   });
 });
 

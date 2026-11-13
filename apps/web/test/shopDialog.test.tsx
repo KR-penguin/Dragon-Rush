@@ -35,11 +35,10 @@ const renderShop = (state: GameState): string => {
 const arriveAtShop = (): GameState => {
   const rules = withRules({
     startingCoins: 100,
-    startingItems: { teleport: 1 },
     boardVariation: null,
   });
-  const state = createGame({ seats: [{ job: 'swordsman' }, { job: 'archer' }] }, rules, 42);
-  return applyAction(state, { type: 'USE_TELEPORT', tile: 6 }).state;
+  const state = createGame({ seats: [{ job: 'swordsman' }, { job: 'archer' }] }, rules, 2);
+  return applyAction(state, { type: 'ROLL_DICE' }).state;
 };
 
 describe('shop purchase presentation', () => {
@@ -54,6 +53,15 @@ describe('shop purchase presentation', () => {
     expect(html).toContain('종료 시 원래 최대 체력으로 복귀');
     expect(html).not.toContain('도둑');
     expect(html).toContain('한 턴 최대 3개 · 이번 턴 0/3개 구매 · 남은 구매 3개');
+  });
+
+  it('describes teleport as the pre-movement alternative to roulette', () => {
+    const html = renderShop(arriveAtShop());
+    expect(html).toContain('텔레포트 구매, 코인 24');
+    expect(html).toContain('이동 전 자기 턴에 룰렛 대신 사용');
+    expect(html).toContain('선택한 칸까지 시계 방향 이동');
+    expect(html).toContain('이동 후 재사용 불가');
+    expect(html).toContain('출발 보너스');
   });
 
   it('keeps the exhausted shop visible with every purchase disabled', () => {

@@ -7,7 +7,7 @@ function linearModel(scale: number): PolicyModel {
     meta: {
       id: 'linear',
       obsVersion: OBS_VERSION,
-      actVersion: 'act_v4',
+      actVersion: 'act_v5',
       output: 'logits',
       obsDim: OBS_DIM,
       actionDim: ACTION_DIM,

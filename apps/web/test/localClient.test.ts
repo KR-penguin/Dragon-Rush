@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { LocalGameClient, type Scheduler } from '../src/services/LocalGameClient';
 import type { GameUpdate } from '../src/services/gameClient';
 import { createGameStore } from '../src/store/gameStore';
+import { groupActions } from '../src/types/actionGroups';
 
 /** Manual scheduler: bot moves run only when the test flushes them. */
 function manualScheduler() {
@@ -73,7 +74,65 @@ describe('LocalGameClient', () => {
       code: 'STALE_VERSION',
     });
     expect((await client.submit({ type: 'ROLL_DICE' }, latest.version)).ok).toBe(true);
+    client.dispose();
   });
+
+  it.each(['teleport', 'roulette'] as const)(
+    'uses engine shop targets and rejects repeated movement after %s',
+    async (movement) => {
+      const client = new LocalGameClient(
+        {
+          seed: 1,
+          debug: true,
+          seats: [
+            { name: 'A', job: 'swordsman', kind: 'human' },
+            { name: 'B', job: 'archer', kind: 'human' },
+          ],
+        },
+        manualScheduler().schedule,
+      );
+      try {
+        let latest!: GameUpdate;
+        client.subscribe((update) => (latest = update));
+        const actor = latest.pending!.actor;
+        client.debugPatchPlayer(actor, { items: { teleport: 2 } });
+        const targets = groupActions(latest.legalActions).teleportTiles;
+        expect(targets.length).toBeGreaterThan(0);
+        expect(targets).toEqual(
+          latest.legalActions.flatMap((action) =>
+            action.type === 'USE_TELEPORT' ? [action.tile] : [],
+          ),
+        );
+        const shops = latest.publicState.rules.board.flatMap((tile, index) =>
+          tile.id === 'SHOP' ? [index] : [],
+        );
+        for (const shop of shops) expect(targets).toContain(shop);
+        const target = shops[0]!;
+        const action =
+          movement === 'teleport'
+            ? { type: 'USE_TELEPORT' as const, tile: target }
+            : { type: 'ROLL_DICE' as const };
+        expect(await client.submit(action, latest.version)).toEqual({ ok: true });
+        expect(latest.pending?.phase).toBe('POST_MOVE');
+        expect(latest.publicState.turn.canBuy).toBe(true);
+        expect(groupActions(latest.legalActions).teleportTiles).toEqual([]);
+        expect(latest.publicState.players[actor]!.items.teleport).toBe(
+          movement === 'teleport' ? 1 : 2,
+        );
+        const landed = latest;
+        const otherShop = shops.find(
+          (tile) => tile !== latest.publicState.players[actor]!.position,
+        )!;
+        expect(otherShop).toBeDefined();
+        expect(
+          await client.submit({ type: 'USE_TELEPORT', tile: otherShop }, latest.version),
+        ).toEqual({ ok: false, code: 'ILLEGAL_ACTION' });
+        expect(latest).toBe(landed);
+      } finally {
+        client.dispose();
+      }
+    },
+  );
 });
 
 describe('game store animation queue', () => {

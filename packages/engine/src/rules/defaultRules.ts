@@ -98,7 +98,7 @@ const MYSTERY_DECK: readonly MysteryCardDef[] = [
 ];
 
 export const DEFAULT_RULES: RulesConfig = deepFreeze({
-  version: 'rush-12',
+  version: 'rush-13',
   startingCoins: 10,
   startingItems: {},
   startBonus: { coins: 35, hp: 6 },
@@ -132,7 +132,7 @@ export const DEFAULT_RULES: RulesConfig = deepFreeze({
     maxHp: { baseCost: 2, costStep: 1, amount: 6 },
   },
   items: {
-    teleport: { price: 6, perTurnLimit: null },
+    teleport: { price: 24, perTurnLimit: 1 },
     shield: { price: 6, perTurnLimit: null },
     princeTotem: { price: 15, perTurnLimit: null },
   },

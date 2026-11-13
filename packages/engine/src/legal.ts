@@ -17,7 +17,8 @@ const upgrades = (s: PublicGameState): Action[] => {
 const teleports = (s: PublicGameState): Action[] => {
   const p = playerAt(s, s.current);
   const limit = s.rules.items.teleport.perTurnLimit;
-  if (p.items.teleport < 1 || s.turn.resting) return [];
+  if (p.items.teleport < 1 || s.turn.resting || s.turn.rolled || s.turn.teleportsUsed > 0)
+    return [];
   if (limit !== null && s.turn.teleportsUsed >= limit) return [];
   const out: Action[] = [];
   for (let tile = 0; tile < BOARD_SIZE; tile++) {
@@ -59,7 +60,7 @@ const LEGAL_BY_PHASE: Record<Phase, LegalGenerator> = {
   ],
   TRAINING_CHOICE: () =>
     UPGRADE_STATS.map((stat) => ({ type: 'CHOOSE_TRAINING_STAT' as const, stat })),
-  POST_MOVE: (s) => [{ type: 'END_TURN' }, ...purchases(s), ...upgrades(s), ...teleports(s)],
+  POST_MOVE: (s) => [{ type: 'END_TURN' }, ...purchases(s), ...upgrades(s)],
   // A pending fight is settled by applyCombatResult / resolveCombatWithDice, never by a board action.
   COMBAT: () => [],
 };

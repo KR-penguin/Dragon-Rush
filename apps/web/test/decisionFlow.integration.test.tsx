@@ -46,11 +46,11 @@ function dialogMarkup(store: GameStore, currentSeatOnly = false): string {
 it('opens the zero-coin shop as soon as queued movement reaches it', async () => {
   const client = new LocalGameClient(
     {
-      seed: 8,
+      seed: 1,
       debug: true,
       seats: [
-        { name: 'A', job: 'swordsman', kind: 'human' },
-        { name: 'B', job: 'archer', kind: 'bot' },
+        { name: 'A', job: 'swordsman', kind: 'bot' },
+        { name: 'B', job: 'archer', kind: 'human' },
       ],
     },
     noBotScheduler,
@@ -59,15 +59,15 @@ it('opens the zero-coin shop as soon as queued movement reaches it', async () =>
   store.getState().attach(client);
   store.getState().snap();
   const actor = store.getState().latest!.pending!.actor;
-  client.debugPatchPlayer(actor, { coins: 0, items: { teleport: 1 } });
+  client.debugPatchPlayer(actor, { coins: 0 });
   store.getState().snap();
-  expect(await store.getState().submit({ type: 'USE_TELEPORT', tile: 6 })).toEqual({ ok: true });
+  expect(await store.getState().submit({ type: 'ROLL_DICE' })).toEqual({ ok: true });
   const landed = store.getState().latest!;
   expect(landed.pending).toMatchObject({ actor, phase: 'POST_MOVE' });
   expect(landed.publicState.turn.canBuy).toBe(true);
   expect(landed.legalActions).toEqual([{ type: 'END_TURN' }]);
   expect(store.getState().queue.map((event) => event.type)).toEqual([
-    'ItemUsed',
+    'DiceRolled',
     'Moved',
     'TileResolved',
   ]);
@@ -87,7 +87,7 @@ it('opens the zero-coin shop as soon as queued movement reaches it', async () =>
 it('shows the one-opponent confirmation before COMBAT and the shop after a win', async () => {
   const client = new LocalGameClient(
     {
-      seed: 8,
+      seed: 10,
       debug: true,
       seats: [
         { name: 'A', job: 'swordsman', kind: 'human' },
@@ -109,9 +109,9 @@ it('shows the one-opponent confirmation before COMBAT and the shop after a win',
   )!.seat;
   client.debugPatchPlayer(defender, { position: 6, items: { shield: 0 } });
   client.debugPatchPlayer(bystander, { position: 0 });
-  client.debugPatchPlayer(arriver, { items: { teleport: 1, shield: 0 } });
+  client.debugPatchPlayer(arriver, { items: { shield: 0 } });
   store.getState().snap();
-  expect(await store.getState().submit({ type: 'USE_TELEPORT', tile: 6 })).toEqual({ ok: true });
+  expect(await store.getState().submit({ type: 'ROLL_DICE' })).toEqual({ ok: true });
   const encounter = store.getState().latest!;
   expect(encounter.pending).toMatchObject({ actor: arriver, phase: 'CHOOSE_PVP_TARGET' });
   expect(encounter.legalActions).toEqual([{ type: 'CHOOSE_PVP_TARGET', target: defender }]);

@@ -4,7 +4,8 @@ numpy Actor-Critic으로 "드래곤 러쉬"를 학습시키기 위한 안내서�
 세 과제의 실행 명령·배열 형태·리셋·모델 JSON 준비물은 [AI 학습 환경 시작 가이드](../docs/training-environments.md)에 모았다.
 
 - 관측: `obs_v5`, float32 **498개**
-- 행동: `act_v4`, 이산 **44개** + 행동 마스크
+- 행동: `act_v5`, 이산 **44개** + 행동 마스크
+- 현행 규칙: `rush-13` / `combat-9`, 통신 `PROTOCOL_VERSION = 3` 유지. `act_v5`는 `act_v4`의 44개 인덱스·이름을 유지하지만 텔레포트 마스크가 달라 재학습 또는 명시적 변환·마스크 검증이 필요하다. 버전 문자열만 바꾸는 것은 변환이 아니다.
 - 의존성: numpy만 (gymnasium·torch 없음)
 - **전투 모델은 별도 모델·별도 env**다(`PvPCombatEnv`/`DragonCombatEnv`, `cobs_v1`/`cact_v1`). 보드 가중치와 전투 가중치는 호환되지 않는다. §9를 본다.
 
@@ -88,17 +89,17 @@ env.close()
 | 인덱스 | 이름 | 내용 |
 |---|---|---|
 | 213 / 214 / 215 | `g.round` / `g.maxRounds` / `g.roundsLeftFrac` | round/100, maxRounds/100, 남은 라운드 비율 (무제한이면 0) |
-| 216 / 217 | `g.graceLeft` / `g.pvpEnabled` | 초반 보호 남은 라운드/3, 이번 라운드에 PvP 가능 여부. `rush-12` 기본 규칙은 보호가 없어 시작부터 각각 0 / 1 |
+| 216 / 217 | `g.graceLeft` / `g.pvpEnabled` | 초반 보호 남은 라운드/3, 이번 라운드에 PvP 가능 여부. `rush-13` 기본 규칙은 보호가 없어 시작부터 각각 0 / 1 |
 | 218–220 | `g.numPlayers` | 시작 인원 one-hot [2, 3, 4] |
 | 221 | `g.aliveCount` | 생존자 수/4 |
 | 222–227 | `g.phase` | [PRE_ROLL, MOVE_ADJUST, CHOOSE_PVP_TARGET, SHIELD_DECISION, TRAINING_CHOICE, POST_MOVE] |
 | 228–231 | `g.turnPlayer` | 턴 플레이어 [나, 상대1, 상대2, 상대3]. 내가 아니면 남의 턴에 하는 결정 |
 | 232–241 | `g.dice` | 이번 턴 이동 주사위 눈 1~10 원-핫 (굴리기 전이면 0) |
 | 242 / 243 | `g.canBuy` / `g.itemsBoughtRemaining` | 이번 턴 상점에 도착함 / 남은 구매 횟수 비율(기본 1→2/3→1/3→0) |
-| 244 / 245 | `g.teleportsUsed` / `g.teleportLimitReached` | 이번 턴 텔레포트 사용 수/2, 턴당 상한 도달(기본 무제한이라 0) |
+| 244 / 245 | `g.teleportsUsed` / `g.teleportLimitReached` | 이번 턴 텔레포트 사용 수/2, 턴당 상한 도달(기본 1회이므로 한 번 쓰면 1) |
 | 246 / 247 | `g.pvpAmArriver` / `g.pvpAmDefender` | 진행 중인 결투에서 내가 도착자 / 방어자 |
 | 248–250 | `g.pvpOpponent` | 결투 상대 one-hot [상대1, 상대2, 상대3] |
-| 251–253 | `g.dragonHp/Atk/Def` | 용 스탯(`rush-12`: 88/120, **clip(50/20, 0, 2) = 2**, 10/20). 보드 용 ATK는 50이며 방어력 적용 후 주는 피해에 ×0.6을 적용 |
+| 251–253 | `g.dragonHp/Atk/Def` | 용 스탯(`rush-13`: 88/120, **clip(50/20, 0, 2) = 2**, 10/20). 보드 용 ATK는 50이며 방어력 적용 후 주는 피해에 ×0.6을 적용 |
 | 254–256 | `g.itemPrice` | [teleport, shield, princeTotem] 가격/50 |
 | 257 | `g.paidUpgradesRemaining` | 이번 자기 턴에 남은 유료 강화 횟수/3. 기본 3회이며 `PRE_ROLL`·`POST_MOVE` 합산. 수련장 무료 강화는 제외 |
 
@@ -124,7 +125,9 @@ d = env.describe(obs)            # {"self.coins": 0.2, "self.job": [0,0,1,0,0], 
 env.obs_layout                   # [{"name", "offset", "length"}, ...] 서버가 주는 레이아웃
 ```
 
-## 4. 행동 `act_v4` (44)
+## 4. 행동 `act_v5` (44)
+
+텔레포트 가격은 24다. 룰렛 대신 사용하며 룰렛 뒤·텔레포트 뒤에는 다시 사용할 수 없다. 상점에서 구매하거나 착지·전리품으로 얻은 텔레포트는 이미 이동을 마쳤다면 다음 자기 턴부터 사용한다. OBS는 `obs_v5` 498차원을 유지하고 행동 인덱스도 그대로이며, 합법성은 TS 엔진이 보낸 마스크만 따른다.
 
 | 인덱스 | 이름 | 의미 | 가능한 phase |
 |---|---|---|---|
@@ -133,7 +136,7 @@ env.obs_layout                   # [{"name", "offset", "length"}, ...] 서버가
 | 2 | `CHALLENGE_DRAGON` | 용 도전 (지면 탈락) | PRE_ROLL |
 | 3–5 | `UPGRADE_ATK/DEF/MAXHP` | 코인으로 스탯 강화. 자기 턴 전체 최대 3회 | PRE_ROLL, POST_MOVE |
 | 6–8 | `BUY_TELEPORT/SHIELD/PRINCE_TOTEM` | 아이템 구매 | POST_MOVE (상점 도착 시) |
-| 9–32 | `TELEPORT_T00`~`T23` | 칸 (인덱스−9)로 텔레포트 | PRE_ROLL, POST_MOVE |
+| 9–32 | `TELEPORT_T00`~`T23` | 칸 (인덱스−9)로 텔레포트 | 이동 전 자기 턴의 PRE_ROLL, 최대 1회. 상점 허용 |
 | 33–35 | `ADJUST_M1/0/P1` | 닌자 이동 보정 −1/0/+1. 0도 쿨다운 2를 소비 | MOVE_ADJUST |
 | 36–37 | `SHIELD_NO/YES` | 방어막 미사용/사용 | SHIELD_DECISION |
 | 38–40 | `PVP_TARGET_OPP1/2/3` | 결투 상대 선택 | CHOOSE_PVP_TARGET |
@@ -180,7 +183,8 @@ env.obs_layout                   # [{"name", "offset", "length"}, ...] 서버가
 
 ## 7. 기준선 (실제 60Hz 전투)
 
-- **현재 통합 표본**: `rush-12`/`combat-9` 4인 휴리스틱·스크립트 봇 1,000판(`pnpm sim --games 1000 --players 4 --bots heuristic --seed 2026 --workers 2 --combat sim --json`)은 평균 16.505/중앙 17/p95 29라운드, 용 처치 종료 24.20%, 3라운드 안 탈락 30.75%, 용 도전 성공률 56.28%, 판당 PvP 2.548회였다. 검사/궁수/마법사/닌자/광전사의 조건부 승률은 20.61%/20.08%/25.72%/37.93%/20.25%다. 판당 구매는 텔레포트 1.015·방어막 1.139·왕자의 토템 0.668개, 보드 턴당 10초 가정 예상 시간은 평균 7.52분이다. 사람 승률은 아니다. 조건과 전체 지표는 [기획서 §15](../docs/game-design.md#15-밸런스-근거)를 본다.
+- **현행 기준선**: `rush-13`/`combat-9` 4인 휴리스틱·스크립트 봇 1,000판(`pnpm sim --games 1000 --players 4 --bots heuristic --seed 2026 --workers 2 --combat sim --json`)은 평균 18.553/중앙 20/p95 30라운드, 용 처치 종료 30.50%, 3라운드 안 탈락 27.35%, 용 도전 성공률 57.98%, 판당 PvP 2.435회였다. 검사/궁수/마법사/닌자/광전사 조건부 승률은 21.87%/20.08%/23.96%/37.20%/21.51%다. 판당 구매는 텔레포트 0.558·방어막 1.300·왕자의 토템 0.945개, 보드 턴당 10초 가정 예상 평균 시간은 8.53분이다. 봇 측정이며 사람 승률은 아니다. 로컬 UI Easy 프로필 교정은 이 env의 기본 스크립트 봇을 바꾸지 않는다. 아래는 이전 규칙의 기록이다. 조건과 전체 지표는 [기획서 §15](../docs/game-design.md#15-밸런스-근거)를 본다.
+- **과거 통합 표본**: `rush-12`/`combat-9` 4인 휴리스틱·스크립트 봇 1,000판(`pnpm sim --games 1000 --players 4 --bots heuristic --seed 2026 --workers 2 --combat sim --json`)은 평균 16.505/중앙 17/p95 29라운드, 용 처치 종료 24.20%, 3라운드 안 탈락 30.75%, 용 도전 성공률 56.28%, 판당 PvP 2.548회였다. 검사/궁수/마법사/닌자/광전사의 조건부 승률은 20.61%/20.08%/25.72%/37.93%/20.25%다. 판당 구매는 텔레포트 1.015·방어막 1.139·왕자의 토템 0.668개, 보드 턴당 10초 가정 예상 시간은 평균 7.52분이다. 사람 승률은 아니다. 조건과 전체 지표는 [기획서 §15](../docs/game-design.md#15-밸런스-근거)를 본다.
 - **과거 표본**: `rush-11`/`combat-9` 4인 휴리스틱·스크립트 봇 1,000판(`pnpm sim --games 1000 --players 4 --bots heuristic --seed 2026 --combat sim --json`)은 평균 16.391/중앙 17/p95 30라운드, 용 처치 종료 21.20%, 3라운드 안 탈락 31.20%, 용 도전 성공률 56.99%, 판당 PvP 2.612회였다. 궁수 조건부 승률은 23.09%다. 사람 승률은 아니다. 조건과 전체 지표는 [기획서 §15](../docs/game-design.md#15-밸런스-근거)를 본다.
 - **과거 측정**: `rush-9`/`combat-5` 4인 휴리스틱·스크립트 봇 1,000판(seed 2026, 8 workers, 실제 60Hz 전투)은 평균 15.909(중앙 16)/p95 29라운드였다. 이 수치는 `rush-12` 동적 보드의 측정치가 아니다.
 - **기능 분기 과거 표본**: `rush-12`/`combat-8` 1,000판은 평균 16.481/중앙 17/p95 29라운드, 용 처치 종료 24.60%, 도전 성공률 57.21%, 3라운드 안 탈락 30.80%, 판당 PvP 2.55회였다. 토템·상점 한도를 포함하지만 동시 공격 수정이 병합된 `combat-9` 측정은 아니다.

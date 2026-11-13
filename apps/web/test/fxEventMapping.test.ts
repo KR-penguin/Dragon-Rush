@@ -256,12 +256,18 @@ describe('event → effect mapping', () => {
     expect(ofType(shield, 'burst')[0]?.preset).toBe('shield');
     expect(sounds(shield)).toEqual(['shield']);
     const buy = fxForEvent(
-      { type: 'ItemBought', seat: 0, item: 'teleport', price: 6, coinsAfter: 4 },
+      {
+        type: 'ItemBought',
+        seat: 0,
+        item: 'teleport',
+        price: DEFAULT_RULES.items.teleport.price,
+        coinsAfter: 4,
+      },
       ctx(),
     );
     expect(ofType(buy, 'text')[0]).toMatchObject({
       kind: 'loss',
-      value: 6,
+      value: DEFAULT_RULES.items.teleport.price,
       at: { kind: 'hud', seat: 0, slot: 'coins' },
     });
     expect(sounds(buy)).toEqual(['buy']);

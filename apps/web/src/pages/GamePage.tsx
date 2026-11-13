@@ -353,7 +353,7 @@ export function GamePage({ session, onExit, onRestart }: GamePageProps) {
       />
       {ui.teleportPicking && (
         <TargetBanner icon="teleport" onCancel={ui.cancel}>
-          목적지를 고르세요 · 시계 방향으로 이동하며 출발 칸을 지나면 보너스를 받습니다
+          목적지를 고르세요 · 이번 턴 룰렛 대신 이동하며 출발 칸 통과·도착 시 보너스를 받습니다
         </TargetBanner>
       )}
 

@@ -24,10 +24,15 @@ const withJobs = (d: GameState, jobs: JobId[]): void => {
   });
 };
 
-/** Seat 0 teleports onto seat 1 (alone on `tile`) in round 4 with no shields, so a duel starts. */
+/** Seat 0 moves onto seat 1 (alone on `tile`) in round 4 with no shields. */
 function duelLanding(
   jobs: JobId[],
-  opts: { tile?: number; rules?: GameState['rules']; edit?: (d: GameState) => void } = {},
+  opts: {
+    tile?: number;
+    movement?: 'dice';
+    rules?: GameState['rules'];
+    edit?: (d: GameState) => void;
+  } = {},
 ) {
   const tile = opts.tile ?? 9;
   const before = patch(newGame(jobs, 8, opts.rules ?? EXTERNAL_RULES), (d) => {
@@ -38,7 +43,13 @@ function duelLanding(
     d.players[1]!.position = tile;
     opts.edit?.(d);
   });
-  return { before, ...act(before, { type: 'USE_TELEPORT', tile }) };
+  return {
+    before,
+    ...act(
+      before,
+      opts.movement === 'dice' ? { type: 'ROLL_DICE' } : { type: 'USE_TELEPORT', tile },
+    ),
+  };
 }
 
 function duelScenario(
@@ -230,7 +241,9 @@ describe('external combat: applyCombatResult for duels', () => {
   it('resolves the shop after an arriving duel winner before offering purchases', () => {
     const landing = duelLanding(['mage', 'berserker', 'swordsman'], {
       tile: 6,
+      movement: 'dice',
       edit: (d) => {
+        d.players[0]!.position = 21;
         d.players[0]!.coins = 0;
         d.players[1]!.coins = 0;
       },

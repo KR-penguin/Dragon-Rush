@@ -38,7 +38,7 @@ function playOut(s0: GameState, policies: Policy[], seed: number): GameState {
 const meta = (id: string) => ({
   id,
   obsVersion: OBS_VERSION,
-  actVersion: 'act_v4',
+  actVersion: 'act_v5',
   output: 'logits' as const,
   obsDim: OBS_DIM,
   actionDim: ACTION_DIM,

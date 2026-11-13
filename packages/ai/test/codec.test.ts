@@ -12,9 +12,9 @@ import {
 } from '../src/index';
 import { newGame, view, walk } from './helpers';
 
-describe('act_v4 codec', () => {
+describe('act_v5 codec', () => {
   it('has 44 named actions without thief targets', () => {
-    expect(ACT_VERSION).toBe('act_v4');
+    expect(ACT_VERSION).toBe('act_v5');
     expect(ACTION_DIM).toBe(44);
     expect(ACTION_NAMES).toHaveLength(44);
     expect(new Set(ACTION_NAMES).size).toBe(44);

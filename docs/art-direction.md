@@ -2,7 +2,7 @@
 
 > 상태: **구현 예정 (2차 개발 Phase R2·R3·R8)**. 모든 수치는 v1 기본값이며 플레이테스트와 주스(juice) 디버그 패널로 조정한다.
 > 이 문서가 **보드 화면·연출·효과(FX)·오디오 규칙·접근성 설정의 정본**이다. 실시간 전투 규칙과 sim 안의 수치(히트스톱·넉백·예고 시간)는 [combat-design.md](combat-design.md)(구현 후 `packages/combat`의 `DEFAULT_COMBAT_RULES`), 에셋 파일 목록은 [development-plan.md §4.2](development-plan.md), 규칙은 [game-design.md](game-design.md)가 정본이다.
-> 이 문서의 항목은 표현(presentation)이다. 현행 `rush-12` 이동은 1~10 룰렛이며 보드 관측·행동은 `obs_v5`/`act_v4`다. 내부 `ROLL_DICE`/`DiceRolled` 명칭은 호환성을 위해 유지한다. 연출은 기존 이벤트 예산 안에 맞춘다: `DiceRolled` 700ms, `Moved` 160ms/칸, `TileResolved`·`EffectApplied` 각 250ms, `MysteryCardDrawn` 600ms, `CombatStarted` 600ms, `CombatEnded` 700ms, `PlayerEliminated` 900ms. 서버 타이머는 연출을 기다리지 않는다.
+> 이 문서의 항목은 표현(presentation)이다. 현행 `rush-13` 이동은 1~10 룰렛이며 보드 관측·행동은 `obs_v5`/`act_v5`다. 내부 `ROLL_DICE`/`DiceRolled` 명칭은 호환성을 위해 유지한다. 연출은 기존 이벤트 예산 안에 맞춘다: `DiceRolled` 700ms, `Moved` 160ms/칸, `TileResolved`·`EffectApplied` 각 250ms, `MysteryCardDrawn` 600ms, `CombatStarted` 600ms, `CombatEnded` 700ms, `PlayerEliminated` 900ms. 서버 타이머는 연출을 기다리지 않는다.
 
 ## 1. 콘셉트
 - **Ember Table (불씨의 작전 탁자)**: 어두운 홀의 조각된 호두나무 작전 탁자를 보드 한가운데 용의 둥지가 아래에서 비춘다. 칸은 나무에 박힌 양피지 명판, 영웅은 채색 판지 스탠디(standee), UI는 금테를 두른 원정대 문구류다.
@@ -162,7 +162,7 @@
 | 수련장 | 모루와 스탯 카드(ATK·DEF·최대 HP), 망치 내려치기로 확정 |
 | 미지의 동굴 | 동굴 입구의 엎어진 카드 덱 |
 | 결투·용 도전 확인 | 도전 두루마리 |
-| 텔레포트 대상 | 세계를 오버레이로 어둡게 + 유효 대상에 금테 |
+| 텔레포트 대상 | 세계를 오버레이로 어둡게 + 엔진 legalActions의 유효 대상에 금테. 이동 전 PRE_ROLL에서만 선택하며 상점도 허용. 배너·도구 설명은 룰렛 대신 사용, 이동 후 재사용 불가를 안내 |
 
 ## 10. 전투 경기장 아트
 - **캔버스**: 논리 960×540, 1타일 = 32px, 16:9 맞춤, devicePixelRatio로 렌더. 정적 배경·바닥, 동적인 전투원·예고·FX, HUD를 겹친 캔버스로 합성하고 실제 변화가 있는 레이어만 갱신한다. 아트는 2배(스프라이트 셀 128×128 = 논리 64px)로 그린다. PvP 경기장 800×448, 용 경기장 896×448, 위쪽 56px HUD 띠 아래 중앙. 여백 ≥ 29px라 1.06배 줌 펀치에도 플레이 영역이 잘리지 않는다.

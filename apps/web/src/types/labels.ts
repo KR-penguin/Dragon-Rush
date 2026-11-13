@@ -31,7 +31,7 @@ export const ITEM_LABEL: Record<ItemId, string> = {
 };
 export const ITEM_DESC: Record<ItemId, string> = {
   teleport:
-    '선택한 칸까지 시계 방향으로 이동. 출발 칸을 지나거나 도착하면 출발 보너스 획득 (일회용)',
+    '이동 전 자기 턴에 룰렛 대신 사용. 선택한 칸까지 시계 방향 이동. 이동 후 재사용 불가. 출발 칸 통과·도착 시 출발 보너스 획득 (일회용)',
   shield: '결투가 성립할 때 전투를 취소 (일회용)',
   princeTotem:
     '전투 시작 시 1개 자동 소모. 이번 전투 최대 체력 증가 및 체력 완전 회복. 종료 시 원래 최대 체력으로 복귀',
