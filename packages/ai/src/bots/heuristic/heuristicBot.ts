@@ -444,50 +444,59 @@ class Planner {
   }
 }
 
-function choose(ctx: DecisionContext, style: HeuristicStyle): Action | null {
+function* preferences(ctx: DecisionContext, style: HeuristicStyle): Generator<Action> {
   const { view, seat, legal } = ctx;
   const plan = new Planner(view, seat, style);
   const phase = view.pending?.phase;
   switch (phase) {
     case 'MOVE_ADJUST':
-      return { type: 'ADJUST_MOVE', delta: plan.ninjaDelta(legal) };
+      yield { type: 'ADJUST_MOVE', delta: plan.ninjaDelta(legal) };
+      return;
     case 'CHOOSE_PVP_TARGET':
-      return { type: 'CHOOSE_PVP_TARGET', target: plan.pvpTarget(view.pvp?.candidates ?? []) };
+      yield { type: 'CHOOSE_PVP_TARGET', target: plan.pvpTarget(view.pvp?.candidates ?? []) };
+      return;
     case 'SHIELD_DECISION':
-      return { type: 'SHIELD_DECISION', use: plan.useShield() };
+      yield { type: 'SHIELD_DECISION', use: plan.useShield() };
+      return;
     case 'TRAINING_CHOICE':
-      return { type: 'CHOOSE_TRAINING_STAT', stat: plan.trainingChoice() };
+      yield { type: 'CHOOSE_TRAINING_STAT', stat: plan.trainingChoice() };
+      return;
     case 'PRE_ROLL': {
       const thief = plan.thiefTarget();
-      if (thief !== null) return { type: 'USE_THIEF', target: thief };
+      if (thief !== null) yield { type: 'USE_THIEF', target: thief };
       const dragon = plan.dragonMove();
-      if (dragon) return dragon;
+      if (dragon) yield dragon;
       const up = plan.upgradeToBuy();
-      if (up) return { type: 'UPGRADE', stat: up };
-      if (view.turn.resting) return { type: 'END_TURN' };
+      if (up) yield { type: 'UPGRADE', stat: up };
+      if (view.turn.resting) {
+        yield { type: 'END_TURN' };
+        return;
+      }
       if (view.players[seat]!.items.teleport > 0) {
         const t = plan.teleportTarget(true);
-        if (t !== null) return { type: 'USE_TELEPORT', tile: t };
+        if (t !== null) yield { type: 'USE_TELEPORT', tile: t };
       }
-      return { type: 'ROLL_DICE' };
+      yield { type: 'ROLL_DICE' };
+      return;
     }
     case 'POST_MOVE': {
       if (view.turn.canBuy) {
         const buy = plan.purchase();
-        if (buy) return buy;
+        if (buy) yield buy;
       }
       const thief = plan.thiefTarget();
-      if (thief !== null) return { type: 'USE_THIEF', target: thief };
+      if (thief !== null) yield { type: 'USE_THIEF', target: thief };
       if (view.players[seat]!.items.teleport > 0 && view.turn.teleportsUsed === 0) {
         const t = plan.teleportTarget(false);
-        if (t !== null) return { type: 'USE_TELEPORT', tile: t };
+        if (t !== null) yield { type: 'USE_TELEPORT', tile: t };
       }
       const up = plan.upgradeToBuy();
-      if (up) return { type: 'UPGRADE', stat: up };
-      return { type: 'END_TURN' };
+      if (up) yield { type: 'UPGRADE', stat: up };
+      yield { type: 'END_TURN' };
+      return;
     }
     default:
-      return null;
+      return;
   }
 }
 
@@ -495,11 +504,10 @@ export function createHeuristicBot(style: HeuristicStyle = 'growth'): Policy {
   return {
     id: `heuristic:${style}`,
     decide(ctx: DecisionContext): Action {
-      const wanted = choose(ctx, style);
-      if (wanted) {
-        const key = actionKey(wanted);
-        const legal = ctx.legal.find((a) => actionKey(a) === key);
-        if (legal) return legal;
+      const legalByKey = new Map(ctx.legal.map((action) => [actionKey(action), action]));
+      for (const wanted of preferences(ctx, style)) {
+        const action = legalByKey.get(actionKey(wanted));
+        if (action) return action;
       }
       return ctx.legal[0]!;
     },

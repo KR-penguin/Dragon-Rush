@@ -69,6 +69,51 @@ describe('built-in bots', () => {
     }
   });
 
+  it.each(['PRE_ROLL', 'POST_MOVE'] as const)(
+    'continues considering upgrades after a thief has already been used in %s',
+    (phase) => {
+      const bot = createHeuristicBot('growth');
+      let state = newGame(2, 42);
+      state.players[0]!.items.thief = 2;
+      state.players[0]!.coins = 50;
+      state.players[1]!.coins = 100;
+      state.pending = { actor: 0, phase };
+      const decide = () =>
+        bot.decide({
+          view: toPublicState(state),
+          seat: 0,
+          legal: getLegalActions(state),
+          random: () => 0.5,
+        });
+
+      const first = decide();
+      expect(first).toEqual({ type: 'USE_THIEF', target: 1 });
+      state = applyAction(state, first).state;
+      expect(state.turn.thiefUsed).toBe(true);
+      expect(state.players[0]!.items.thief).toBe(1);
+      expect(decide().type).toBe('UPGRADE');
+    },
+  );
+
+  it('considers a healing teleport when paid upgrades are exhausted', () => {
+    const state = newGame(2, 42);
+    state.turn.paidUpgradesUsed = state.rules.maxPaidUpgradesPerTurn;
+    state.players[0]!.coins = 50;
+    state.players[0]!.hp = 1;
+    state.players[0]!.position = 23;
+    state.players[0]!.items.teleport = 1;
+    state.players[1]!.coins = 0;
+    state.players[1]!.position = 3;
+
+    const action = createHeuristicBot('growth').decide({
+      view: toPublicState(state),
+      seat: 0,
+      legal: getLegalActions(state),
+      random: () => 0.5,
+    });
+    expect(action).toEqual({ type: 'USE_TELEPORT', tile: 12 });
+  });
+
   it('random bots finish games', () => {
     const end = playOut(
       newGame(3, 9, 40),

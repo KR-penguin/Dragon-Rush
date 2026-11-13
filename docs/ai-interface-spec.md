@@ -391,6 +391,7 @@ createModelPolicy(model: PolicyModel, opts?: { mode?: 'argmax' | 'sample'; tempe
 - 텔레포트 후보 가치는 시계 방향 이동 경로가 출발 칸을 통과하거나 출발 칸에 도착하면 출발 보너스를 한 번 더하고, 목적지 효과를 한 번 적용한다. 사냥은 안전지대·내 칸이 아닌 칸에 혼자 있는 상대 중 승률이 사냥 임계 이상인 대상, 여관은 HP가 성향별 비율 이하이고 잃은 HP가 12 이상일 때 선택한다. PRE_ROLL 상점 선택은 구매 예산이 있고 가장 가까운 상점이 이동 주사위로 닿지 않거나 현재 상점 위일 때 사용한다. 경제 점프는 `max_t V(텔레포트 경로와 착지) − mean_{d=1..rules.movement.rollSides} V(주사위 착지)` ≥ tp_econ(보유 2장 이상이면 −2)을 비교한다. 상점 근접 판정도 `rules.movement.rollSides`를 사용한다.
 - 구매(반복): 위협(어떤 상대의 나에 대한 wp ≥ 0.5)이면 방어막 → 도둑 0개 ∧ 최다 코인 상대 ≥ thief_min이면 도둑 → 텔레포트 < want_tp ∧ coins ≥ 가격 + tp_buy_spare면 텔레포트 → hp ≤ 40% ∧ 잃은 HP ≥ 15면 탈출용 텔레포트. 도둑 사용: 최다 코인 상대가 ≥ 7, 또는 ≥ thief_min이고 3턴 이상 보유, 또는 ≥ 2이고 8턴 이상 보유.
 - 결정 순서: PRE_ROLL(도둑 → 용 도전 → 강화 → 텔레포트 → 주사위), MOVE_ADJUST(d−1/d/d+1의 V 비교, 이득 ≥ 2이거나 보정 없을 때 V ≤ −20(재앙 회피)일 때만 보정), CHOOSE_PVP_TARGET(`wp − (상대 방어막 ∧ wp > 0.5 ? 1 : 0)` 최대, 동률은 코인), SHIELD_DECISION(wp < 0.5면 사용), TRAINING_CHOICE(Δscore 최대), POST_MOVE(구매 → 도둑 → 텔레포트 ①② → 강화 → END_TURN).
+- 각 후보는 엔진이 반환한 합법 행동 목록과 대조한다. 도둑 사용 제한·유료 강화 상한 등으로 후보가 불가능하면 다음 우선순위를 계속 검토한다.
 
 | 성향 | wd / wp | 용 임계 | 사냥 임계 | want_tp | thief_min | inn_frac | tp_econ | tp_buy_spare |
 |---|---|---|---|---|---|---|---|---|
