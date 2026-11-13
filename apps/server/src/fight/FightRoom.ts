@@ -10,13 +10,14 @@ import {
 } from '@dragon-rush/combat';
 import { isActionable } from '@dragon-rush/combat-ai';
 import {
-  decodeFightAck,
-  decodeFightInput,
-  decodeFightPing,
   encodeFightConfirm,
   encodeFightPong,
   encodeFightRelay,
   FIGHT_S2C,
+  MAX_CONFIRM_TICKS,
+  type FightAckPacket,
+  type FightInputPacket,
+  type FightPingPacket,
   type FightStartMsg,
   type FightRequestSync,
   type FightSyncReason,
@@ -31,9 +32,17 @@ import {
   GO_LEAD_MS,
   TICK_MS,
   CONFIRM_EVERY,
+  DESYNC_DEGRADE_AFTER,
+  HASH_EVERY,
   MAX_STEPS_PER_WAKE,
   BACKLOG_DISCONNECT,
+  PREROLL_TICKS,
+  PVE_HOLD_TICKS,
+  PVP_HOLD_TICKS,
   SPECTATOR_BACKLOG_PAUSE,
+  STARVE_CRITICAL_MS,
+  STREAM_ALIVE_MS,
+  SYNC_MIN_INTERVAL_MS,
   combatBuildId,
   inputToMask,
 } from '@dragon-rush/netcode';
@@ -109,7 +118,7 @@ export class FightRoom {
     clearTimeout(this.goTimeout);
     let wall = 0;
     while (!this.authority.result && wall < this.rules.timeLimit[this.launch.setup.kind] + 1) {
-      wall += 120;
+      wall += MAX_STEPS_PER_WAKE;
       this.authority.advanceTo(wall, wall * TICK_MS);
       this.authority.drain();
     }
@@ -164,6 +173,7 @@ export class FightRoom {
   }
 
   roleOf(pid: string): 0 | 1 | null {
+    if (!this.game.canControl(pid)) return null;
     const i = this.players.indexOf(pid);
     return i === 0 || i === 1 ? i : null;
   }
@@ -193,10 +203,10 @@ export class FightRoom {
       combatBuildId: combatBuildId(NETCODE_VERSION),
       seats,
       you: seat === null ? { role: 'spectator' } : { role: 'fighter', seat },
-      prerollTicks: 90,
+      prerollTicks: PREROLL_TICKS,
       maxTicks: this.rules.timeLimit[this.launch.setup.kind],
-      pveHoldTicks: 15,
-      pvpHoldTicks: 6,
+      pveHoldTicks: PVE_HOLD_TICKS,
+      pvpHoldTicks: PVP_HOLD_TICKS,
     };
     this.emit(pid, FIGHT_S2C.start, msg);
     if (this.epochMs !== null) {
@@ -208,7 +218,11 @@ export class FightRoom {
   readyFrom(pid: string): void {
     if (this.roleOf(pid) === null || this.epochMs !== null) return;
     this.ready.add(pid);
-    if (this.players.filter((p): p is string => p !== null).every((p) => this.ready.has(p)))
+    if (
+      this.players
+        .filter((p): p is string => p !== null && this.roleOf(p) !== null)
+        .every((p) => this.ready.has(p))
+    )
       this.go();
   }
 
@@ -220,10 +234,9 @@ export class FightRoom {
       this.emit(pid, FIGHT_S2C.go, { fightId: this.launch.id, epochServerMs: this.epochMs });
   }
 
-  input(pid: string, raw: unknown): void {
-    const p = decodeFightInput(raw);
+  input(pid: string, p: FightInputPacket): void {
     const seat = this.roleOf(pid);
-    if (!p || seat === null || p.fightId !== this.launch.id || this.epochMs === null || this.ended)
+    if (seat === null || p.fightId !== this.launch.id || this.epochMs === null || this.ended)
       return;
     const now = performance.now();
     const elapsed = Math.max(0, now - this.epochMs);
@@ -237,9 +250,7 @@ export class FightRoom {
     this.flushRelays();
   }
 
-  ping(pid: string, raw: unknown): void {
-    const p = decodeFightPing(raw);
-    if (!p) return;
+  ping(pid: string, p: FightPingPacket): void {
     const recv = performance.now();
     this.emit(
       pid,
@@ -248,9 +259,8 @@ export class FightRoom {
     );
   }
 
-  ackFrom(pid: string, raw: unknown): void {
-    const p = decodeFightAck(raw);
-    if (p?.fightId === this.launch.id)
+  ackFrom(pid: string, p: FightAckPacket): void {
+    if (p.fightId === this.launch.id)
       this.ack.set(
         pid,
         Math.max(this.ack.get(pid) ?? 0, Math.min(p.tick, this.sent.get(pid) ?? 0)),
@@ -274,7 +284,8 @@ export class FightRoom {
 
   requestSync(pid: string, reason: FightRequestSync['reason']): void {
     const now = performance.now();
-    if (now - (this.syncRequestedAt.get(pid) ?? Number.NEGATIVE_INFINITY) < 500) return;
+    if (now - (this.syncRequestedAt.get(pid) ?? Number.NEGATIVE_INFINITY) < SYNC_MIN_INTERVAL_MS)
+      return;
     this.syncRequestedAt.set(pid, now);
     if (reason === 'desync') this.desyncs.set(pid, (this.desyncs.get(pid) ?? 0) + 1);
     this.sync(pid, reason);
@@ -309,9 +320,9 @@ export class FightRoom {
       for (
         let firstTick = this.lastConfirm + 1;
         firstTick <= this.authority.tick;
-        firstTick += 32
+        firstTick += MAX_CONFIRM_TICKS
       ) {
-        const lastTick = Math.min(this.authority.tick, firstTick + 31);
+        const lastTick = Math.min(this.authority.tick, firstTick + MAX_CONFIRM_TICKS - 1);
         for (const pid of this.room.members) {
           const backlog = (this.sent.get(pid) ?? 0) - (this.ack.get(pid) ?? 0);
           if (this.roleOf(pid) === null && backlog > SPECTATOR_BACKLOG_PAUSE) {
@@ -334,7 +345,7 @@ export class FightRoom {
             const stream = this.authority.streams[seat];
             if (stream.controller === 'bot') return 0;
             const age = now - this.epochMs! - stream.lastPacketMs;
-            return age >= 750 ? 2 : age >= 250 ? 1 : 0;
+            return age >= STARVE_CRITICAL_MS ? 2 : age >= STREAM_ALIVE_MS ? 1 : 0;
           });
           this.emit(
             pid,
@@ -346,7 +357,8 @@ export class FightRoom {
             }),
           );
           this.sent.set(pid, lastTick);
-          if (lastTick % 30 === 0 && (this.desyncs.get(pid) ?? 0) >= 3) this.sync(pid, 'degraded');
+          if (lastTick % HASH_EVERY === 0 && (this.desyncs.get(pid) ?? 0) >= DESYNC_DEGRADE_AFTER)
+            this.sync(pid, 'degraded');
         }
       }
       this.lastConfirm = this.authority.tick;

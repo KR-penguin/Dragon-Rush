@@ -219,12 +219,12 @@ export class FightAuthority {
       for (const seat of [0, 1] as const) {
         if (this.pve && seat === 1) continue;
         const s = this.streams[seat];
+        if (s.controller === 'human' && nowMs - s.lastPacketMs >= STARVE_BOT_MS)
+          this.takeOver(seat);
         if (s.pendingBotAt === k) {
           s.controller = 'bot';
           s.pendingBotAt = null;
         }
-        if (s.controller === 'human' && nowMs - s.lastPacketMs >= STARVE_BOT_MS)
-          this.takeOver(seat);
         this.handBack(seat);
       }
       let held = false;

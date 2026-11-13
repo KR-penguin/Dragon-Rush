@@ -265,7 +265,7 @@ apps/server/src/
 | `TurnTimer` | 사람 좌석 결정 대기 시간(`TURN_TIMEOUT_MS`). `(actor, phase)`가 바뀔 때만 재시작(같은 phase 내 연속 행동으로 연장 불가). 만료 시 `timeoutAction` 제출. 좌석별 연속 시간 초과 카운터(사람 입력 시 0, 3회면 대리 전환, §8.3) |
 | 좌석 제어 (`GameSession` 내부) | 좌석별 제어 주체: `human`(소켓 입력, 끊김·연속 시간 초과 시 대리 Policy) / `bot`(Random·Heuristic) / `model`(ModelPolicy) |
 | 정책 실행 (`GameSession.runPolicy`) | `pending.actor`가 정책 제어면 `BOT_ACTION_DELAY_MS` 후 `policy.decide()` → `submit()`. 예외·불법 행동이면 HeuristicBot 결과로 대체 |
-| `SessionStore` | `sessionToken` ↔ (playerId, roomCode, seat) 매핑. 재접속 시 좌석 복귀(§8.3) |
+| `SessionStore` | `sessionToken` ↔ (playerId, roomCode, seat) 매핑. 재접속 시 좌석 복귀(§8.3). 연결·방 소속이 모두 끝난 세션은 TTL 정리 |
 | `modelRegistry` | `MODELS_DIR` 허용 파일만 로드·어댑터 검증·캐시(§9) |
 
 ## 7. 프로토콜 (`packages/protocol`)
@@ -334,9 +334,10 @@ sequenceDiagram
 ### 8.3 재접속·대리 플레이
 1. 끊김 → `connected=false`, `seat:status` 방송, 사람이 제어하던 좌석이면 `seat:takeover`로 남은 참가자에게 이름과 봇 인계를 한 번 알림. `RECONNECT_GRACE_MS`(60초) 유예 시작, 대리 Policy = HeuristicBot. 이후 그 좌석의 결정은 `GameSession.runPolicy`가 처리(턴 타이머 불필요).
 2. 유예 안에 같은 `sessionToken`으로 재연결 → 대리 해제·제어권 반환, 예약된 대리 행동은 `stateVersion` 검사로 자연 폐기, `room:state` + `game:snapshot` 전송.
-3. 유예 만료 → (기본안) 좌석을 HeuristicBot 좌석으로 영구 전환하고 토큰은 관전용으로 강등. 이 동작은 [development-plan.md](development-plan.md)의 확인 항목이다.
+3. 유예 만료 → 좌석을 HeuristicBot 좌석으로 영구 전환하고 토큰은 해당 게임에서 관전용으로 강등한다. 이후 보드의 사람 입력을 거절하고 실시간 전투에서도 관전자 역할만 부여한다. 유예 안의 재접속은 기존대로 제어권을 되찾을 수 있다.
 4. 연속 3회 시간 초과 → 연결은 유지한 채 1과 같은 대리로 전환(`seat:status.controlledBy`). 대리 중인 좌석의 소켓에서 어떤 메시지든 오면 정책 행동 예약보다 먼저 대리를 해제하고(카운터 0) 그 메시지를 일반 경로로 처리한다.
 5. 로비 단계에서는 유예 동안 좌석만 유지하고, 만료 시 좌석을 비운다.
+6. 60초 주기의 정리 작업은 연결 중인 세션과 존재하는 방에 소속된 세션을 보존한다. 나머지 세션은 마지막 접속·끊김 이후 `max(ROOM_TTL_MS, RECONNECT_GRACE_MS)`가 지나면 토큰과 플레이어 매핑을 제거한다. 기본 TTL은 10분이며 재접속 유예보다 짧아지지 않는다. 삭제된 방의 소속 정보도 이때 해제한다.
 
 ### 8.4 방어자(비턴 플레이어) 결정
 - `SHIELD_DECISION`의 방어자 차례에서 `pending.actor`는 방어자 좌석이다. 서버의 모든 판단(누구의 입력을 받을지, 누구에게 `legalActions`를 보낼지, 타이머, 대리 봇)은 **`current`가 아니라 `pending.actor` 기준**이므로 별도 분기 없이 처리된다. 다른 클라이언트는 `pending`으로 "○○ 방어막 결정 중 (남은 시간)"을 표시한다. 핫시트에서는 해당 플레이어 이름으로 결정 창을 띄운다.

@@ -184,6 +184,7 @@ export function registerGateway(io: Server, deps: GatewayDeps): { dispose(): voi
     session.roomCode = null;
     if (!room) return;
     socket?.leave(channel(room));
+    fights.get(room.code)?.away(session.playerId);
     if (room.game && !room.game.isOver) room.game.disconnect(session.playerId);
     const empty = room.leave(session.playerId);
     if (empty && room.status !== 'playing') rooms.delete(room.code);
@@ -341,13 +342,19 @@ export function registerGateway(io: Server, deps: GatewayDeps): { dispose(): voi
     const ackLimit = createRateLimiter(10);
     const otherLimit = createRateLimiter(10);
     socket.on(FIGHT_C2S.input, (raw: unknown) => {
-      if (inputLimit() && decodeFightInput(raw)) fight()?.input(session.playerId, raw);
+      if (!inputLimit()) return;
+      const packet = decodeFightInput(raw);
+      if (packet) fight()?.input(session.playerId, packet);
     });
     socket.on(FIGHT_C2S.ping, (raw: unknown) => {
-      if (pingLimit() && decodeFightPing(raw)) fight()?.ping(session.playerId, raw);
+      if (!pingLimit()) return;
+      const packet = decodeFightPing(raw);
+      if (packet) fight()?.ping(session.playerId, packet);
     });
     socket.on(FIGHT_C2S.ack, (raw: unknown) => {
-      if (ackLimit() && decodeFightAck(raw)) fight()?.ackFrom(session.playerId, raw);
+      if (!ackLimit()) return;
+      const packet = decodeFightAck(raw);
+      if (packet) fight()?.ackFrom(session.playerId, packet);
     });
     socket.on(FIGHT_C2S.ready, (raw: unknown) => {
       const p = FightReadySchema.safeParse(raw);
@@ -398,8 +405,16 @@ export function registerGateway(io: Server, deps: GatewayDeps): { dispose(): voi
   });
 
   const sweeper = setInterval(() => {
-    rooms.sweep(config.roomTtlMs, (r) =>
+    const removed = rooms.sweep(config.roomTtlMs, (r) =>
       [...r.members].some((pid) => sessions.player(pid)?.socketId),
+    );
+    for (const code of removed) {
+      fights.get(code)?.dispose();
+      fights.delete(code);
+    }
+    sessions.sweep(
+      Math.max(config.roomTtlMs, config.reconnectGraceMs),
+      (code) => rooms.get(code) !== null,
     );
   }, 60_000);
   sweeper.unref();

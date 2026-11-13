@@ -46,14 +46,10 @@ export const STARVE_CRITICAL_MS = 750;
 export const STARVE_BOT_MS = 1500;
 export const BOT_TENURE_TICKS = 180;
 export const HANDBACK_BUFFERED_TICKS = 3;
-/** Scripted bots decide every N live ticks and hold the input in between. */
-export const BOT_DECISION_TICKS = 4;
 
 /** Downlink backlog (ticks between last confirm sent and the recipient's ack). */
-export const BACKLOG_CRITICAL = 60;
 export const BACKLOG_DISCONNECT = 180;
 export const SPECTATOR_BACKLOG_PAUSE = 90;
-export const SPECTATOR_BACKLOG_RESUME = 10;
 
 /** Desync policy: after this many syncs for one socket, sync every HASH_EVERY ticks. */
 export const DESYNC_DEGRADE_AFTER = 3;

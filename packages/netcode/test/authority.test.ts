@@ -2,7 +2,7 @@ import { DEFAULT_COMBAT_RULES, hashCombatState, type CombatSetup } from '@dragon
 import { describe, expect, it } from 'vitest';
 import { FightAuthority } from '../src/authority';
 import { RollbackSession } from '../src/client/rollbackSession';
-import { TICK_MS } from '../src/constants';
+import { STARVE_BOT_MS, TICK_MS } from '../src/constants';
 
 const fighter = (job: 'swordsman' | 'archer') => ({
   job,
@@ -159,5 +159,27 @@ describe('server-authoritative fight', () => {
     server.accept(1, packet(2, 0), 2, 2 * TICK_MS);
     server.advanceTo(2, 2 * TICK_MS);
     expect((server.log[1]?.flags ?? 0) & 4).toBe(4);
+  });
+
+  it('applies starvation takeover when no future human input is buffered', () => {
+    let botCalls = 0;
+    const server = new FightAuthority({
+      fightId: 7,
+      setup,
+      seed: 42,
+      rules: DEFAULT_COMBAT_RULES,
+      controllers: ['human', 'human'],
+      botMask: () => {
+        botCalls += 1;
+        return 3;
+      },
+    });
+    const endTick = Math.ceil(STARVE_BOT_MS / TICK_MS) + 10;
+    for (let tick = 1; tick <= endTick; tick++) server.advanceTo(tick, tick * TICK_MS);
+
+    expect(server.streams.map((stream) => stream.controller)).toEqual(['bot', 'bot']);
+    expect(server.streams.map((stream) => stream.pendingBotAt)).toEqual([null, null]);
+    expect(botCalls).toBeGreaterThan(0);
+    expect(server.log.at(-1)?.a).toBe(3);
   });
 });

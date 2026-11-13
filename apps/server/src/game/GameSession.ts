@@ -155,14 +155,22 @@ export class GameSession {
     return s ? s.engineSeat : null;
   }
 
+  /** Temporary proxies can be reclaimed; expired reconnect grace makes the seat read-only. */
+  canControl(playerId: string): boolean {
+    const ctl = this.seats.find((seat) => seat.setup.playerId === playerId);
+    return !!ctl && ctl.setup.kind === 'human' && ctl.connected && !ctl.permanentBot;
+  }
+
   submit(seat: SeatId, action: Action, stateVersion: number, source: SubmitSource): number {
     if (this.disposed || !this.state.pending)
       throw new ProtocolError('ILLEGAL_ACTION', 'game is over');
     if (stateVersion !== this._version)
       throw new ProtocolError('STALE_VERSION', `version is ${this._version}`);
     if (this.state.pending.actor !== seat) throw new ProtocolError('NOT_YOUR_TURN');
-    if (!isLegalAction(this.state, action)) throw new ProtocolError('ILLEGAL_ACTION');
     const ctl = this.seats[seat]!;
+    if (source === 'human' && !this.canControl(ctl.setup.playerId ?? ''))
+      throw new ProtocolError('NOT_YOUR_TURN');
+    if (!isLegalAction(this.state, action)) throw new ProtocolError('ILLEGAL_ACTION');
     if (source === 'human') ctl.timeouts = 0;
     const r = this.opts.quickCombat
       ? autoResolveCombat(applyAction(this.state, action))
