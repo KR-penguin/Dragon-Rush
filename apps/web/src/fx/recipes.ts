@@ -8,7 +8,7 @@ import type { FxAnchor, FxCue } from './types';
  */
 export const TRAUMA = {
   diceLand: 0.32,
-  thiefOrTeleport: 0.35,
+  teleport: 0.35,
   badTile: 0.45,
   challenge: 0.55,
   elimination: 0.63,

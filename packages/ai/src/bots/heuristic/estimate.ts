@@ -20,15 +20,18 @@ export interface Profile {
   readonly indomitable: number;
 }
 
-export const profileOf = (p: PlayerState, rules: RulesConfig): Profile => ({
-  job: p.job,
-  hp: p.hp,
-  maxHp: p.maxHp,
-  atk: p.atk,
-  def: p.def,
-  indomitable:
-    p.job === 'swordsman' && !p.passive.indomitableUsed ? rules.passives.indomitableUses : 0,
-});
+export const profileOf = (p: PlayerState, rules: RulesConfig): Profile => {
+  const maxHp = p.maxHp + (p.items.princeTotem > 0 ? rules.princeTotemMaxHpBonus : 0);
+  return {
+    job: p.job,
+    hp: p.items.princeTotem > 0 ? maxHp : p.hp,
+    maxHp,
+    atk: p.atk,
+    def: p.def,
+    indomitable:
+      p.job === 'swordsman' && !p.passive.indomitableUsed ? rules.passives.indomitableUses : 0,
+  };
+};
 
 export const dragonProfile = (rules: RulesConfig): Profile => ({
   job: 'dragon',

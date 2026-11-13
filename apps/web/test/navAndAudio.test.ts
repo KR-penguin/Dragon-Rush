@@ -101,9 +101,7 @@ describe('sound mapping', () => {
     expect(sfxForEvent({ type: 'DiceRolled', seat: 0, value: 3 }, [0])).toBe('dice_roll');
     expect(sfxForEvent({ type: 'ShieldUsed', seat: 0, against: 1 }, [0])).toBe('shield');
     expect(sfxForEvent({ type: 'ItemUsed', seat: 0, item: 'shield' }, [0])).toBeNull();
-    expect(sfxForEvent({ type: 'ItemUsed', seat: 0, item: 'thief', target: 1 }, [0])).toBe(
-      'item_use',
-    );
+    expect(sfxForEvent({ type: 'ItemUsed', seat: 0, item: 'princeTotem' }, [0])).toBe('item_use');
     const hit = {
       type: 'CombatHit',
       kind: 'dragonFight',

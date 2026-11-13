@@ -137,7 +137,7 @@ describe('external combat: applyCombatResult for duels', () => {
   const loaded = (d: GameState) => {
     d.players[0]!.coins = 9;
     d.players[1]!.coins = 13;
-    d.players[1]!.items.thief = 2;
+    d.players[1]!.items.teleport = 2;
   };
 
   it('arriver wins: defender eliminated, loot taken, then the tile resolves', () => {
@@ -150,7 +150,7 @@ describe('external combat: applyCombatResult for duels', () => {
         from: 1,
         to: 0,
         coins: 6,
-        items: { teleport: 0, shield: 0, thief: 2 },
+        items: { teleport: 2, shield: 0, princeTotem: 0 },
       },
       { type: 'PlayerEliminated', seat: 1, by: 0, round: 4 },
       { type: 'EffectApplied', seat: 0, effect: 'coins', delta: 30, after: 45 },
@@ -162,7 +162,7 @@ describe('external combat: applyCombatResult for duels', () => {
     expect(r.state.players[0]).toMatchObject({
       hp: 40,
       coins: 9 + 6 + 30,
-      items: { teleport: 0, shield: 0, thief: 2 },
+      items: { teleport: 2, shield: 0, princeTotem: 0 },
     });
     expect(r.state.players[1]).toMatchObject({ alive: false, hp: 0, coins: 0 });
     expect(r.state.combat).toBeNull();
@@ -180,7 +180,7 @@ describe('external combat: applyCombatResult for duels', () => {
         from: 0,
         to: 1,
         coins: 4,
-        items: { teleport: 0, shield: 0, thief: 0 },
+        items: { teleport: 0, shield: 0, princeTotem: 0 },
       },
       { type: 'PlayerEliminated', seat: 0, by: 1, round: 4 },
     ]);

@@ -126,7 +126,7 @@ function visualCues(e: GameEvent, ctx: FxEventContext): FxCue[] {
           { type: 'burst', preset: 'magic', at: tile(e.to), delayMs: arrive },
           { type: 'ring', preset: 'heavy', at: tile(e.to), color: '#B38CFF', delayMs: arrive },
           { type: 'punch', at: tile(e.to), kind: 'glow', delayMs: arrive },
-          { type: 'shake', trauma: TRAUMA.thiefOrTeleport, delayMs: arrive },
+          { type: 'shake', trauma: TRAUMA.teleport, delayMs: arrive },
           { type: 'speedLines', strength: 0.9, delayMs: arrive },
         ];
       }
@@ -200,6 +200,19 @@ function visualCues(e: GameEvent, ctx: FxEventContext): FxCue[] {
           ];
         case 'stat':
         case 'maxHp':
+          if (e.delta < 0) {
+            return [
+              {
+                type: 'text',
+                kind: 'callout',
+                text:
+                  e.effect === 'maxHp'
+                    ? '최대 HP 복귀'
+                    : `${STAT_LABEL[e.stat ?? 'atk']} ${e.delta}`,
+                at,
+              },
+            ];
+          }
           return [
             { type: 'burst', preset: 'goldSparkle', at },
             {
@@ -250,15 +263,12 @@ function visualCues(e: GameEvent, ctx: FxEventContext): FxCue[] {
       ];
 
     case 'ItemUsed':
-      return e.item === 'thief'
-        ? [...magicCues(seat(e.seat), 0.7), { type: 'shake', trauma: TRAUMA.thiefOrTeleport }]
+      return e.item === 'princeTotem'
+        ? [
+            ...magicCues(seat(e.seat), 0.7),
+            { type: 'text', kind: 'callout', text: ITEM_LABEL[e.item], at: seat(e.seat) },
+          ]
         : [];
-
-    case 'CoinsStolen':
-      return [
-        { type: 'coins', from: seat(e.from), to: hud(e.to, 'coins'), coins: e.amount },
-        { type: 'text', kind: 'loss', value: e.amount, at: seat(e.from) },
-      ];
 
     case 'PvpTriggered':
       return [

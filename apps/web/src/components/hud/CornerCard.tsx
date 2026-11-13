@@ -28,7 +28,7 @@ interface CornerCardProps {
   thinking: boolean;
   countdown: number | null;
   reduced: boolean;
-  /** Targeting (thief): this card can be picked. */
+  /** Targeting: this card can be picked. */
   onPick?: (() => void) | null;
   /** Targeting is on and this card is not a target. */
   dimmed?: boolean;
@@ -164,7 +164,7 @@ export function CornerCard({
         className={className}
         style={style}
         onClick={onPick}
-        aria-label={`${card.name}에게서 훔치기`}
+        aria-label={`${card.name} 선택`}
         {...fxAnchorProps({ kind: 'seat', id: card.seat })}
       >
         {body}

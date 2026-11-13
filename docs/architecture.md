@@ -10,7 +10,7 @@
 | P2 | 보드 규칙 단일 출처 | 보드 행동·전투 결과 반영은 엔진의 `getLegalActions`·`applyAction`·`applyCombatResult` 경계를 통한다. 보드 밸런스는 `RulesConfig`, 실시간 전투 수치는 `DEFAULT_COMBAT_RULES`가 담당한다. |
 | P3 | 서버 권위 | 온라인 보드의 행동·룰렛 결과는 서버 엔진이 확정한다. 실시간 전투는 서버 `FightAuthority`가 양측 입력으로 진행·확정하며, 확정 결과만 보드 엔진에 적용한다. |
 | P4 | 단방향 의존 | 하위 패키지는 상위 패키지를 모른다(§2). 순환 의존은 workspace 의존 선언과 lint로 차단. |
-| P5 | 스펙 버전 관리 | 보드 `rpgboard-env/2`·`obs_v4`(498)·`act_v3`(47), 전투 `cobs_v1`·`cact_v1`, `PROTOCOL_VERSION`, 보드·전투 규칙 버전을 노출한다. 호환이 깨지는 변경은 해당 버전과 계약·골든 테스트 갱신을 동반한다. |
+| P5 | 스펙 버전 관리 | 보드 `rpgboard-env/2`·`obs_v5`(498)·`act_v4`(44), 전투 `cobs_v1`·`cact_v1`, `PROTOCOL_VERSION`, 보드·전투 규칙 버전을 노출한다. 호환이 깨지는 변경은 해당 버전과 계약·골든 테스트 갱신을 동반한다. |
 | P6 | 함수형 코어 / 명령형 셸 | 계산(엔진·인코더·정책 forward)은 순수 함수, 부수효과(소켓·타이머·파일·렌더)는 가장자리(server/web/sim)에만. 클래스는 셸의 상태 보유 객체에만 쓴다. |
 
 ## 2. 모노레포 구조와 의존 방향
@@ -20,7 +20,7 @@
 |---|---|---|
 | `@dragon-rush/engine` | 상태 전이, 합법 행동, `DEFAULT_RULES`, PRNG | 없음 |
 | `@dragon-rush/protocol` | 보드·전투 메시지 타입·zod 스키마, 전투 입력 wire 코덱, `PROTOCOL_VERSION`, 오류 코드 | engine, combat, zod |
-| `@dragon-rush/ai` | 보드 `obs_v4`/`act_v3` 인코더·코덱·마스크, 스크립트 봇, 보드 정책 모델 인터페이스 | engine, zod |
+| `@dragon-rush/ai` | 보드 `obs_v5`/`act_v4` 인코더·코덱·마스크, 스크립트 봇, 보드 정책 모델 인터페이스 | engine, zod |
 | `@dragon-rush/combat` | 결정적 60Hz 실시간 전투와 결과 | engine |
 | `@dragon-rush/combat-ai` | 전투 `cobs_v1`/`cact_v1`, 스크립트 봇·모델 정책, 보드 스탯 → 전투 설정 | combat, engine |
 | `@dragon-rush/netcode` | 서버 전투 권위, 클라이언트 예측·롤백, 관전자 재생 | combat, protocol |
@@ -69,7 +69,7 @@ interface GameState {                      // 엔진은 작업 사본을 만들�
   players: PlayerState[];                  // 좌석 순, 탈락자 포함(alive=false)
   current: SeatId; round: number; seatOrigin: number[];  // 좌석 번호 = 턴 순서(createGame이 시드로 셔플 후 재번호), seatOrigin[s] = GameSetup 좌석 인덱스
   pending: PendingDecision | null;         // { actor, phase }. COMBAT에서는 보드 합법 행동이 없음
-  turn: TurnContext;                       // resting, rolled, dice, teleportsUsed, thiefUsed, canBuy 등 턴 한정 값
+  turn: TurnContext;                       // resting, rolled, dice, teleportsUsed, itemsBought, canBuy 등 턴 한정 값
   pvp: PvpContext | null;                  // 진행 중 PvP: arriver, candidates, target, 방어막 질의 단계
   combat: CombatRequest | null;            // 외부 전투 요청: { kind, a, b }; b=null이면 용
   rng: RngState;                           // 유일한 비공개 정보
@@ -99,7 +99,7 @@ stateDiagram-v2
   turnStart --> PRE_ROLL : 정상 턴
   turnStart --> PRE_ROLL : 쉬는 턴 (skipNextTurn, 이동 불가)
   PRE_ROLL --> turnEnd : END_TURN (쉬는 턴만, TurnSkipped)
-  PRE_ROLL --> PRE_ROLL : UPGRADE, USE_THIEF
+  PRE_ROLL --> PRE_ROLL : UPGRADE
   PRE_ROLL --> MOVE_ADJUST : ROLL_DICE (닌자 ∧ 쿨다운 0)
   PRE_ROLL --> landing : ROLL_DICE 후 이동, USE_TELEPORT
   PRE_ROLL --> COMBAT : CHALLENGE_DRAGON (external)
@@ -116,7 +116,7 @@ stateDiagram-v2
   afterCombat --> TRAINING_CHOICE : 생존, 수련장
   afterCombat --> POST_MOVE : 생존, 칸 이벤트 자동 해결
   TRAINING_CHOICE --> POST_MOVE : CHOOSE_TRAINING_STAT
-  POST_MOVE --> POST_MOVE : BUY_ITEM, UPGRADE, USE_THIEF
+  POST_MOVE --> POST_MOVE : BUY_ITEM, UPGRADE
   POST_MOVE --> landing : USE_TELEPORT (perTurnLimit 이내, 기본 null = 무제한)
   POST_MOVE --> turnEnd : END_TURN
   turnEnd --> turnStart : 다음 생존자
@@ -129,12 +129,12 @@ stateDiagram-v2
 type Action =                                                     // UpgradeStat = 'atk' | 'def' | 'maxHp'
   | { type: 'ROLL_DICE' } | { type: 'END_TURN' } | { type: 'CHALLENGE_DRAGON' }
   | { type: 'UPGRADE'; stat: UpgradeStat } | { type: 'CHOOSE_TRAINING_STAT'; stat: UpgradeStat }
-  | { type: 'BUY_ITEM'; item: ItemId } | { type: 'USE_TELEPORT'; tile: number }   // ItemId = 'teleport' | 'shield' | 'thief'
-  | { type: 'USE_THIEF'; target: SeatId } | { type: 'CHOOSE_PVP_TARGET'; target: SeatId }
+  | { type: 'BUY_ITEM'; item: ItemId } | { type: 'USE_TELEPORT'; tile: number }   // ItemId = 'teleport' | 'shield' | 'princeTotem'
+  | { type: 'CHOOSE_PVP_TARGET'; target: SeatId }
   | { type: 'ADJUST_MOVE'; delta: -1 | 0 | 1 } | { type: 'SHIELD_DECISION'; use: boolean };
 ```
-- 엔진 `Action`의 대상은 **절대 좌석**(`SeatId`). `act_v3`의 상대 좌석(1~3) 표현은 `packages/ai` 코덱이 변환한다.
-- `GameEvent`는 `type` 판별 유니온(PascalCase): `RoundStarted`, `TurnStarted`, `TurnSkipped`, `DiceRolled`, `MoveAdjusted`, `Moved{from,to,steps,via}`, `StartBonus`, `TileResolved`, `MysteryCardDrawn`, `EffectApplied`, `StatUpgraded`, `ItemBought`, `ItemUsed`, `CoinsStolen`, `PvpTriggered`, `PvpTargetChosen`, `ShieldUsed`, `CombatStarted{kind:'duel'|'dragonFight'}`, `CombatHit{attacker,defender,roll,damage,evaded,breath,rage,firstStrike,hpAfter}`, `PassiveTriggered`, `CombatEnded`, `PlayerEliminated`, `LootTransferred`, `TurnEnded`, `GameEnded{outcome}`. 정의는 `packages/engine/src/types.ts`.
+- 엔진 `Action`의 대상은 **절대 좌석**(`SeatId`). `act_v4`의 상대 좌석(1~3) 표현은 `packages/ai` 코덱이 변환한다.
+- `GameEvent`는 `type` 판별 유니온(PascalCase): `RoundStarted`, `TurnStarted`, `TurnSkipped`, `DiceRolled`, `MoveAdjusted`, `Moved{from,to,steps,via}`, `StartBonus`, `TileResolved`, `MysteryCardDrawn`, `EffectApplied`, `StatUpgraded`, `ItemBought`, `ItemUsed`, `PvpTriggered`, `PvpTargetChosen`, `ShieldUsed`, `CombatStarted{kind:'duel'|'dragonFight'}`, `CombatHit{attacker,defender,roll,damage,evaded,breath,rage,firstStrike,hpAfter}`, `PassiveTriggered`, `CombatEnded`, `PlayerEliminated`, `LootTransferred`, `TurnEnded`, `GameEnded{outcome}`. 정의는 `packages/engine/src/types.ts`.
 - 이벤트는 **결과값을 담는다**(`hpAfter`, `coinsAfter` 등). UI·로그는 규칙을 재계산하지 않고 이벤트만으로 연출한다. 이벤트에 RNG 상태는 없다.
 - `CombatHit`은 엔진 주사위 전투의 타격 이벤트다. `external` 실시간 전투의 틱·타격 이벤트는 `packages/combat` 전투 스트림에서 나오며, 보드에는 `CombatStarted`·`CombatEnded`와 정산 이벤트가 남는다.
 
@@ -147,18 +147,18 @@ interface RulesConfig {
   eventHpFloor: number; coinShortfallHpPerCoin: number; maxPaidUpgradesPerTurn: number;
   jobs: Record<JobId, JobDef>;                       // 직업별 기본 스탯. 패시브 수치는 passives에 둠
   upgrades: Record<UpgradeStat, { baseCost: number; costStep: number; amount: number }>;   // 스탯 상한 없음
-  items: Record<ItemId, ItemDef>;                    // price, perTurnLimit(teleport: null = 무제한, thief: 1)
+  items: Record<ItemId, ItemDef>;                    // price, perTurnLimit(teleport: null = 무제한; 토템은 턴 한도와 별개로 전투당 1개 자동 소모)
   board: TileDef[]; mysteryDeck: MysteryCardDef[];   // TileDef = { id, name, safe, effects: EffectSpec[] }
   boardVariation: { fixedTiles: number[]; good: TileDef[]; bad: TileDef[]; newPerKind: number } | null;
   passives: { indomitableUses: number; archerFirstStrikeBonus: number; mageDefDivisor: number;
     ninjaEvadeDie: number; ninjaAdjustCooldown: number; berserkerRageNum: number; berserkerRageDen: number };
-  thiefStealAmount: number;
+  maxItemsBoughtPerTurn: number; princeTotemMaxHpBonus: number;
   movement: { rollSides: number };                  // 보드 룰렛: 기본 10
   combat: { maxExchanges: number; dieSides: number; mode: 'dice' | 'external' };
   dragon: { hp: number; atk: number; def: number; breathEvery: number; damageDealtScale: number };
 }
 ```
-- 기본값은 `engine/src/rules/defaultRules.ts`의 `DEFAULT_RULES` 한 곳(수치 정의의 정본은 [game-design.md](game-design.md), 일치는 골든 테스트로 보장). 현행 `rush-11`은 `movement.rollSides = 10`과 빠른 전투의 `combat.dieSides = 6`을 분리하고 유료 강화를 턴당 3회로 제한한다. 매 게임 시드로 24칸 보드를 생성해 0·6·12·18을 고정하고, 기존 이동 칸 20개 중 16개와 새 좋은 칸 2개·나쁜 칸 2개를 나머지 20자리에 섞는다. 첫 룰렛으로 도달 가능한 1~10번에는 약초 군락·달빛 우물 같은 순수 HP 회복 칸을 두지 않는다. 생성된 보드는 `state.rules.board`에 담기며 `obs_v4`가 모든 칸의 효과를 전달한다. 직업은 좌석 간 중복 선택이 가능하다. 닌자 −1/0/+1 중 어느 선택이든 쿨다운 2를 시작해 다음 자기 턴에는 보정할 수 없고 그다음 턴부터 가능하다. 텔레포트는 시계 방향으로 1~23칸 이동하며 0번 통과·도착 보너스를 받고 목적지에서만 이벤트·PvP를 처리한다. `ROLL_DICE`·`DiceRolled` 식별자는 호환성을 위해 유지한다. `createGame`이 `validateRules`로 형태(칸 수, 직업 5종 등)를 검증하며, 다른 코드에 수치 리터럴을 하드코딩하지 않는다.
+- 기본값은 `engine/src/rules/defaultRules.ts`의 `DEFAULT_RULES` 한 곳(수치 정의의 정본은 [game-design.md](game-design.md), 일치는 골든 테스트로 보장). 현행 `rush-12`은 `movement.rollSides = 10`과 빠른 전투의 `combat.dieSides = 6`을 분리하고 유료 강화를 턴당 3회, 상점 아이템 구매 합계를 턴당 3개로 제한한다. 왕자의 토템은 가격 15이며 실제 전투 시작에 참가자당 1개를 자동 소모해 해당 전투 동안 최대 HP를 15 올리고 완전히 회복시킨다. 전투가 끝나면 원래 최대 HP로 되돌리고 남은 HP는 그 값 이하로 제한한다. 방어막으로 취소된 결투에서는 발동하지 않는다. 매 게임 시드로 24칸 보드를 생성해 0·6·12·18을 고정하고, 기존 이동 칸 20개 중 16개와 새 좋은 칸 2개·나쁜 칸 2개를 나머지 20자리에 섞는다. 첫 룰렛으로 도달 가능한 1~10번에는 약초 군락·달빛 우물 같은 순수 HP 회복 칸을 두지 않는다. 생성된 보드는 `state.rules.board`에 담기며 `obs_v5`가 모든 칸의 효과를 전달한다. 직업은 좌석 간 중복 선택이 가능하다. 닌자 −1/0/+1 중 어느 선택이든 쿨다운 2를 시작해 다음 자기 턴에는 보정할 수 없고 그다음 턴부터 가능하다. 텔레포트는 시계 방향으로 1~23칸 이동하며 0번 통과·도착 보너스를 받고 목적지에서만 이벤트·PvP를 처리한다. `ROLL_DICE`·`DiceRolled` 식별자는 호환성을 위해 유지한다. `createGame`이 `validateRules`로 형태(칸 수, 직업 5종 등)를 검증하며, 다른 코드에 수치 리터럴을 하드코딩하지 않는다.
 
 ### 3.6 Seeded PRNG
 - 알고리즘: **sfc32** (상태 128비트 = uint32 × 4). `seed`(최대 2^53 정수)를 상태로 확장 후 워밍업.
@@ -174,7 +174,7 @@ interface RulesConfig {
 | 계층 | 모듈 | 책임 |
 |---|---|---|
 | 진입 | `index.ts`, `reducer.ts`, `legal.ts`, `public.ts`, `state.ts` | 공개 API export, action 디스패치와 단일 합법 행동 자동 적용, phase별 합법 행동 생성기(`LEGAL_BY_PHASE`), `toPublicState`, `createGame`·`cloneState` |
-| 흐름 | `turn.ts`, `movement.ts`, `duel.ts`, `dragon.ts`, `fight.ts`, `items.ts` | 턴 시작/종료·라운드·승리 판정 / 이동·착지 / PvP·용전 / 전투 시작·외부 결과 검증·전투 후 재개 / 구매·도둑·방어막 |
+| 흐름 | `turn.ts`, `movement.ts`, `duel.ts`, `dragon.ts`, `fight.ts`, `items.ts` | 턴 시작/종료·라운드·승리 판정 / 이동·착지 / PvP·용전 / 전투 시작·외부 결과 검증·전투 후 재개 / 구매·토템·방어막 |
 | 규칙 부품 | `combat.ts`, `jobs.ts`, `economy.ts`, `tiles.ts`, `board.ts` | 공통 전투 루프(선공·교환·상한) / 패시브 훅 맵(`PASSIVES`) / 강화 비용·코인 증감 / 효과 핸들러 맵·미지의 동굴 / 링 좌표·출발 칸 통과 |
 | 기반 | `ctx.ts`, `rng.ts`, `rules/`, `types.ts` | 작업 사본 `Ctx`·`roll` / sfc32·`rollDie`·`shuffle` / `DEFAULT_RULES`·`validateRules` / 상태·행동·이벤트·규칙 타입 |
 
@@ -270,7 +270,7 @@ apps/server/src/
 
 ## 7. 프로토콜 (`packages/protocol`)
 - 전송: Socket.IO. 이벤트 이름은 `domain:verb`. `room:*`·`game:*` 요청은 ack 콜백을 받는다: `Ack<T> = { ok: true; data: T } | { ok: false; error: { code: ErrorCode; message: string } }`. 고빈도 `fight:*` 입력·확정 스트림은 별도 wire 계약이다(§12.3).
-- 핸드셰이크: Socket.IO `auth: { protocolVersion, sessionToken? }`. 버전 불일치 시 `PROTOCOL_MISMATCH`로 연결 거부 → 클라이언트는 새로고침 안내. 현재 `PROTOCOL_VERSION = 2`; 호환이 깨질 때만 증가한다. 보드 행동과 전투 입력의 좌석은 서버가 `socket → playerId → seat`로 결정하므로 남의 좌석으로 제출할 수 없다.
+- 핸드셰이크: Socket.IO `auth: { protocolVersion, sessionToken? }`. 버전 불일치 시 `PROTOCOL_MISMATCH`로 연결 거부 → 클라이언트는 새로고침 안내. 현재 `PROTOCOL_VERSION = 3`; 호환이 깨질 때만 증가한다. 보드 행동과 전투 입력의 좌석은 서버가 `socket → playerId → seat`로 결정하므로 남의 좌석으로 제출할 수 없다.
 - 좌석 번호 체계: `room:*`의 `seat`는 로비 좌석 번호, `game:*`·`seat:status`·`pending`의 좌석은 엔진 `SeatId`(턴 순서)다. 둘의 대응은 `GameState.seatOrigin`으로 얻고 `GameSession`이 보관한다.
 
 | 방향 | 이름 | 페이로드 요약 | 설명 |
@@ -350,13 +350,13 @@ sequenceDiagram
 ```ts
 interface Policy { readonly id: string; decide(ctx: DecisionContext): Action }
 interface DecisionContext { view: PublicGameState; seat: SeatId; legal: readonly Action[]; random: () => number } // random = 정책 전용 RNG
-interface PolicyModel { readonly meta: ModelMeta; forward(obs: Float32Array): Float32Array }       // act_v3 크기의 점수
+interface PolicyModel { readonly meta: ModelMeta; forward(obs: Float32Array): Float32Array }       // act_v4 크기의 점수
 type WeightAdapter = (raw: unknown) => PolicyModel;                                                // 형식 오류 시 ModelFormatError
 ```
 - 정책 입력은 항상 `PublicGameState` → 봇도 RNG를 볼 수 없고, `encodeObservation(view, seat)` 결과가 env·서버·브라우저에서 동일하다.
 - `ModelPolicy` = `encodeObservation` → `PolicyModel.forward` → 마스크 적용(불법 행동 제외) → argmax 또는 샘플링 → 코덱으로 `Action` 복원.
 - **가중치 JSON 포맷은 사용자가 정의**한다. 어댑터 자리는 `packages/ai/src/model/adapters/index.ts`(`USER_WEIGHT_ADAPTER`, 현재 `null`)이며 서버 `modelRegistry`와 `pnpm sim --bots model:<id>`가 이것을 쓴다. 포맷 수령 후 구현하며, 그 전까지 model 좌석은 UI에서 "준비 중"으로 비활성화한다. 통합에 필요한 정보(네트워크 구조, 활성화, 행렬 배치, 입력 정규화, actor 출력이 logits/확률 중 무엇인지, 패리티 샘플) 요청은 [ai-interface-spec.md](ai-interface-spec.md)에 정리한다.
-- `modelRegistry`: 서버 시작 시 `MODELS_DIR`만 스캔, 파일명 `^[a-z0-9_-]+\.json$`, 크기 상한, `JSON.parse`만 사용(eval 없음), 어댑터 검증 통과 + 메타에 `obs_v4`/`act_v3` 표기가 있으면 일치 확인 후 등록. 실패 파일은 제외하고 로그만 남긴다.
+- `modelRegistry`: 서버 시작 시 `MODELS_DIR`만 스캔, 파일명 `^[a-z0-9_-]+\.json$`, 크기 상한, `JSON.parse`만 사용(eval 없음), 어댑터 검증 통과 + 메타에 `obs_v5`/`act_v4` 표기가 있으면 일치 확인 후 등록. 실패 파일은 제외하고 로그만 남긴다.
 - 모델 **업로드는 범위 밖(향후)**. 서버에 모델을 추가하려면 운영자가 `models/`에 파일을 둔다. `PolicyModel`은 보드 행동 모델, `CombatPolicyModel`은 전투 행동 모델의 계약이다. 제거된 내부 전투 결과 예측기는 두 정책 모델과 관계없다.
 
 ## 10. 보드·전투 학습 환경 (`packages/sim`)
@@ -365,7 +365,7 @@ Python (사용자 트레이너) ─┬─ RPGBoardEnv/RPGBoardVecEnv ── stdi
                           └─ CombatEnv/CombatVecEnv ──── stdio JSONL ──▶ combat-env-server (전투)
 ```
 - 두 env 서버는 별도 Node 프로세스이며 각각 다중 인스턴스를 실행한다. stdout은 프로토콜 전용, 로그는 stderr다. Python 클라이언트는 numpy만 의존한다. 보드 정책 학습과 전투 정책 학습의 모델·관측·행동 계약도 별개다. 학습 코드(트레이너)는 저장소 범위 밖이며 사용자가 담당한다.
-- 보드 env(`rpgboard-env/2`)는 `toPublicState` → `encodeObservation`(`obs_v4` 498개/`act_v3` 47개), `combat_resolver: 'sim' | 'dice'`를 제공한다. 관측에는 매 게임 생성된 24칸의 효과가 포함된다. 기본 `sim`은 스크립트 봇으로 실제 60Hz 전투를 끝까지 실행하고, `dice`는 선택형 빠른 전투다. `expect.combat_resolver` 불일치는 `VERSION_MISMATCH`다. 자세한 관측·보상·배치 형식은 [ai-interface-spec.md](ai-interface-spec.md)가 정본이다.
+- 보드 env(`rpgboard-env/2`)는 `toPublicState` → `encodeObservation`(`obs_v5` 498개/`act_v4` 44개), `combat_resolver: 'sim' | 'dice'`를 제공한다. 관측에는 매 게임 생성된 24칸의 효과가 포함된다. 기본 `sim`은 스크립트 봇으로 실제 60Hz 전투를 끝까지 실행하고, `dice`는 선택형 빠른 전투다. `expect.combat_resolver` 불일치는 `VERSION_MISMATCH`다. 자세한 관측·보상·배치 형식은 [ai-interface-spec.md](ai-interface-spec.md)가 정본이다.
 - 전투 env는 `cobs_v1`/`cact_v1`, `controlled: 'both' | 'p0'`, 반응 지연·action repeat·미러·스탯 샘플러를 제공한다. `CombatEnv`/`CombatVecEnv`의 프로토콜·보상은 [combat-ai-spec.md](combat-ai-spec.md)가 정본이다.
 - `pnpm sim`은 보드 대량 대전과 `--combat dice|sim`, `--log-fights <path>`를 지원한다. 내부 결과 예측기와 `pnpm outcome`, `--outcome-model`은 제거됐다.
 - **결과의 경계**: `GameState.outcome`/`GameEnded`는 확정된 게임 승패이고, `CombatResult`는 확정된 한 전투의 결과다. 온라인 실시간 전투는 서버 `FightAuthority`가 확정한 결과를 적용한다. 보드 학습 env의 기본 `sim`은 60Hz 스크립트 전투 결과를 적용한다. 인게임에는 승률 예측을 표시하지 않는다.
@@ -384,7 +384,7 @@ Python (사용자 트레이너) ─┬─ RPGBoardEnv/RPGBoardVecEnv ── stdi
 **테스트 전략** (TDD, Vitest)
 - 단위: 엔진 모듈별(board, economy, combat 고정 시드), ai 인코더·코덱, protocol 스키마, 서버 `RoomManager`·`TurnTimer`(fake timers).
 - 속성(fast-check): 임의 시드 + 임의 합법 행동 열에 대해 불변식 — 생존자 `1 ≤ hp ≤ maxHp`, `coins ≥ 0`, 보드 결정 phase의 `pending`이면 합법 행동 ≥ 1(`COMBAT`은 0), 입력 state 불변, 같은 시드·행동 → 같은 결과, `maxRounds` 내 종료.
-- 골든: 고정 시드 + 행동 스크립트 → 이벤트 로그 스냅샷, `DEFAULT_RULES` ↔ 기획서 수치, `obs_v4` 인코딩 벡터, 모델 어댑터 패리티 샘플(허용 오차 내).
+- 골든: 고정 시드 + 행동 스크립트 → 이벤트 로그 스냅샷, `DEFAULT_RULES` ↔ 기획서 수치, `obs_v5` 인코딩 벡터, 모델 어댑터 패리티 샘플(허용 오차 내).
 - 통합: 인프로세스 서버 + socket.io-client로 방 생성→시작→봇 대전→종료, 재접속·타임아웃(연속 3회 대리·해제 포함)·`STALE_VERSION` 경합. env 서버 spawn + JSONL 왕복, Python 쪽은 pytest로 경량 검증.
 - E2E(선택, Playwright): 브라우저 컨텍스트 2개로 온라인 1게임, 그리고 핫시트 1게임을 끝까지 진행.
 
@@ -407,7 +407,7 @@ Python (사용자 트레이너) ─┬─ RPGBoardEnv/RPGBoardVecEnv ── stdi
 - `RulesConfig.combat.mode: 'dice' | 'external'`. `external`이면 전투 시작 시 `CombatStarted`를 내고 `pending = { actor: a, phase: 'COMBAT' }`, `state.combat = { kind: 'duel' | 'dragonFight', a, b }`에서 멈춘다. 이 phase의 `getLegalActions`는 `[]`.
 - 결과 입력: `applyCombatResult(state, { winner, hpA, hpB, indomitableUsedA?, indomitableUsedB?, timedOut? })`. 엔진이 검증(`InvalidCombatResultError`)하고 `CombatEnded`·탈락·전리품·승리 판정을 이어 간다. `resolveCombatWithDice(state)`는 대기 중인 전투를 주사위 규칙으로 정리한다(`dice` 리졸버·대체 경로).
 - 서버: `GameSession`이 `COMBAT`에 들어가면 턴 타이머를 멈추고 전투 방(`FightRoom`)을 연다. 서버가 확정한 결과는 `GameSession.submitCombatResult(fightId, result)` 한 경로로 들어오며 활성 `fightId`와 `COMBAT` phase를 검사한 뒤 적용한다. 방의 `quickCombat` 선택만 주사위 해결 경로를 쓴다. 로컬은 `LocalGameClient`가 브라우저 sim 결과를 같은 엔진 함수에 넣는다.
-- `PROTOCOL_VERSION`은 2다. 보드 정책은 `COMBAT`에서 결정하지 않는다. 과거 `rush-9`에서 남은 강화 횟수를 붙여 `obs_v3`(258차원), 강화 마스크 계약을 `act_v2`(47개)로 올렸다. 현행 `rush-11`은 생성된 맵의 24칸 효과를 추가한 `obs_v4`(498차원)와 닌자 보정 0도 쿨다운을 소비하는 `act_v3`(47개)를 쓴다. 소켓 메시지 형태는 바뀌지 않아 `PROTOCOL_VERSION`은 유지한다.
+- `PROTOCOL_VERSION`은 3이다. `rush-12`에서 도둑 아이템·행동·이벤트를 제거하고 왕자의 토템 및 턴별 구매 수를 추가했다. 보드 모델은 `obs_v5`(498차원), `act_v4`(44개)를 쓴다. `obs_v5`의 아이템 순서는 `[teleport, shield, princeTotem]`이며 offset 243은 남은 구매 비율이다. 구버전 클라이언트는 핸드셰이크에서 거부하고 이전 모델은 재학습 또는 명시적 변환이 필요하다.
 - 현행 실시간 전투 규칙은 `combat-8`이다. 용전은 최대 60초(3,600틱)이며, 소프트 격노 시작 시점은 20초(1,200틱) 그대로다.
 
 ### 12.3 온라인 롤백·전송 (`packages/netcode`, `packages/protocol`)

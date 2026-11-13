@@ -7,7 +7,7 @@ export const freshTurn = (resting: boolean) => ({
   rolled: false,
   dice: null,
   teleportsUsed: 0,
-  thiefUsed: false,
+  itemsBought: 0,
   canBuy: false,
 });
 
@@ -63,7 +63,11 @@ export function eliminate(ctx: Ctx, seat: SeatId, by: CombatantRef, lootTo: Seat
   emit(ctx, { type: 'PlayerEliminated', seat, by, round: ctx.s.round });
 }
 
-export const emptyItems = (): Record<ItemId, number> => ({ teleport: 0, shield: 0, thief: 0 });
+export const emptyItems = (): Record<ItemId, number> => ({
+  teleport: 0,
+  shield: 0,
+  princeTotem: 0,
+});
 
 export function endTurn(ctx: Ctx): void {
   const seat = ctx.s.current;

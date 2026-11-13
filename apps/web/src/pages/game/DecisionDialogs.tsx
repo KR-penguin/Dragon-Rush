@@ -5,7 +5,6 @@ import { MoveAdjustDialog } from '../../components/dialogs/MoveAdjustDialog';
 import { PvpTargetDialog } from '../../components/dialogs/PvpTargetDialog';
 import { ShieldDialog } from '../../components/dialogs/ShieldDialog';
 import { ShopDialog } from '../../components/dialogs/ShopDialog';
-import { ThiefDialog } from '../../components/dialogs/ThiefDialog';
 import { TrainingDialog } from '../../components/dialogs/TrainingDialog';
 import type { DecisionUi } from '../../hooks/useDecisionUi';
 import { moveOptions, opponentSummaries, shopRows, statOptions } from '../../types/decisionView';
@@ -90,22 +89,11 @@ export function DecisionDialogs({ ui, state, nameOf, onPreviewTile }: DecisionDi
         <ShopDialog
           rows={shopRows(state, actor, groups.buys)}
           coins={playerOf(state, actor).coins}
+          purchasesUsed={state.turn.itemsBought}
+          purchaseLimit={state.rules.maxItemsBoughtPerTurn}
           locked={locked}
           onBuy={(item) => void submit({ type: 'BUY_ITEM', item })}
           onClose={ui.closeShop}
-        />
-      );
-    case 'thief':
-      return (
-        <ThiefDialog
-          targets={opponentSummaries(state, groups.thiefTargets).map((summary) => ({
-            name: nameOf(summary.seat),
-            summary,
-          }))}
-          stealMax={state.rules.thiefStealAmount}
-          locked={locked}
-          onChoose={(target) => void submit({ type: 'USE_THIEF', target })}
-          onClose={ui.cancel}
         />
       );
     case 'dragon':

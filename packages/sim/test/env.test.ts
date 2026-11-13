@@ -20,11 +20,11 @@ describe('env server (in-process)', () => {
     expect(r.result).toMatchObject({
       protocol: 'rpgboard-env/2',
       obs_dim: 498,
-      action_dim: 47,
-      obs_version: 'obs_v4',
-      act_version: 'act_v3',
+      action_dim: 44,
+      obs_version: 'obs_v5',
+      act_version: 'act_v4',
     });
-    expect(r.result.action_names).toHaveLength(47);
+    expect(r.result.action_names).toHaveLength(44);
     expect(r.result.action_names[0]).toBe('ROLL_DICE');
     expect(
       r.result.obs_layout.find((field: { name: string }) => field.name === 'g.dice'),

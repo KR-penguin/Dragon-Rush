@@ -8,7 +8,7 @@ import {
   validateCombatResult,
   type SettleCombat,
 } from './fight';
-import { buyItem, trainStat, upgrade, useThief } from './items';
+import { buyItem, trainStat, upgrade } from './items';
 import { actionKey, getLegalActions } from './legal';
 import { adjustMove, rollDice, teleport } from './movement';
 import { cloneState } from './state';
@@ -38,8 +38,6 @@ function dispatch(ctx: Ctx, action: Action): void {
       return trainStat(ctx, action.stat);
     case 'BUY_ITEM':
       return buyItem(ctx, action.item);
-    case 'USE_THIEF':
-      return useThief(ctx, action.target);
     case 'CHOOSE_PVP_TARGET':
       return chooseTarget(ctx, action.target);
     case 'SHIELD_DECISION':

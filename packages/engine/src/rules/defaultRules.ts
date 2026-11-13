@@ -98,7 +98,7 @@ const MYSTERY_DECK: readonly MysteryCardDef[] = [
 ];
 
 export const DEFAULT_RULES: RulesConfig = deepFreeze({
-  version: 'rush-11',
+  version: 'rush-12',
   startingCoins: 10,
   startingItems: {},
   startBonus: { coins: 35, hp: 6 },
@@ -108,6 +108,7 @@ export const DEFAULT_RULES: RulesConfig = deepFreeze({
   eventHpFloor: 1,
   coinShortfallHpPerCoin: 1,
   maxPaidUpgradesPerTurn: 3,
+  maxItemsBoughtPerTurn: 3,
   jobs: {
     swordsman: { hp: 53, atk: 5, def: 5 },
     archer: { hp: 39, atk: 6, def: 6 },
@@ -133,9 +134,9 @@ export const DEFAULT_RULES: RulesConfig = deepFreeze({
   items: {
     teleport: { price: 6, perTurnLimit: null },
     shield: { price: 6, perTurnLimit: null },
-    thief: { price: 5, perTurnLimit: 1 },
+    princeTotem: { price: 15, perTurnLimit: null },
   },
-  thiefStealAmount: 10,
+  princeTotemMaxHpBonus: 15,
   board: BOARD,
   boardVariation: {
     fixedTiles: [0, 6, 12, 18],

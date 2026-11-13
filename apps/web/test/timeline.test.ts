@@ -86,6 +86,36 @@ describe('event timeline', () => {
     });
     expect(next.turn.paidUpgradesUsed).toBe(0);
   });
+  it.each([20, 50])('restores the totem maximum without subtracting its bonus from HP %i', (hp) => {
+    const before = toPublicState(
+      createGameWithEvents({ seats: [{ job: 'mage' }, { job: 'ninja' }] }, DEFAULT_RULES, 42).state,
+    );
+    const originalMaxHp = before.players[0]!.maxHp;
+    const bonus = DEFAULT_RULES.princeTotemMaxHpBonus;
+    const boosted = {
+      ...before,
+      players: before.players.map((player) =>
+        player.seat === 0 ? { ...player, hp, maxHp: originalMaxHp + bonus } : player,
+      ),
+    };
+    const effect: GameEvent = {
+      type: 'EffectApplied',
+      seat: 0,
+      effect: 'maxHp',
+      delta: -bonus,
+      after: originalMaxHp,
+    };
+    const restored = applyEventToDisplay(boosted, effect);
+    expect(restored.players[0]!.maxHp).toBe(originalMaxHp);
+    expect(restored.players[0]!.hp).toBe(Math.min(hp, originalMaxHp));
+    expect(
+      describeEvent(
+        effect,
+        () => '검사',
+        () => 'START',
+      ),
+    ).toBe(`검사 최대 HP -${bonus}`);
+  });
   it('explains HP lost because an event could not collect enough coins', () => {
     expect(
       describeEvent(

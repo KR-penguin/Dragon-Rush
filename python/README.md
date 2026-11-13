@@ -3,8 +3,8 @@
 numpy Actor-Critic으로 "드래곤 러쉬"를 학습시키기 위한 안내서다. 이 문서는 실제 코드 기준의 요약본이고, 계약의 정본은 [docs/ai-interface-spec.md](../docs/ai-interface-spec.md)다(관측 §3, 행동 §4, 마스크 §5, 보상 §6, env 프로토콜 §7, Python API §8, 모델 통합 §9).
 세 과제의 실행 명령·배열 형태·리셋·모델 JSON 준비물은 [AI 학습 환경 시작 가이드](../docs/training-environments.md)에 모았다.
 
-- 관측: `obs_v4`, float32 **498개**
-- 행동: `act_v3`, 이산 **47개** + 행동 마스크
+- 관측: `obs_v5`, float32 **498개**
+- 행동: `act_v4`, 이산 **44개** + 행동 마스크
 - 의존성: numpy만 (gymnasium·torch 없음)
 - **전투 모델은 별도 모델·별도 env**다(`PvPCombatEnv`/`DragonCombatEnv`, `cobs_v1`/`cact_v1`). 보드 가중치와 전투 가중치는 호환되지 않는다. §9를 본다.
 
@@ -15,7 +15,7 @@ pnpm install && pnpm build        # 저장소 루트에서. env 서버(packages/
 pip install -e python/            # 이 패키지 설치
 ```
 
-`python/rpgboard_env/env.py`의 기본 기대 관측 버전은 `obs_v4`다. 아래처럼 명시해도 같으며, 예제 스크립트도 기본 설정으로 실행할 수 있다.
+`python/rpgboard_env/env.py`의 기본 기대 관측 버전은 `obs_v5`다. 아래처럼 명시해도 같으며, 예제 스크립트도 기본 설정으로 실행할 수 있다.
 
 ```python
 import numpy as np
@@ -23,7 +23,7 @@ from rpgboard_env import RPGBoardEnv
 
 rng = np.random.default_rng(0)
 env = RPGBoardEnv(mode="single", num_players=4, opponents="heuristic", max_rounds=100,
-                  combat_resolver="sim", expect_obs_version="obs_v4")
+                  combat_resolver="sim", expect_obs_version="obs_v5")
 obs, info = env.reset(seed=0)                 # obs: float32 (498,)
 while True:
     logits = np.zeros(env.action_dim)         # 예제용 균등 로짓; 학습한 actor(obs)로 교체
@@ -45,7 +45,7 @@ env.close()
 - phase 비율은 대략 `PRE_ROLL` 49%, `POST_MOVE` 39~42%, `MOVE_ADJUST` 5%, `SHIELD_DECISION` 2~4%, `TRAINING_CHOICE` 2%, `CHOOSE_PVP_TARGET` 0.1%다.
 - 남의 턴에도 결정할 때가 있다. 내가 방어막을 가진 상태로 공격받으면 `SHIELD_DECISION`이 온다. `info["turn_seat"] != info["acting_seat"]`로 구분하고, 관측의 `g.turnPlayer`(228~231)에도 나타난다.
 
-## 3. 관측 `obs_v4` (498)
+## 3. 관측 `obs_v5` (498)
 
 **자기중심**이다. 항상 지금 결정하는 좌석의 시점이다. 기존 258개 값은 [0, 2], 칸 효과 수치 5종은 [-2, 2], 칸 플래그 5종은 {0, 1}이다. 기존 스케일 특징은 `clip(x / S, 0, 2)`, 새 칸 효과 수치는 `clip(x / S, -2, 2)`로 만든다.
 스케일 상수: HP 120, ATK/DEF 20, 코인 50, 강화 레벨 10, 아이템 개수 3, 라운드 100, 거리 23.
@@ -59,7 +59,7 @@ env.close()
 | 32 / 33 / 34 | `self.atk` / `self.def` / `self.coins` | atk/20, def/20, coins/50 |
 | 35–37 | `self.upgradeLvl` | [atk, def, maxHp] 강화 레벨/10 |
 | 38–40 | `self.upgradeCost` | [atk, def, maxHp] 다음 강화 비용/50 |
-| 41–43 | `self.itemCount` | [teleport, shield, thief] 개수/3 |
+| 41–43 | `self.itemCount` | [teleport, shield, princeTotem] 개수/3 |
 | 44–46 | `self.hasItem` | 위 3종 보유 여부 |
 | 47 | `self.skipNextTurn` | 쉬는 턴 예정 또는 진행 중(이번 턴에는 이동 불가) |
 | 48 | `self.indomitableReady` | 검사이고 불굴이 남아 있음 |
@@ -88,18 +88,18 @@ env.close()
 | 인덱스 | 이름 | 내용 |
 |---|---|---|
 | 213 / 214 / 215 | `g.round` / `g.maxRounds` / `g.roundsLeftFrac` | round/100, maxRounds/100, 남은 라운드 비율 (무제한이면 0) |
-| 216 / 217 | `g.graceLeft` / `g.pvpEnabled` | 초반 보호 남은 라운드/3, 이번 라운드에 PvP 가능 여부. `rush-11` 기본 규칙은 보호가 없어 시작부터 각각 0 / 1 |
+| 216 / 217 | `g.graceLeft` / `g.pvpEnabled` | 초반 보호 남은 라운드/3, 이번 라운드에 PvP 가능 여부. `rush-12` 기본 규칙은 보호가 없어 시작부터 각각 0 / 1 |
 | 218–220 | `g.numPlayers` | 시작 인원 one-hot [2, 3, 4] |
 | 221 | `g.aliveCount` | 생존자 수/4 |
 | 222–227 | `g.phase` | [PRE_ROLL, MOVE_ADJUST, CHOOSE_PVP_TARGET, SHIELD_DECISION, TRAINING_CHOICE, POST_MOVE] |
 | 228–231 | `g.turnPlayer` | 턴 플레이어 [나, 상대1, 상대2, 상대3]. 내가 아니면 남의 턴에 하는 결정 |
 | 232–241 | `g.dice` | 이번 턴 이동 주사위 눈 1~10 원-핫 (굴리기 전이면 0) |
-| 242 / 243 | `g.canBuy` / `g.thiefUsed` | 이번 턴 상점에 도착함 / 이번 턴 도둑 사용함 |
+| 242 / 243 | `g.canBuy` / `g.itemsBoughtRemaining` | 이번 턴 상점에 도착함 / 남은 구매 횟수 비율(기본 1→2/3→1/3→0) |
 | 244 / 245 | `g.teleportsUsed` / `g.teleportLimitReached` | 이번 턴 텔레포트 사용 수/2, 턴당 상한 도달(기본 무제한이라 0) |
 | 246 / 247 | `g.pvpAmArriver` / `g.pvpAmDefender` | 진행 중인 결투에서 내가 도착자 / 방어자 |
 | 248–250 | `g.pvpOpponent` | 결투 상대 one-hot [상대1, 상대2, 상대3] |
-| 251–253 | `g.dragonHp/Atk/Def` | 용 스탯(`rush-11`: 88/120, **clip(50/20, 0, 2) = 2**, 10/20). 보드 용 ATK는 50이며 방어력 적용 후 주는 피해에 ×0.6을 적용 |
-| 254–256 | `g.itemPrice` | [teleport, shield, thief] 가격/50 |
+| 251–253 | `g.dragonHp/Atk/Def` | 용 스탯(`rush-12`: 88/120, **clip(50/20, 0, 2) = 2**, 10/20). 보드 용 ATK는 50이며 방어력 적용 후 주는 피해에 ×0.6을 적용 |
+| 254–256 | `g.itemPrice` | [teleport, shield, princeTotem] 가격/50 |
 | 257 | `g.paidUpgradesRemaining` | 이번 자기 턴에 남은 유료 강화 횟수/3. 기본 3회이며 `PRE_ROLL`·`POST_MOVE` 합산. 수련장 무료 강화는 제외 |
 
 ### 3.4 보드 효과 (258~497)
@@ -124,7 +124,7 @@ d = env.describe(obs)            # {"self.coins": 0.2, "self.job": [0,0,1,0,0], 
 env.obs_layout                   # [{"name", "offset", "length"}, ...] 서버가 주는 레이아웃
 ```
 
-## 4. 행동 `act_v3` (47)
+## 4. 행동 `act_v4` (44)
 
 | 인덱스 | 이름 | 의미 | 가능한 phase |
 |---|---|---|---|
@@ -132,17 +132,17 @@ env.obs_layout                   # [{"name", "offset", "length"}, ...] 서버가
 | 1 | `END_TURN` | 턴 종료 | POST_MOVE, 쉬는 턴의 PRE_ROLL |
 | 2 | `CHALLENGE_DRAGON` | 용 도전 (지면 탈락) | PRE_ROLL |
 | 3–5 | `UPGRADE_ATK/DEF/MAXHP` | 코인으로 스탯 강화. 자기 턴 전체 최대 3회 | PRE_ROLL, POST_MOVE |
-| 6–8 | `BUY_TELEPORT/SHIELD/THIEF` | 아이템 구매 | POST_MOVE (상점 도착 시) |
+| 6–8 | `BUY_TELEPORT/SHIELD/PRINCE_TOTEM` | 아이템 구매 | POST_MOVE (상점 도착 시) |
 | 9–32 | `TELEPORT_T00`~`T23` | 칸 (인덱스−9)로 텔레포트 | PRE_ROLL, POST_MOVE |
-| 33–35 | `THIEF_OPP1/2/3` | 상대 k에게 도둑 사용 | PRE_ROLL, POST_MOVE |
-| 36–38 | `ADJUST_M1/0/P1` | 닌자 이동 보정 −1/0/+1. 0도 쿨다운 2를 소비 | MOVE_ADJUST |
-| 39–40 | `SHIELD_NO/YES` | 방어막 미사용/사용 | SHIELD_DECISION |
-| 41–43 | `PVP_TARGET_OPP1/2/3` | 결투 상대 선택 | CHOOSE_PVP_TARGET |
-| 44–46 | `TRAIN_ATK/DEF/MAXHP` | 수련장 무료 강화 | TRAINING_CHOICE |
+| 33–35 | `ADJUST_M1/0/P1` | 닌자 이동 보정 −1/0/+1. 0도 쿨다운 2를 소비 | MOVE_ADJUST |
+| 36–37 | `SHIELD_NO/YES` | 방어막 미사용/사용 | SHIELD_DECISION |
+| 38–40 | `PVP_TARGET_OPP1/2/3` | 결투 상대 선택 | CHOOSE_PVP_TARGET |
+| 41–43 | `TRAIN_ATK/DEF/MAXHP` | 수련장 무료 강화 | TRAINING_CHOICE |
 
-- **마스크가 정답이다.** `info["action_mask"]`(bool 47)에서 True인 것만 고른다. 불법 행동을 보내면 `IllegalActionError`가 나고 상태는 바뀌지 않는다. `info["legal"]`에는 합법 인덱스 목록이 있다.
+- **마스크가 정답이다.** `info["action_mask"]`(bool 44)에서 True인 것만 고른다. 불법 행동을 보내면 `IllegalActionError`가 나고 상태는 바뀌지 않는다. `info["legal"]`에는 합법 인덱스 목록이 있다.
 - `ADJUST_0`을 골라도 다음 자기 턴에는 MOVE_ADJUST 선택지가 나오지 않는다. 모든 보정 선택이 같은 쿨다운을 시작한다.
-- 이름 목록은 `env.action_names`에 있다.
+- 이름 목록은 `env.action_names`에 있다. 상점 구매는 자기 턴당 총 3개이며 재방문해도 합산한다. 왕자의 토템은 15코인으로, 실제 전투 시작에 1개가 자동 소모되어 해당 전투 동안 최대 HP를 15 올리고 완전히 회복시킨다. 전투가 끝나면 원래 최대 HP로 되돌리고 남은 HP는 그 값 이하로 제한한다.
+- 이전 `obs_v4`/`act_v3` 모델은 재학습 또는 명시적 변환이 필요하다.
 
 ### 4.1 기본 보드 템플릿 (텔레포트 대상, `self.pos`)
 0 출발(PvP 가능) · 1 고블린 · 2 독 늪 · 3 보물 · 4 산적 · 5 수련장 · **6 상점** · 7 늑대 · 8 가시 함정 · 9 약초 군락 · 10 소매치기 · 11 대장장이 · **12 여관(HP +20)** · 13 오크 · 14 저주 제단 · 15 행운의 샘 · 16 낙석 · 17 미지의 동굴 · **18 상점** · 19 트롤 · 20 거미줄(쉼) · 21 떠돌이 상인 · 22 폭풍 · 23 미지의 동굴. 이는 생성 전 템플릿이다. 실제 게임은 시드로 24칸을 만들며 0·6·12·18만 고정한다. 기존 이동 칸 20개 중 16개와 새 좋은 칸 2개·새 나쁜 칸 2개를 선택해 나머지 20자리에 섞는다. 첫 룰렛으로 도달 가능한 1~10번에는 약초 군락·달빛 우물처럼 HP 회복만 주는 칸을 배치하지 않는다. 현재 칸별 효과는 §3.4의 벡터를 읽는다.
@@ -170,8 +170,7 @@ env.obs_layout                   # [{"name", "offset", "length"}, ...] 서버가
 | `opponents` | `"heuristic"` | `random`, `random:uniform`, `heuristic`(성향 무작위), `heuristic:aggro`/`growth`/`rush`, 또는 좌석별 목록 |
 | `jobs` | `"random"` | 좌석별 직업 목록으로 고정 가능. 여러 좌석에 같은 직업을 지정할 수 있다 |
 | `max_rounds` | 100 | `None`이면 무제한 |
-| `combat_resolver` | `"sim"` | `sim`: 두 `scripted:balanced` 봇의 실제 60Hz 전투 / `dice`: 선택형 빠른 전투의 6면 주사위 판정. 관측 `obs_v4`는 동일 |
-
+| `combat_resolver` | `"sim"` | `sim`: 두 `scripted:balanced` 봇의 실제 60Hz 전투 / `dice`: 선택형 빠른 전투의 6면 주사위 판정. 관측 `obs_v5`는 동일 |
 | `rules`, `reward_shaping`, `return_events` | `"default"`, `None`, `False` | 보드 규칙 일부 덮어쓰기 / §5 보상 계수 / 전이 이벤트 포함 |
 | `server_cmd`, `cwd` | — | env 서버 실행 커맨드와 저장소 루트 (환경변수 `RPGBOARD_ENV_CMD`, `RPGBOARD_ROOT`) |
 
@@ -181,8 +180,8 @@ env.obs_layout                   # [{"name", "offset", "length"}, ...] 서버가
 
 ## 7. 기준선 (실제 60Hz 전투)
 
-- **현행 표본**: `rush-11`/`combat-8` 4인 휴리스틱·스크립트 봇 1,000판(`pnpm sim --games 1000 --players 4 --bots heuristic --seed 2026 --combat sim --json`)은 평균 16.46/중앙 17/p95 30라운드, 용 처치 종료 20.50%, 3라운드 안 탈락 30.83%, 용 도전 성공률 55.11%, 판당 PvP 2.61회였다. 궁수 조건부 승률은 23.09%다. 사람 승률은 아니다. 조건과 전체 지표는 [기획서 §15](../docs/game-design.md#15-밸런스-근거)를 본다.
-- **과거 측정**: `rush-9`/`combat-5` 4인 휴리스틱·스크립트 봇 1,000판(seed 2026, 8 workers, 실제 60Hz 전투)은 평균 15.909(중앙 16)/p95 29라운드였다. 이 수치는 `rush-11` 동적 보드의 측정치가 아니다.
+- **과거 표본**: `rush-11`/`combat-8` 4인 휴리스틱·스크립트 봇 1,000판(`pnpm sim --games 1000 --players 4 --bots heuristic --seed 2026 --combat sim --json`)은 평균 16.46/중앙 17/p95 30라운드, 용 처치 종료 20.50%, 3라운드 안 탈락 30.83%, 용 도전 성공률 55.11%, 판당 PvP 2.61회였다. 궁수 조건부 승률은 23.09%다. 사람 승률은 아니다. 조건과 전체 지표는 [기획서 §15](../docs/game-design.md#15-밸런스-근거)를 본다.
+- **과거 측정**: `rush-9`/`combat-5` 4인 휴리스틱·스크립트 봇 1,000판(seed 2026, 8 workers, 실제 60Hz 전투)은 평균 15.909(중앙 16)/p95 29라운드였다. 이 수치는 `rush-12` 동적 보드의 측정치가 아니다.
 - **과거 기록**: 이전 `rush-6` 4인 휴리스틱 봇 4,000판(seed 2026, 4 workers, 당시 제거된 결과 예측기로 보드 봇 판단): 평균 4.37(중앙 4)/p95 9라운드, 용 처치 종료 42.9%, 판당 PvP 1.38회, 3라운드 안 좌석 탈락 44.5%, 무승부 0%. 이는 현재 코드의 성능 추정치가 아니다.
 
 - **과거 기록**: 이전 `rush-4`의 4인 휴리스틱 8,000판(당시 제거된 결과 예측기를 보드 봇 판단에 사용, 실제 전투 결과는 60Hz `sim`): 평균 5.93(중앙 6)/p95 10라운드, 용 처치 종료 46.5%, 직업 승률 검/궁/마/닌/광 18.9/26.2/34.7/25.5/19.6%, 3라운드 안 좌석 탈락 22.6%. 3인·2인 실측은 [기획서 §15](../docs/game-design.md)를 본다. 당시 라운드 1~2 PvP 보호가 있었고, 현재 명령으로 동일 결과를 재현할 수 없다.
@@ -199,7 +198,7 @@ env.obs_layout                   # [{"name", "offset", "length"}, ...] 서버가
 2. 네트워크 구조(층 크기, actor/critic 공유 여부), 활성화 함수
 3. 행렬 배치 규칙: `x @ W`인지 `W @ x`인지, dtype
 4. 입력 정규화를 쓰는지(평균·표준편차의 위치), actor 출력이 logits인지 확률인지
-5. **패리티 샘플**: env에서 뽑은 obs 5개 이상 + 각 `action_mask` + numpy actor 출력(마스크 전 47개) + critic 값
+5. **패리티 샘플**: env에서 뽑은 obs 5개 이상 + 각 `action_mask` + numpy actor 출력(마스크 전 44개) + critic 값
 
 파일은 `models/<이름>.json`에, 패리티 샘플은 `models/parity/<이름>.json`에 둔다.
 

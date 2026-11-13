@@ -117,8 +117,7 @@ export function GamePage({ session, onExit, onRestart }: GamePageProps) {
     ),
   );
 
-  const escapable =
-    ui.teleportPicking || ui.dialog === 'thief' || ui.dialog === 'dragon' || ui.dialog === 'shop';
+  const escapable = ui.teleportPicking || ui.dialog === 'dragon' || ui.dialog === 'shop';
   useEscape(escapable, () => (ui.dialog === 'shop' ? ui.closeShop() : ui.cancel()));
   useEscape(chronicleOpen, () => setChronicleOpen(false));
   useEscape(settingsOpen, () => setSettingsOpen(false));
@@ -193,8 +192,6 @@ export function GamePage({ session, onExit, onRestart }: GamePageProps) {
   const showActions =
     ui.mine && mainPhase && !ui.handoff && (!animating || display.current === actor);
   const shopAvailable = phase === 'POST_MOVE' && (ui.groups.buys.length > 0 || state.turn.canBuy);
-  const thiefTargeting = ui.dialog === 'thief';
-  const thiefTargets = new Set(thiefTargeting ? ui.groups.thiefTargets : []);
 
   const current = view.current;
   const roll: DiceRoll | null =
@@ -207,12 +204,11 @@ export function GamePage({ session, onExit, onRestart }: GamePageProps) {
         }
       : null;
 
-  const spotlightMode =
-    ui.teleportPicking || thiefTargeting
-      ? 'targeting'
-      : finished || combat || ui.dialog !== null
-        ? 'off'
-        : 'turn';
+  const spotlightMode = ui.teleportPicking
+    ? 'targeting'
+    : finished || combat || ui.dialog !== null
+      ? 'off'
+      : 'turn';
   const breathLit = breathRunesLit(combat, display.rules.dragon.breathEvery);
   const dragonState = lairState(combat, ui.groups.challengeDragon && showActions);
   const dragonIntent = dragonIntentCue(dragonState, display.rules.dragon.breathEvery);
@@ -296,12 +292,6 @@ export function GamePage({ session, onExit, onRestart }: GamePageProps) {
               thinking={card.isActor && !controllable.includes(card.seat) && !finished}
               countdown={countdown}
               reduced={motion.reduced}
-              onPick={
-                thiefTargets.has(card.seat) && !ui.locked
-                  ? () => void ui.submit({ type: 'USE_THIEF', target: card.seat })
-                  : null
-              }
-              dimmed={thiefTargeting && !thiefTargets.has(card.seat)}
             />
           ))}
         </div>
@@ -325,11 +315,11 @@ export function GamePage({ session, onExit, onRestart }: GamePageProps) {
           upgradeLimit={state.rules.maxPaidUpgradesPerTurn}
           items={showActions && actor !== null ? playerOf(state, actor).items : null}
           coins={actor !== null ? playerOf(state, actor).coins : 0}
+          rules={state.rules}
           onRoll={() => void ui.submit({ type: 'ROLL_DICE' })}
           onEndTurn={() => void ui.submit({ type: 'END_TURN' })}
           onDragon={() => ui.open('dragon')}
           onTeleport={() => ui.open('teleport')}
-          onThief={() => ui.open('thief')}
           onShop={() => ui.open('shop')}
           onUpgrade={(stat) => void ui.submit({ type: 'UPGRADE', stat })}
         />

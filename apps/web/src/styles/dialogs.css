@@ -282,6 +282,13 @@
       repeat-x;
 }
 
+.stall-limit {
+  margin: 0 0 16px;
+  color: var(--gold-hi);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
 .stall-cloth {
   list-style: none;
   margin: 0;
@@ -428,7 +435,7 @@
   filter: drop-shadow(0 6px 6px rgba(0, 0, 0, 0.35));
 }
 
-/* ---------- Targeting strips (thief, move adjust) ---------- */
+/* ---------- Targeting strips (move adjust) ---------- */
 .targeting-panel,
 .move-adjust {
   position: fixed;
@@ -1241,6 +1248,13 @@
     margin: -4px -14px 16px;
   }
 
+  .stall-limit {
+    margin: 0 0 16px;
+    color: var(--gold-hi);
+    font-size: 0.85rem;
+    text-align: center;
+  }
+
   .stall-cloth {
     grid-template-columns: 1fr;
     gap: 10px;
@@ -1352,6 +1366,13 @@
 @media (max-width: 699px) and (orientation: landscape) and (max-height: 500px) {
   .modal-header {
     padding-top: 8px;
+  }
+
+  .stall-limit {
+    margin: 0 0 16px;
+    color: var(--gold-hi);
+    font-size: 0.85rem;
+    text-align: center;
   }
 
   .stall-cloth {

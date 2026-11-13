@@ -8,7 +8,7 @@ interface TargetBannerProps {
   onCancel?: () => void;
 }
 
-/** Instruction ribbon shown while the world is dimmed for targeting (teleport, thief). */
+/** Instruction ribbon shown while the world is dimmed for targeting (teleport). */
 export function TargetBanner({ icon, children, onCancel }: TargetBannerProps) {
   return (
     <div className="target-banner" role="status">

@@ -37,7 +37,7 @@ export const ICON_NAMES = [
   // items and stats
   'teleport',
   'shield',
-  'thief',
+  'princeTotem',
   'atk',
   'def',
   'hp',
@@ -149,7 +149,7 @@ export const TILE_ICON_NAME: Record<TileId, IconName> = {
 export const ITEM_ICON_NAME: Record<ItemId, IconName> = {
   teleport: 'teleport',
   shield: 'shield',
-  thief: 'thief',
+  princeTotem: 'princeTotem',
 };
 
 export const STAT_ICON_NAME: Record<UpgradeStat, IconName> = {

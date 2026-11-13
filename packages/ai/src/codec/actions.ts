@@ -7,8 +7,8 @@ import {
   type SeatId,
 } from '@dragon-rush/engine';
 
-export const ACT_VERSION = 'act_v3';
-export const ACTION_DIM = 47;
+export const ACT_VERSION = 'act_v4';
+export const ACTION_DIM = 44;
 
 const IDX = {
   ROLL_DICE: 0,
@@ -17,11 +17,10 @@ const IDX = {
   UPGRADE: 3,
   BUY: 6,
   TELEPORT: 9,
-  THIEF: 33,
-  ADJUST: 36,
-  SHIELD: 39,
-  PVP_TARGET: 41,
-  TRAIN: 44,
+  ADJUST: 33,
+  SHIELD: 36,
+  PVP_TARGET: 38,
+  TRAIN: 41,
 } as const;
 
 const STAT_NAMES = ['ATK', 'DEF', 'MAXHP'] as const;
@@ -31,9 +30,10 @@ export const ACTION_NAMES: readonly string[] = [
   'END_TURN',
   'CHALLENGE_DRAGON',
   ...STAT_NAMES.map((s) => `UPGRADE_${s}`),
-  ...ITEM_IDS.map((i) => `BUY_${i.toUpperCase()}`),
+  'BUY_TELEPORT',
+  'BUY_SHIELD',
+  'BUY_PRINCE_TOTEM',
   ...Array.from({ length: BOARD_SIZE }, (_, t) => `TELEPORT_T${String(t).padStart(2, '0')}`),
-  ...[1, 2, 3].map((k) => `THIEF_OPP${k}`),
   'ADJUST_M1',
   'ADJUST_0',
   'ADJUST_P1',
@@ -65,8 +65,6 @@ export function encodeAction(view: PublicGameState, seat: SeatId, action: Action
       return IDX.BUY + ITEM_IDS.indexOf(action.item);
     case 'USE_TELEPORT':
       return IDX.TELEPORT + action.tile;
-    case 'USE_THIEF':
-      return IDX.THIEF + rel(seat, action.target, n) - 1;
     case 'ADJUST_MOVE':
       return IDX.ADJUST + action.delta + 1;
     case 'SHIELD_DECISION':
@@ -87,8 +85,7 @@ export function decodeAction(view: PublicGameState, seat: SeatId, index: number)
   if (index === IDX.CHALLENGE_DRAGON) return { type: 'CHALLENGE_DRAGON' };
   if (index < IDX.BUY) return { type: 'UPGRADE', stat: UPGRADE_STATS[index - IDX.UPGRADE]! };
   if (index < IDX.TELEPORT) return { type: 'BUY_ITEM', item: ITEM_IDS[index - IDX.BUY]! };
-  if (index < IDX.THIEF) return { type: 'USE_TELEPORT', tile: index - IDX.TELEPORT };
-  if (index < IDX.ADJUST) return { type: 'USE_THIEF', target: abs(seat, index - IDX.THIEF + 1, n) };
+  if (index < IDX.ADJUST) return { type: 'USE_TELEPORT', tile: index - IDX.TELEPORT };
   if (index < IDX.SHIELD)
     return { type: 'ADJUST_MOVE', delta: (index - IDX.ADJUST - 1) as -1 | 0 | 1 };
   if (index < IDX.PVP_TARGET) return { type: 'SHIELD_DECISION', use: index === IDX.SHIELD + 1 };

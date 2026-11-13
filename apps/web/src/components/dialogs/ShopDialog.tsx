@@ -1,6 +1,6 @@
 import type { ItemId } from '@dragon-rush/engine';
 import type { ShopRow } from '../../types/decisionView';
-import { ITEM_DESC, ITEM_LABEL } from '../../types/labels';
+import { ITEM_LABEL } from '../../types/labels';
 import { Modal } from '../common/Modal';
 import { ItemArt } from '../icons/Art';
 import { GameIcon } from '../icons/GameIcon';
@@ -8,13 +8,23 @@ import { GameIcon } from '../icons/GameIcon';
 interface ShopDialogProps {
   rows: readonly ShopRow[];
   coins: number;
+  purchasesUsed: number;
+  purchaseLimit: number;
   locked: boolean;
   onBuy: (item: ItemId) => void;
   onClose: () => void;
 }
 
 /** Merchant stall: item cards on a cloth with coin price tags; what you cannot buy is chained. */
-export function ShopDialog({ rows, coins, locked, onBuy, onClose }: ShopDialogProps) {
+export function ShopDialog({
+  rows,
+  coins,
+  purchasesUsed,
+  purchaseLimit,
+  locked,
+  onBuy,
+  onClose,
+}: ShopDialogProps) {
   return (
     <Modal
       className="modal-stall"
@@ -34,6 +44,10 @@ export function ShopDialog({ rows, coins, locked, onBuy, onClose }: ShopDialogPr
       }
     >
       <div className="stall-awning" aria-hidden="true" />
+      <p className="stall-limit" role="status">
+        한 턴 최대 {purchaseLimit}개 · 이번 턴 {purchasesUsed}/{purchaseLimit}개 구매 · 남은 구매{' '}
+        {Math.max(0, purchaseLimit - purchasesUsed)}개
+      </p>
       <ul className="stall-cloth">
         {rows.map((r) => (
           <li key={r.item}>
@@ -46,7 +60,7 @@ export function ShopDialog({ rows, coins, locked, onBuy, onClose }: ShopDialogPr
             >
               <ItemArt item={r.item} className="ware-art" />
               <strong className="ware-name">{ITEM_LABEL[r.item]}</strong>
-              <span className="ware-desc">{ITEM_DESC[r.item]}</span>
+              <span className="ware-desc">{r.description}</span>
               <span className="ware-owned">보유 {r.owned}개</span>
               <span className="price-tag">
                 <GameIcon name="coins" /> <b className="impact">{r.price}</b>

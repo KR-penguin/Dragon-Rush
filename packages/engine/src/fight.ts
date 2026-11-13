@@ -1,6 +1,7 @@
 import { pickFirst, resolveCombat, type CombatOptions, type Fighter } from './combat';
 import { emit, playerAt, roll, type Ctx } from './ctx';
 import { PASSIVES } from './jobs';
+import { activatePrinceTotem, restorePrinceTotem } from './items';
 import type {
   CombatRequest,
   CombatResult,
@@ -109,6 +110,8 @@ export function finishCombat(
   if (request.b !== null && result.hpB !== null) {
     writeBack(playerAt(ctx.s, request.b), result.hpB, result.indomitableUsedB);
   }
+  restorePrinceTotem(ctx, request.a, request.princeTotemBonusA);
+  if (request.b !== null) restorePrinceTotem(ctx, request.b, request.princeTotemBonusB);
   settle(ctx, request, result.winner);
 }
 
@@ -123,17 +126,24 @@ export function settleWithDice(ctx: Ctx, request: CombatRequest, settle: SettleC
  * COMBAT (no board decisions) until applyCombatResult or resolveCombatWithDice settles it.
  */
 export function beginCombat(ctx: Ctx, request: CombatRequest, settle: SettleCombat): void {
-  const { a, b } = fightersOf(ctx.s, request);
-  const first = pickFirst(a, b, OPTIONS[request.kind].defaultFirst) === 'a' ? a.ref : b.ref;
+  const bonusA = activatePrinceTotem(ctx, request.a);
+  const bonusB = request.b === null ? 0 : activatePrinceTotem(ctx, request.b);
+  const prepared: CombatRequest = {
+    ...request,
+    ...(bonusA > 0 ? { princeTotemBonusA: bonusA } : {}),
+    ...(bonusB > 0 ? { princeTotemBonusB: bonusB } : {}),
+  };
+  const { a, b } = fightersOf(ctx.s, prepared);
+  const first = pickFirst(a, b, OPTIONS[prepared.kind].defaultFirst) === 'a' ? a.ref : b.ref;
   ctx.s.pvp = null;
   ctx.s.pending = null;
-  emit(ctx, { type: 'CombatStarted', kind: request.kind, a: a.ref, b: b.ref, first });
+  emit(ctx, { type: 'CombatStarted', kind: prepared.kind, a: a.ref, b: b.ref, first });
   if (ctx.s.rules.combat.mode === 'dice') {
-    settleWithDice(ctx, request, settle);
+    settleWithDice(ctx, prepared, settle);
     return;
   }
-  ctx.s.combat = { ...request };
-  ctx.s.pending = { actor: request.a, phase: 'COMBAT' };
+  ctx.s.combat = prepared;
+  ctx.s.pending = { actor: prepared.a, phase: 'COMBAT' };
 }
 
 export function pendingCombat(s: GameState): CombatRequest {

@@ -38,7 +38,7 @@ function playOut(s0: GameState, policies: Policy[], seed: number): GameState {
 const meta = (id: string) => ({
   id,
   obsVersion: OBS_VERSION,
-  actVersion: 'act_v3',
+  actVersion: 'act_v4',
   output: 'logits' as const,
   obsDim: OBS_DIM,
   actionDim: ACTION_DIM,
@@ -57,6 +57,37 @@ describe('built-in bots', () => {
     expect(duel * 192).toBeCloseTo(Math.round(duel * 192), 10);
     expect(dragon * 320).toBeCloseTo(Math.round(dragon * 320), 10);
     expect(winProbability(state.rules, first, opponent, 192)).toBe(duel);
+  });
+
+  it('includes an owned prince totem in the estimated combat profile', () => {
+    const state = newGame(2, 17);
+    const player = state.players[0]!;
+    player.hp = 1;
+    player.items.princeTotem = 2;
+    const estimated = profileOf(player, state.rules);
+    expect(estimated.maxHp).toBe(player.maxHp + state.rules.princeTotemMaxHpBonus);
+    expect(estimated.hp).toBe(estimated.maxHp);
+    expect(player.hp).toBe(1);
+    expect(player.items.princeTotem).toBe(2);
+  });
+
+  it('continues planning when the turn shop purchase allowance is exhausted', () => {
+    const state = newGame(2, 17);
+    const player = state.players[0]!;
+    player.coins = 100;
+    player.items = { teleport: 1, shield: 1, princeTotem: 0 };
+    state.pending = { actor: 0, phase: 'POST_MOVE' };
+    state.turn.canBuy = true;
+    state.turn.itemsBought = 3;
+    const legal = getLegalActions(state);
+    expect(legal.some((action) => action.type === 'BUY_ITEM')).toBe(false);
+    const action = createHeuristicBot().decide({
+      view: toPublicState(state),
+      seat: 0,
+      legal,
+      random: () => 0.5,
+    });
+    expect(action.type).toBe('UPGRADE');
   });
 
   it('heuristic bots of every style finish games with legal actions', () => {
@@ -100,7 +131,7 @@ describe('built-in bots', () => {
         meta: { ...meta('legacy'), obsVersion: 'obs_v1' },
         forward: () => scores,
       }),
-    ).toThrow(/obs_v1.*obs_v4/);
+    ).toThrow(/obs_v1.*obs_v5/);
   });
 
   it('evaluates all ten movement outcomes before using a teleport', () => {
