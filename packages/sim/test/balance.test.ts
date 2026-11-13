@@ -3,8 +3,8 @@ import { DEFAULT_RULES } from '@dragon-rush/engine';
 import { runBatch, summarize } from '../src/index';
 
 describe('balance regression (small, seeded)', () => {
-  it('keeps 4-player heuristic games near the measured rush-13/combat-9 baseline', () => {
-    expect(DEFAULT_RULES.version).toBe('rush-13');
+  it('keeps 4-player heuristic games near the measured rush-14/combat-9 baseline', () => {
+    expect(DEFAULT_RULES.version).toBe('rush-14');
     const m = summarize(
       runBatch({
         games: 120,
@@ -15,10 +15,10 @@ describe('balance regression (small, seeded)', () => {
         combat: 'sim',
       }),
     );
-    // Rush-13/combat-9 1,000-game baseline: 18.553 rounds, 30.5% dragon endings.
-    // Keep broad guards for this shorter fixed sample (19.275 rounds, 32.5% dragon).
-    expect(Math.abs(m.avgRounds - 18.553)).toBeLessThan(3);
-    expect(Math.abs(m.dragonEndShare - 0.305)).toBeLessThan(0.1);
+    // Rush-14/combat-9 1,000-game baseline: 18.133 rounds, 28.7% dragon endings.
+    // Keep broad guards for the shorter fixed sample around the measured full batch.
+    expect(Math.abs(m.avgRounds - 18.133)).toBeLessThan(3);
+    expect(Math.abs(m.dragonEndShare - 0.287)).toBeLessThan(0.1);
     expect(m.earlyEliminationShare).toBeGreaterThan(0.2);
     expect(m.earlyEliminationShare).toBeLessThan(0.45);
     expect(m.drawShare).toBeLessThan(0.02);

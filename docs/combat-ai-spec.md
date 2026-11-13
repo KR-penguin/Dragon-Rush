@@ -145,7 +145,7 @@
 | `config.opponent` | `"scripted:<name>"` \| `"external"`, `"scripted:pool"` | `p0`일 때 상대 좌석(이름은 §1). `external`은 `controlled: "both"`와만 쓴다(`p0`이면 `BAD_CONFIG`) |
 | `config.mode_mix` | `{pvp, dragon}`, `{pvp: 0.75, dragon: 0.25}` | 에피소드별 모드 확률 |
 | `config.jobs` | `"uniform"` \| 좌석별 목록(직업 id 또는 `"uniform"`, 1~2개), `"uniform"` | 같은 직업 대결 허용. 목록이 1개면 두 좌석 모두에 적용 |
-| `config.stat_sampler` | `"uniform_board"` \| `"start"` \| `"file:<path>"`, `"uniform_board"` | **[구현]** `uniform_board`: 현재도 유지된 직업 시작 스탯 + 강화 단계 균등 표본(결투 ATK·DEF +0~6, maxHp +0~5단계×6, HP 35~100% / 용전 ATK·DEF +3~9, maxHp +2~7단계, HP 60~100% / 검사 불굴 남음 90%; 과거 보드 휴리스틱 3000판 로그의 p5~p95를 덮도록 정함). `start`: 직업 시작 스탯. `file:<path>`: `stat_dist_v1` 파일(§10.3)에서 같은 직업·같은 전투 종류 표본. 보관된 `packages/sim/data/rush4_stat_dist_v1.json`은 과거 `rush-4` 분포이며 현행 `rush-13`/`combat-9` 분포가 아니다 |
+| `config.stat_sampler` | `"uniform_board"` \| `"start"` \| `"file:<path>"`, `"uniform_board"` | **[구현]** `uniform_board`: 현재도 유지된 직업 시작 스탯 + 강화 단계 균등 표본(결투 ATK·DEF +0~6, maxHp +0~5단계×6, HP 35~100% / 용전 ATK·DEF +3~9, maxHp +2~7단계, HP 60~100% / 검사 불굴 남음 90%; 과거 보드 휴리스틱 3000판 로그의 p5~p95를 덮도록 정함). `start`: 직업 시작 스탯. `file:<path>`: `stat_dist_v1` 파일(§10.3)에서 같은 직업·같은 전투 종류 표본. 보관된 `packages/sim/data/rush4_stat_dist_v1.json`은 과거 `rush-4` 분포이며 현행 `rush-14`/`combat-9` 분포가 아니다 |
 | `config.action_repeat` | int ≥ 1, 4 | §3 |
 | `config.obs_delay` | `[min, max]` 또는 int, `[4, 18]` | §3 |
 | `config.flat_actions` | bool, false | §5 |
@@ -222,7 +222,7 @@ obs, reward, terminated, truncated, info = env.step(actions)
 - 50만 결정마다 고정 기준 집합과 상대당 200전으로 Elo 평가(시작 1200, K 16~32). 보상 합보다 Elo를 본다. 셀프플레이는 `controlled="both"`로 두 좌석에 서로 다른 가중치 사본을 넣으면 numpy만으로 된다.
 
 ### 10.3 스탯 분포·처리량
-- 현재 제공되는 `rush4_stat_dist_v1.json`은 과거 `rush-4` HeuristicBot 보드 8,000판과 실제 `sim` 전투에서 수집했다(당시 `rush-4` 메타데이터의 모델 사용). 현행 `rush-13`에서는 초반 보호·출발 칸 안전이 없고 이동 룰렛·텔레포트 보너스·강화 횟수·게임별 맵 생성이 달라 전투 빈도·상대·스탯 분포가 달라질 수 있다. 현행 분포의 재수집은 아직 하지 않았다. 직전 `rush-3` 분포도 같은 디렉터리에 보관한다.
+- 현재 제공되는 `rush4_stat_dist_v1.json`은 과거 `rush-4` HeuristicBot 보드 8,000판과 실제 `sim` 전투에서 수집했다(당시 `rush-4` 메타데이터의 모델 사용). 현행 `rush-14`에서는 초반 보호·출발 칸 안전이 없고 이동 룰렛·텔레포트 보너스·강화 횟수·게임별 맵 생성이 달라 전투 빈도·상대·스탯 분포가 달라질 수 있다. 현행 분포의 재수집은 아직 하지 않았다. 직전 `rush-3` 분포도 같은 디렉터리에 보관한다.
   - **[구현]** 형식(`packages/sim/src/statDist.ts`, zod 검증): `{ "version": "stat_dist_v1", "rules_version", "resolver", "games", "fighters": [{ "kind": "duel"|"dragonFight", "job", "hp", "maxHp", "atk", "def", "indomitableAvailable" }], "setups": [{ "kind", "a", "b", "dragon"? }] }`. 현재 파일은 22,594개 실제 공격자·방어자 전투 셋업(결투 15,165·용전 7,429)과 37,759명 전투원 표본을 보존한다. env 기본 `uniform_board`는 이전 휴리스틱 로그의 p5~p95를 덮도록 만든 일반 표본이고, 현재 규칙의 실제 분포를 쓰려면 `file:<path>`를 지정한다(§8).
 - 처리량 목표(벤치마크로 확인): sim 1틱 ≤ 5µs, env 프로세스당 ≥ 30k 결정/s(64 env 배치), numpy 포함 종단 ≥ 10k 결정/s. 코어당 프로세스 하나로 확장.
   - **[구현] 측정값**(개발 PC, Node 22, 64 env): sim 1틱 약 0.45µs(입력 없음)·1.8µs(스크립트 봇 2개 포함), 인코딩+마스크 약 1.1µs. env 서버 단독 `both` 약 7만 결정/s, `p0`(상대 스크립트 봇이 매 틱 판단) 약 4만 결정/s. numpy 예제 포함 종단 `both` 약 2만, `p0` 약 1.2만 결정/s. Vitest 벤치마크(`combatEnv.test.ts`)가 매 실행마다 값을 출력한다.
@@ -245,7 +245,7 @@ createCombatModelPolicy(model, { difficulty?: 'easy' | 'normal' | 'hard'; temper
 ## 12. 보드 env의 전투 해결 (`combat_resolver`)
 - 보드 env(`rpgboard-env/2`)의 선택값은 `config.combat_resolver: "sim" | "dice"`이며 기본값은 `"sim"`이다. 둘 다 생성된 24칸 맵의 효과를 담은 보드 관측 `obs_v5`(498)와 행동 `act_v5`(44)을 쓴다. 닌자의 −1/0/+1은 어느 선택이든 쿨다운 2를 시작해 다음 자기 턴에는 사용할 수 없다. reset 응답의 `combat_resolver`와 `expect.combat_resolver` 불일치는 `VERSION_MISMATCH`다.
 - 내부 `outcome_v1` 결과 예측기와 `outcome` resolver, 모델 JSON 로더·CLI는 제거됐다. 보드 학습은 실제 스크립트 전투 `sim`을 사용한다. 사용자 제공 보드 정책과 전투 정책 모델의 어댑터 계약은 유지한다.
-- **역사적 측정**: 삭제된 `outcome_v1`은 과거 `rush-3`/`combat-2` 분포로 적합·검증됐다. 당시 보정 수치와 20만 전투 표본은 현행 `rush-13`/`combat-9`의 성능이나 현재 사용 가능한 명령을 뜻하지 않는다. 이전 `stat_dist_v1` 파일은 역사적 전투 스탯 분포 자료로 남는다.
+- **역사적 측정**: 삭제된 `outcome_v1`은 과거 `rush-3`/`combat-2` 분포로 적합·검증됐다. 당시 보정 수치와 20만 전투 표본은 현행 `rush-14`/`combat-9`의 성능이나 현재 사용 가능한 명령을 뜻하지 않는다. 이전 `stat_dist_v1` 파일은 역사적 전투 스탯 분포 자료로 남는다.
 - **역사적 비교**: 과거 `rush-3`에서 제거된 결과 예측기를 보드 봇에 적용한 뒤 같은 시드·4인 8,000판을 실제 `sim` 전투로 다시 측정하면 중앙 6/p95 9라운드, 용 처치 종료 46.8%, 직업 승률 검/궁/마/닌/광 18.8/26.1/34.8/25.4/19.8%, 3라운드 안 탈락 22.6%였다([game-design.md §15](game-design.md)). 현재 예측기가 제거돼 같은 값은 재현되지 않는다. §15의 과거 `rush-7` 표도 현행 봇 기준선이 아니다.
 - `dice`는 선택형 빠른 전투의 `resolveCombatWithDice`다. 기본 `sim`은 `boardCombatSetup(state)`으로 보드 프로필을 옮겨 두 `scripted:balanced` 봇의 실제 전투를 끝까지 실행한다. 실시간 플레이의 정책은 별도 전투 모델 가중치가 없으면 스크립트 봇이다. `pnpm sim --combat sim` 또는 `pnpm sim --combat dice`로 비교한다.
 - 상성 보정 B의 **기본 5직업 시작 스탯은 rush-2에서도 그대로**다. `combat-2`의 balanced 봇 반응 10f/16f 합산 실측의 10개 우세 방향은 모두 통과했지만 목표 대·소 상성 승률 범위는 미달이고 5f 시험에는 일부 역전이 남아 있다([combat-design.md §5.1](combat-design.md)). UI Easy/Hard는 다른 스타일이므로 이 행렬의 통과 범위가 아니다.

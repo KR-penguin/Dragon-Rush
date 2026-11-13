@@ -57,7 +57,7 @@ describe('shop purchase presentation', () => {
 
   it('describes teleport as the pre-movement alternative to roulette', () => {
     const html = renderShop(arriveAtShop());
-    expect(html).toContain('텔레포트 구매, 코인 24');
+    expect(html).toContain('텔레포트 구매, 코인 12');
     expect(html).toContain('이동 전 자기 턴에 룰렛 대신 사용');
     expect(html).toContain('선택한 칸까지 시계 방향 이동');
     expect(html).toContain('이동 후 재사용 불가');

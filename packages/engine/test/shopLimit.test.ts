@@ -12,7 +12,10 @@ function shopVisit(rules = DICE_RULES) {
 describe('shop purchases per turn', () => {
   it('allows three total purchases and rejects the fourth without mutating the input', () => {
     let state = shopVisit();
-    for (const item of ['teleport', 'shield', 'princeTotem'] as const) {
+    const coinsBefore = state.players[0]!.coins;
+    const items = ['teleport', 'shield', 'princeTotem'] as const;
+    const totalPrice = items.reduce((sum, item) => sum + state.rules.items[item].price, 0);
+    for (const item of items) {
       state = act(deepFreeze(state), { type: 'BUY_ITEM', item }).state;
     }
     expect(state.turn.itemsBought).toBe(3);
@@ -20,7 +23,7 @@ describe('shop purchases per turn', () => {
     expect(() => act(deepFreeze(state), { type: 'BUY_ITEM', item: 'shield' })).toThrow(
       IllegalActionError,
     );
-    expect(state.players[0]!.coins).toBe(55);
+    expect(state.players[0]!.coins).toBe(coinsBefore - totalPrice);
   });
 
   it('keeps the total when a shop state changes position during the same turn', () => {

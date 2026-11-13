@@ -11,9 +11,32 @@ function ready(rules = DICE_RULES) {
 }
 
 describe('teleport main action', () => {
-  it('costs 24 coins and has a configured one-use turn limit', () => {
-    expect(DEFAULT_RULES.version).toBe('rush-13');
-    expect(DEFAULT_RULES.items.teleport).toEqual({ price: 24, perTurnLimit: 1 });
+  it('costs 12 coins and has a configured one-use turn limit', () => {
+    expect(DEFAULT_RULES.version).toBe('rush-14');
+    expect(DEFAULT_RULES.items.teleport).toEqual({ price: 12, perTurnLimit: 1 });
+  });
+
+  it('requires 12 coins and deducts exactly 12 when buying a teleport', () => {
+    const shopping = patch(ready(), (state) => {
+      state.players[0]!.coins = 12;
+      state.players[0]!.position = 6;
+      state.turn.canBuy = true;
+      state.pending = { actor: 0, phase: 'POST_MOVE' };
+    });
+    const short = patch(shopping, (state) => {
+      state.players[0]!.coins = 11;
+    });
+    const action = { type: 'BUY_ITEM', item: 'teleport' } as const;
+    expect(getLegalActions(short)).not.toContainEqual(action);
+    expect(() => act(deepFreeze(short), action)).toThrow(IllegalActionError);
+    expect(getLegalActions(shopping)).toContainEqual(action);
+    const bought = act(deepFreeze(shopping), action);
+    expect(bought.state.players[0]!.coins).toBe(0);
+    expect(bought.state.players[0]!.items.teleport).toBe(3);
+    expect(bought.state.turn.itemsBought).toBe(1);
+    expect(eventsOf(bought.events, 'ItemBought')[0]).toMatchObject({ price: 12, coinsAfter: 0 });
+    expect(shopping.players[0]!.coins).toBe(12);
+    expect(shopping.players[0]!.items.teleport).toBe(2);
   });
 
   it.each([6, 18])('allows shop destination %i before movement', (tile) => {

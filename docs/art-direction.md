@@ -2,7 +2,7 @@
 
 > 상태: **구현 예정 (2차 개발 Phase R2·R3·R8)**. 모든 수치는 v1 기본값이며 플레이테스트와 주스(juice) 디버그 패널로 조정한다.
 > 이 문서가 **보드 화면·연출·효과(FX)·오디오 규칙·접근성 설정의 정본**이다. 실시간 전투 규칙과 sim 안의 수치(히트스톱·넉백·예고 시간)는 [combat-design.md](combat-design.md)(구현 후 `packages/combat`의 `DEFAULT_COMBAT_RULES`), 에셋 파일 목록은 [development-plan.md §4.2](development-plan.md), 규칙은 [game-design.md](game-design.md)가 정본이다.
-> 이 문서의 항목은 표현(presentation)이다. 현행 `rush-13` 이동은 1~10 룰렛이며 보드 관측·행동은 `obs_v5`/`act_v5`다. 내부 `ROLL_DICE`/`DiceRolled` 명칭은 호환성을 위해 유지한다. 연출은 기존 이벤트 예산 안에 맞춘다: `DiceRolled` 700ms, `Moved` 160ms/칸, `TileResolved`·`EffectApplied` 각 250ms, `MysteryCardDrawn` 600ms, `CombatStarted` 600ms, `CombatEnded` 700ms, `PlayerEliminated` 900ms. 서버 타이머는 연출을 기다리지 않는다.
+> 이 문서의 항목은 표현(presentation)이다. 현행 `rush-14` 이동은 1~10 룰렛이며 보드 관측·행동은 `obs_v5`/`act_v5`다. 내부 `ROLL_DICE`/`DiceRolled` 명칭은 호환성을 위해 유지한다. 연출은 기존 이벤트 예산 안에 맞춘다: `DiceRolled` 700ms, `Moved` 160ms/칸, `TileResolved`·`EffectApplied` 각 250ms, `MysteryCardDrawn` 600ms, `CombatStarted` 600ms, `CombatEnded` 700ms, `PlayerEliminated` 900ms. 서버 타이머는 연출을 기다리지 않는다.
 
 ## 1. 콘셉트
 - **Ember Table (불씨의 작전 탁자)**: 어두운 홀의 조각된 호두나무 작전 탁자를 보드 한가운데 용의 둥지가 아래에서 비춘다. 칸은 나무에 박힌 양피지 명판, 영웅은 채색 판지 스탠디(standee), UI는 금테를 두른 원정대 문구류다.

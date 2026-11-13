@@ -28,7 +28,7 @@
 | `ENV_PROTOCOL` | `"rpgboard-env/2"` | env 서버 메시지 형식 (`obs_v5`/`act_v5`) |
 
 - 인덱스 위치·길이, 정규화 상수, 인코딩 방식, 특징 의미 중 하나라도 바뀌면 버전을 올린다. `obs_v5`는 `obs_v4`의 498차원을 유지하되 아이템 순서를 `[teleport, shield, princeTotem]`으로 바꾸고 offset 243에 남은 구매 횟수 비율을 둔다. 과거 `act_v4`는 도둑 사용 행동 3개를 제거해 44차원이며 후속 인덱스가 3씩 당겨졌다. 현행 `act_v5`는 그 44개 인덱스·이름을 유지하고 텔레포트 마스크만 이동 전 `PRE_ROLL` 1회로 바꾼다. 상점 목적지는 계속 허용한다. `act_v4` 가중치도 재학습 또는 명시적 변환·마스크 검증이 필요하며, 메타데이터만 바꾸는 것은 변환이 아니다. 기존 `OBS_V2/3/4_LAYOUT`은 보존하며 활성 레이아웃은 별도 `OBS_V5_LAYOUT`이다. 이전 모델은 재학습 또는 명시적 변환이 필요하다.
-- `RulesConfig` 수치 변경(밸런스 조정)은 obs/act 버전을 바꾸지 않는다(값만 바뀜). 다만 정책 성능이 달라질 수 있으므로 env `info`가 `rules_version`을 함께 알려 주고, 모델 메타데이터에도 기록을 권장한다.
+- `RulesConfig` 수치 변경(밸런스 조정)은 obs/act 버전을 바꾸지 않는다(값만 바뀜). `rush-14`는 텔레포트 가격만 24에서 12로 바꾸며 `obs_v5`/`act_v5`를 유지한다. 다만 정책 성능이 달라질 수 있으므로 env `info`가 `rules_version`을 함께 알려 주고, 모델 메타데이터에도 기록을 권장한다.
 - 확인 지점: env `info` 응답(`obs_version`, `act_version`, `obs_dim`, `action_dim`, `obs_layout`), 모델 메타데이터(§9, 있으면 로드 시 일치 검사). 버전 상수 변경 없이 레이아웃이 바뀌면 골든 테스트가 실패한다(§11).
 
 ## 3. 관측 벡터 `obs_v5` (float32[498], 자기중심)
@@ -44,18 +44,18 @@
 
 **기존 258개 정규화 상수** (`OBS_V3_SCALES`; `OBS_V5_SCALES`에도 포함)
 
-| 상수 | 값 | 동결 당시 근거 (config `final`; 현재 `rush-13`은 아래 별도 설명) |
+| 상수 | 값 | 동결 당시 근거 (config `final`; 현재 `rush-14`는 아래 별도 설명) |
 |---|---|---|
 | `HP_S` | 120 | 용 HP 115, 기본 HP 30~56, HP 강화 +6/레벨 |
 | `ATK_S`, `DEF_S` | 20 | 기본 ATK 4~6 / DEF 5~6, 용 10/6, 점증 비용(3+lvl, 2+lvl) |
 | `COIN_S` | 50 | 시작 5, 출발 보너스 +10, 턴당 순 수입 ≈2.45, 당시 도둑 7, 가격 5~6, 강화비 |
 | `LVL_S` | 10 | 스탯별 강화 레벨 |
-| `ITEM_S` | 3 | 초기 `final`의 시작 방어막 1과 아이템 수량을 기준으로 동결. 현재 `rush-13` 시작 아이템은 0 |
+| `ITEM_S` | 3 | 초기 `final`의 시작 방어막 1과 아이템 수량을 기준으로 동결. 현재 `rush-14` 시작 아이템은 0 |
 | `ROUND_S` | 100 | 학습 env `maxRounds` 기본 100 (`rush-4` 모델 사용 4인 실측 p95 = 10; 이전 스케일 유지) |
 | `GRACE_S` / `CD_S` / `TP_S` | 3 / 2 / 2 | 이전 관측 스케일 유지. 현재 초반 보호는 0라운드, 닌자 쿨다운은 2(격턴 사용)다 / 이번 턴 텔레포트 사용 수 |
 | `DIST_S` | 23 | 링(24칸)에서 최대 전진 거리 |
 
-> 현재 규칙 `rush-13`은 이동 룰렛 1~10, 빠른 전투 주사위 1~6, 유료 강화 턴당 최대 3회다. 24칸 보드는 게임 시작 때 시드로 생성되고 0·6·12·18은 고정된다. `obs_v5`의 기존 스케일은 이전과 같으며 용 HP는 88(관측값 0.73), 보드 ATK는 50이고 `g.dragonAtk = clip(50 / ATK_S, 0, 2) = 2`다. 용이 주는 피해는 방어력 계산 후 0.6배이고 받는 피해 배율 0.3은 그대로다. 기본 HP는 34~53이다. 초반 보호가 없어 `g.graceLeft`는 시작부터 0이고 `g.pvpEnabled`는 1이다. 출발 칸도 PvP가 가능하다. 코인 흐름(기본 시작 10·궁수 정찰 보급 시 16, 출발 보너스 +35) 때문에 100코인 이상은 클리핑된다. 코인 손실 이벤트의 미지불분은 1코인당 HP 1로 지불한다. 이전 `rush-9` 밸런스 표는 현재 규칙의 측정치가 아니다(기획서 §15).
+> 현재 규칙 `rush-14`는 이동 룰렛 1~10, 빠른 전투 주사위 1~6, 유료 강화 턴당 최대 3회다. 24칸 보드는 게임 시작 때 시드로 생성되고 0·6·12·18은 고정된다. `obs_v5`의 기존 스케일은 이전과 같으며 용 HP는 88(관측값 0.73), 보드 ATK는 50이고 `g.dragonAtk = clip(50 / ATK_S, 0, 2) = 2`다. 용이 주는 피해는 방어력 계산 후 0.6배이고 받는 피해 배율 0.3은 그대로다. 기본 HP는 34~53이다. 초반 보호가 없어 `g.graceLeft`는 시작부터 0이고 `g.pvpEnabled`는 1이다. 출발 칸도 PvP가 가능하다. 코인 흐름(기본 시작 10·궁수 정찰 보급 시 16, 출발 보너스 +35) 때문에 100코인 이상은 클리핑된다. 코인 손실 이벤트의 미지불분은 1코인당 HP 1로 지불한다. 이전 `rush-9` 밸런스 표는 현재 규칙의 측정치가 아니다(기획서 §15).
 
 ### 3.1 자기 블록 — offset 0, 길이 51
 
@@ -128,7 +128,7 @@
 | 247 | 1 | `g.pvpAmDefender` | 진행 중 PvP 결정에서 내가 방어자 |
 | 248 | 3 | `g.pvpOpponent` | 확정된 PvP 상대 원-핫 [상대1, 상대2, 상대3] (대상 선택 전이면 0) |
 | 251 | 1 | `g.dragonHp` | n(dragon.hp, HP_S) |
-| 252 | 1 | `g.dragonAtk` | n(dragon.atk, ATK_S). `rush-13` 보드 ATK 50은 `clip(50/20, 0, 2) = 2` |
+| 252 | 1 | `g.dragonAtk` | n(dragon.atk, ATK_S). `rush-14` 보드 ATK 50은 `clip(50/20, 0, 2) = 2` |
 | 253 | 1 | `g.dragonDef` | n(dragon.def, DEF_S) |
 | 254 | 3 | `g.itemPrice` | [teleport, shield, princeTotem] n(price, COIN_S) |
 | 257 | 1 | `g.paidUpgradesRemaining` | `max(0, maxPaidUpgradesPerTurn − turn.paidUpgradesUsed) / maxPaidUpgradesPerTurn` (상한 0이면 0). 기본 3회에서 1→2/3→1/3→0 |
@@ -187,7 +187,7 @@
 | SHIELD_DECISION (방어막 보유한 도착자 또는 모든 방어자) | `SHIELD_NO`, `SHIELD_YES` | `SHIELD_NO`는 항상 합법. 방어막이 있을 때만 `SHIELD_YES`도 합법. 방어막 없는 방어자의 `SHIELD_NO`는 결투 시작 확인 |
 | TRAINING_CHOICE (턴 플레이어) | `TRAIN(s)` | 항상 3개 모두 합법. 거부 행동 없음 (기획서 §5 수련장) |
 
-- 텔레포트 가격은 24, 기본 `perTurnLimit = 1`이다. 횟수 설정을 완화해도 이동 전 자기 턴당 1회라는 이동 배타성은 유지한다. `POST_MOVE` 및 룰렛 뒤 `MOVE_ADJUST`에서는 텔레포트 마스크가 모두 0이다. 상점 착지 후 새로 구매한 텔레포트도 다음 자기 턴부터 사용한다. 이 마스크 의미 변경 때문에 차원·인덱스는 같아도 `act_v5`로 올린다. `obs_v5`의 `g.teleportsUsed`·`g.teleportLimitReached` 구조는 유지한다.
+- 텔레포트 가격은 12, 기본 `perTurnLimit = 1`이다. 횟수 설정을 완화해도 이동 전 자기 턴당 1회라는 이동 배타성은 유지한다. `POST_MOVE` 및 룰렛 뒤 `MOVE_ADJUST`에서는 텔레포트 마스크가 모두 0이다. 상점 착지 후 새로 구매한 텔레포트도 다음 자기 턴부터 사용한다. 이 마스크 의미 변경 때문에 차원·인덱스는 같아도 `act_v5`로 올린다. `obs_v5`의 `g.teleportsUsed`·`g.teleportLimitReached` 구조는 유지한다.
 - 왕자의 토템은 실제 전투 시작 시 참가자마다 1개를 자동 소모한다. 해당 전투 동안 최대 HP를 15 올리고 완전히 회복시킨다. 전투 종료 시 최대 HP를 되돌리고 남은 HP를 원래 최대치 이하로 제한한다. 방어막으로 취소된 결투에서는 소모하지 않는다. 쉬는 턴에는 이동(`ROLL_DICE`·`USE_TELEPORT`)만 마스크되고 `END_TURN`이 열린다.
 - **불변식** (§11에서 속성 테스트):
   1. `{decodeAction(i) | mask[i] = 1}` = `getLegalActions(state)` (집합 일치, 일대일). `encodeAction(decodeAction(i)) = i`.
@@ -218,7 +218,7 @@
 ```json
 {"id":1,"cmd":"info"}
 {"id":1,"ok":true,"result":{"protocol":"rpgboard-env/2","obs_version":"obs_v5","act_version":"act_v5",
- "obs_dim":498,"action_dim":44,"rules_version":"rush-13","action_names":["ROLL_DICE","END_TURN","CHALLENGE_DRAGON","..."],
+ "obs_dim":498,"action_dim":44,"rules_version":"rush-14","action_names":["ROLL_DICE","END_TURN","CHALLENGE_DRAGON","..."],
  "obs_layout":[{"name":"self.job","offset":0,"length":5},{"name":"self.pos","offset":5,"length":24},"...",{"name":"tile23.mystery","offset":497,"length":1}],
  "bots":["random","random:uniform","heuristic","heuristic:aggro","heuristic:growth","heuristic:rush"]}}
 ```
@@ -370,7 +370,7 @@ createModelPolicy(model: PolicyModel, opts?: { mode?: 'argmax' | 'sample'; tempe
 7. JSON 키 구조를 보여 주는 작은 예시 파일.
 8. **패리티 샘플**: env에서 뽑은 obs 5개 이상과 각 obs의 `info["action_mask"]`(44개 bool), 사용자 numpy 코드로 계산한 actor 원출력(마스크 적용 전 44개)과 critic 값. 파일 형식은 사용자 편의대로 정하되 이 네 항목은 들어 있어야 한다(일부 행동이 막힌 마스크 포함 권장).
 
-**권장 메타데이터** (강제 아님): `"obs_version": "obs_v5"`, `"act_version": "act_v5"`, `"obs_dim": 498`, `"action_dim": 44`, `"output": "logits"`, `"rules_version": "rush-13"`, 학습 설정 요약.
+**권장 메타데이터** (강제 아님): `"obs_version": "obs_v5"`, `"act_version": "act_v5"`, `"obs_dim": 498`, `"action_dim": 44`, `"output": "logits"`, `"rules_version": "rush-14"`, 학습 설정 요약.
 **파일 위치**: `models/<name>.json` (파일명 `^[a-z0-9_-]+\.json$`, 서버 `MODELS_DIR` 허용 목록만 로드), 패리티 샘플은 `models/parity/<name>.json`(하위 폴더는 레지스트리가 스캔하지 않음). 어댑터는 포맷 수령 후 `packages/ai/src/model/adapters/`에 구현하고, 그 전까지 model 좌석은 UI에서 "준비 중"으로 비활성화한다.
 
 ## 10. 내장 봇
