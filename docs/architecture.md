@@ -424,6 +424,7 @@ Python (사용자 트레이너) ─┬─ RPGBoardEnv/RPGBoardVecEnv ── stdi
 
 - `apps/server/src/socket/gateway.ts`의 공유 스케줄러가 활성 `FightRoom`을 60Hz로 진행한다. `FightAuthority`는 인증 소켓에서 구한 좌석별 첫 입력만 받고, 지난 틱과 너무 먼 미래 입력을 거절한다. PvP는 commit-before-reveal과 최대 6틱 조건부 대기, PvE는 최대 15틱 대기 후 대체 입력을 사용한다. 확인된 입력·해시만 확정 스트림으로 보내고, 서버 결과만 `GameSession`에 반영한다. 양쪽 모두 봇인 전투는 서버에서 일괄 실행하고 `fight:replay`를 전송한다.
 - `apps/web/src/services/fight/OnlineFightSession.ts`는 `FightClient` 또는 `SpectatorPlayback`을 렌더러에 연결한다. 전투원은 링 상태에서 잘못 예측한 틱부터 재시뮬하며, 관전자는 확정 입력만 6~15틱 뒤에서 재생한다. 렌더 위치 보정은 sim 상태를 바꾸지 않고, KO·결과는 확정 뒤 표시한다. 개발 빌드의 `NetSimPanel`은 기본 꺼짐이며 가상 지연·지터·손실을 켤 수 있다.
+- `OnlineGameClient`는 수신한 서버 버전과 화면에서 재생 중인 상태를 분리한다. `onlinePresentation.ts`는 보드 전이와 전투별 start/go/replay를 묶어 순서대로 재생하며, 자기 조작이 필요한 새 실시간 전투는 이전 리플레이보다 먼저 연다. 완료 처리는 전투 ID가 일치할 때만 적용하고, 같은 버전의 전투 메타데이터 갱신은 보드 애니메이션 큐를 유지한다. 시작 연출 중 확정 결과를 받으면 바로 종료 연출로 넘어간다.
 - 경계 검증: 객체 메시지는 zod, 빈번한 정수 배열 메시지는 길이·범위 디코더로 검증한다. Socket.IO는 WebSocket만 사용하고 압축을 끈다. 재접속·갭·디싱크는 `fight:sync`로 복구한다. 가상 TCP 시험은 최종 상태 수렴을 보였으나 손실 구간 p95 예측 깊이는 설계 목표보다 크다([combat-design.md §9.5](combat-design.md)).
 
 ### 12.4 전투 resolver와 학습 연결

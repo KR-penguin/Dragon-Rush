@@ -100,7 +100,7 @@ it('keeps fight:start received before the COMBAT update and applies the final bo
   expect(finished.publicState.outcome).not.toBeNull();
   socket.emit(S2C.gameUpdate, finished);
   expect(updates.at(-1)?.fight?.id).toBe(start.fightId);
-  await client.reportFight();
+  await client.reportFight(fight.id);
   expect(updates.at(-1)?.fight).toBeNull();
   expect(updates.at(-1)?.publicState.outcome).not.toBeNull();
   client.dispose();

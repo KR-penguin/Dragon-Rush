@@ -41,9 +41,10 @@ export interface GameUpdate {
   readonly seats: readonly SeatInfo[];
   /** True for full-state snapshots (start, reconnect, gap recovery): clients snap without animating. */
   readonly snapshot: boolean;
+  /** Same-version fight metadata; preserves the board's current animation queue. */
+  readonly presentationOnly?: boolean;
   /**
-   * Real-time fight the engine is waiting on (phase COMBAT), or null. Optional so backends that still
-   * settle fights themselves (online, for now) need not send it.
+   * Real-time fight being presented for this board state, or null.
    */
   readonly fight?: PendingFight | null;
 }
@@ -82,7 +83,7 @@ export interface PendingFight {
   readonly seed: number;
   readonly sides: readonly [FightSide, FightSide];
   readonly botLevel: FightBotLevel;
-  /** Set for bot-only fights: show the complete accelerated replay, then report `replay.result`. */
+  /** Set for bot-only fights: show the complete replay, then report `replay.result`. */
   readonly replay: FightReplay | null;
   readonly online?: { readonly start: FightStartMsg; readonly go: FightGoMsg | null };
 }

@@ -93,6 +93,10 @@ export const createGameStore = () => {
 
     receive(update) {
       const prev = get().latest;
+      if (update.presentationOnly) {
+        if (prev?.version === update.version) set({ latest: update });
+        return;
+      }
       if (prev && update.version <= prev.version && !update.snapshot) return;
       if (update.snapshot || !get().display) {
         set({ latest: update, display: update.publicState, queue: [], current: null });

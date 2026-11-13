@@ -7,8 +7,6 @@ import {
   FightReplaySchema,
   FightStartSchema,
   S2C,
-  type FightGoMsg,
-  type FightStartMsg,
   type GameSnapshotMsg,
   type GameUpdateMsg,
   type SeatStatusMsg,
@@ -27,6 +25,7 @@ import type { KeyTracker } from './fight/keyboardInput';
 import type { FightSession } from './fight/types';
 import { OnlineFightSession } from './fight/OnlineFightSession';
 import type { OnlineSession } from './onlineSession';
+import { OnlinePresentationQueue } from './onlinePresentation';
 
 export function toGameUpdate(
   msg: GameUpdateMsg | GameSnapshotMsg,
@@ -65,42 +64,28 @@ export class OnlineGameClient implements GameClient {
   private last: GameUpdate | null = null;
   private overrides = new Map<number, SeatStatusMsg>();
   private readonly offs: (() => void)[] = [];
-  private fightStart: FightStartMsg | null = null;
-  private fightGo: FightGoMsg | null = null;
-  private awaitingFightStart: GameUpdate | null = null;
-  private deferredBoard: GameUpdate | null = null;
-  private presentationDone = false;
-  private replay: PendingFight['replay'] = null;
+  private receivedVersion: number | null = null;
+  private readonly presentation = new OnlinePresentationQueue((update) => this.push(update));
 
   constructor(private readonly session: OnlineSession) {
     const socket = session.socket;
     const onUpdate = (msg: GameUpdateMsg) => {
-      if (this.last && msg.version > this.last.version + 1) {
-        this.requestSnapshot();
-        return;
+      if (this.receivedVersion !== null) {
+        if (msg.version <= this.receivedVersion) return;
+        if (msg.version > this.receivedVersion + 1) {
+          this.requestSnapshot();
+          return;
+        }
       }
+      this.receivedVersion = msg.version;
       this.overrides.clear();
-      const next = toGameUpdate(msg, false, this.overrides);
-      if (next.pending?.phase === 'COMBAT' && !this.fightStart) {
-        this.awaitingFightStart = next;
-        return;
-      }
-      this.awaitingFightStart = null;
-      if (this.last?.fight && !this.presentationDone && next.pending?.phase !== 'COMBAT')
-        this.deferredBoard = next;
-      else this.push(this.withFight(next));
+      this.presentation.receive(toGameUpdate(msg, false, this.overrides));
     };
     const onSnapshot = (msg: GameSnapshotMsg) => {
+      if (this.receivedVersion !== null && msg.version < this.receivedVersion) return;
+      this.receivedVersion = msg.version;
       this.overrides.clear();
-      const next = toGameUpdate(msg, true, this.overrides);
-      if (next.pending?.phase === 'COMBAT' && !this.fightStart) {
-        this.awaitingFightStart = next;
-        return;
-      }
-      this.awaitingFightStart = null;
-      if (this.last?.fight && !this.presentationDone && next.pending?.phase !== 'COMBAT')
-        this.deferredBoard = next;
-      else this.push(this.withFight(next));
+      this.presentation.receive(toGameUpdate(msg, true, this.overrides));
     };
     const onStatus = (msg: SeatStatusMsg) => {
       this.overrides.set(msg.seat, msg);
@@ -126,39 +111,18 @@ export class OnlineGameClient implements GameClient {
         socket.emit(FIGHT_C2S.away, { fightId: msg.fightId, reason: 'mismatch' });
         return;
       }
-      this.fightStart = msg;
-      this.fightGo = null;
-      this.presentationDone = false;
-      this.replay = null;
-      if (this.awaitingFightStart) {
-        const next = this.awaitingFightStart;
-        this.awaitingFightStart = null;
-        this.push(this.withFight(next));
-      } else if (this.last?.pending?.phase === 'COMBAT') {
-        this.push({ ...this.withFight(this.last), snapshot: true, events: [] });
-      }
+      this.presentation.start(msg);
     };
     const onFightGo = (raw: unknown) => {
       const parsed = FightGoSchema.safeParse(raw);
-      if (!parsed.success) return;
-      const msg = parsed.data;
-      if (msg.fightId !== this.fightStart?.fightId) return;
-      this.fightGo = msg;
+      if (parsed.success) this.presentation.go(parsed.data);
     };
     socket.on(FIGHT_S2C.start, onFightStart);
     socket.on(FIGHT_S2C.go, onFightGo);
     const onReplay = (raw: unknown) => {
       const parsed = FightReplaySchema.safeParse(raw);
       if (!parsed.success) return;
-      const msg = parsed.data;
-      if (msg.fightId !== this.fightStart?.fightId) return;
-      const bytes: number[] = [];
-      for (let i = 0; i + 2 < msg.inputs.length; i += 3) {
-        const count = msg.inputs[i]!;
-        for (let k = 0; k < count; k++) bytes.push(msg.inputs[i + 1]!, msg.inputs[i + 2]!);
-      }
-      this.replay = { result: msg.outcome, ticks: msg.endTick, inputs: Uint8Array.from(bytes) };
-      if (this.last) this.push(this.withFight(this.last));
+      this.presentation.replay(parsed.data);
     };
     socket.on(FIGHT_S2C.replay, onReplay);
     this.offs.push(
@@ -172,60 +136,18 @@ export class OnlineGameClient implements GameClient {
     );
   }
 
-  private withFight(update: GameUpdate): GameUpdate {
-    const req = update.publicState.combat;
-    const start = this.fightStart;
-    if (update.pending?.phase !== 'COMBAT' || !req || !start) {
-      if (update.pending?.phase !== 'COMBAT' && this.last?.pending?.phase === 'COMBAT') {
-        this.fightStart = null;
-        this.fightGo = null;
-        this.replay = null;
-      }
-      return { ...update, fight: null };
-    }
-    const sideFor = (seat: 0 | 1): PendingFight['sides'][number] => ({
-      side: seat === 0 ? ('a' as const) : ('b' as const),
-      seat: seat === 0 ? req.a : req.b,
-      control:
-        req.b === null && seat === 1
-          ? ('dragon' as const)
-          : start.you.role === 'fighter' && start.you.seat === seat
-            ? ('keyboard-solo' as const)
-            : ('remote' as const),
-    });
-    const sides: PendingFight['sides'] = [sideFor(0), sideFor(1)];
-    return {
-      ...update,
-      fight: {
-        id: start.fightId,
-        request: req,
-        setup: start.setup,
-        seed: start.seed,
-        sides,
-        botLevel: 'normal',
-        replay: this.replay,
-        online: { start, go: this.fightGo },
-      },
-    };
-  }
-
   createFightSession(fight: PendingFight, tracker: KeyTracker): FightSession {
     if (!fight.online) throw new Error('online fight metadata missing');
+    const go = this.presentation.metadata(fight.id)?.go ?? fight.online.go;
     return new OnlineFightSession(
-      { ...fight, online: { ...fight.online, go: this.fightGo } },
+      { ...fight, online: { ...fight.online, go } },
       this.session,
       tracker,
     );
   }
 
-  async reportFight(): Promise<SubmitResult> {
-    this.presentationDone = true;
-    if (this.deferredBoard) {
-      const next = this.deferredBoard;
-      this.deferredBoard = null;
-      this.push(this.withFight(next));
-    }
-    return { ok: true };
+  async reportFight(fightId: number): Promise<SubmitResult> {
+    return this.presentation.complete(fightId) ? { ok: true } : { ok: false, code: 'NO_FIGHT' };
   }
 
   private push(u: GameUpdate): void {
@@ -235,7 +157,7 @@ export class OnlineGameClient implements GameClient {
 
   subscribe(onUpdate: (u: GameUpdate) => void): () => void {
     this.listeners.add(onUpdate);
-    if (this.last) onUpdate({ ...this.last, snapshot: true, events: [] });
+    if (this.last) onUpdate({ ...this.last, snapshot: true, events: [], presentationOnly: false });
     else this.requestSnapshot();
     return () => this.listeners.delete(onUpdate);
   }
@@ -251,7 +173,8 @@ export class OnlineGameClient implements GameClient {
   }
 
   requestSnapshot(): void {
-    void this.session.call(C2S.gameRequestSnapshot);
+    // Disconnecting may cancel an acknowledgement after the game client has been disposed.
+    void this.session.call(C2S.gameRequestSnapshot).catch(() => undefined);
   }
 
   dispose(): void {

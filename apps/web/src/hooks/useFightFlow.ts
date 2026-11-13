@@ -1,6 +1,12 @@
 import type { CombatResult } from '@dragon-rush/combat';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { FLOW_MS, nextPhase, phaseMs, type FightPhase } from '../combat/fightFlow';
+import {
+  FLOW_MS,
+  nextPhase,
+  phaseAfterResult,
+  phaseMs,
+  type FightPhase,
+} from '../combat/fightFlow';
 import { fx } from '../fx/runtime/fxInstance';
 import { playSound } from '../services/audio';
 import type { FightSession } from '../services/fight';
@@ -61,14 +67,17 @@ export function useFightFlow(
     return () => clearTimeout(id);
   }, [phase, session, replay]);
 
-  useEffect(
-    () =>
-      session?.onEnd((r) => {
-        setResult((prev) => prev ?? r);
-        setPhase((p) => (p === 'fight' ? 'finish' : p));
-      }),
-    [session],
-  );
+  useEffect(() => {
+    if (!session) return;
+    const finish = (r: CombatResult) => {
+      setResult((prev) => prev ?? r);
+      setPhase(phaseAfterResult);
+    };
+    const off = session.onEnd(finish);
+    const existing = session.result();
+    if (existing) finish(existing);
+    return off;
+  }, [session]);
 
   useEffect(() => {
     if (phase === 'done' && result) done.current(result);

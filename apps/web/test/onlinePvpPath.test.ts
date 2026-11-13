@@ -174,7 +174,7 @@ it('plays a two-human shared-tile duel through both web fight sessions and retur
   expect(inputsSeen).toEqual([true, true]);
   expect(fights.every((fight) => fight.frame().curr.tick > 0)).toBe(true);
 
-  for (const client of clients) expect((await client.reportFight()).ok).toBe(true);
+  for (const client of clients) expect((await client.reportFight(left.fight!.id)).ok).toBe(true);
   await waitFor(() => latest.every((update) => update?.fight === null));
   expect(latest[0]!.publicState.combat).toBeNull();
   const winner = results[0]!.winner === 'a' ? request.a : request.b;

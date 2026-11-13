@@ -1,5 +1,5 @@
 import type { Action, SeatId } from '@dragon-rush/engine';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { GameUpdate } from '../services/gameClient';
 import type { GameStore } from '../store/gameStore';
 import { groupActions } from '../types/actionGroups';
@@ -66,17 +66,20 @@ export function useDecisionUi(
     lastDialog.current = dialog;
   });
 
-  const submit = async (action: Action): Promise<void> => {
-    if (busyRef.current) return;
-    busyRef.current = true;
-    setBusy(true);
-    try {
-      await store.getState().submit(action);
-    } finally {
-      busyRef.current = false;
-      setBusy(false);
-    }
-  };
+  const submit = useCallback(
+    async (action: Action): Promise<void> => {
+      if (busyRef.current) return;
+      busyRef.current = true;
+      setBusy(true);
+      try {
+        await store.getState().submit(action);
+      } finally {
+        busyRef.current = false;
+        setBusy(false);
+      }
+    },
+    [store],
+  );
 
   return {
     groups,

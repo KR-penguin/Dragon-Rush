@@ -90,7 +90,7 @@ export function activeDialog(i: DialogInputs): DialogKind | null {
       if (i.request) return i.request;
       return i.phase === 'POST_MOVE' && i.shopAvailable && !i.shopDismissed ? 'shop' : null;
     case 'COMBAT':
-      // Not a board decision; clients settle it immediately for now (temporary dice resolver).
+      // The fight session owns combat input and settlement.
       return null;
     default:
       return assertNever(i.phase);

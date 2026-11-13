@@ -1,38 +1,7 @@
 import { BOARD_SIZE, type GameEvent, type SeatId } from '@dragon-rush/engine';
 import type { SoundName } from '../fx/audio/soundCatalog';
 import { diceLandMs, hopTimings, scaled } from '../fx/timing';
-import type { SfxName } from '../types/assetPaths';
 import type { TileTone } from '../types/tileView';
-
-/** Sound effect for an event as it is shown, or null. Movement steps are voiced by the board itself. */
-export function sfxForEvent(e: GameEvent, controllable: readonly SeatId[]): SfxName | null {
-  switch (e.type) {
-    case 'DiceRolled':
-      return 'dice_roll';
-    case 'StartBonus':
-    case 'CoinsStolen':
-    case 'ItemBought':
-      return 'coin';
-    case 'LootTransferred':
-      return e.coins > 0 ? 'coin' : null;
-    case 'EffectApplied':
-      if (e.effect === 'coins' && e.delta > 0) return 'coin';
-      if (e.effect === 'randomItem') return 'item_use';
-      return null;
-    case 'StatUpgraded':
-      return 'upgrade';
-    case 'ItemUsed':
-      return e.item === 'shield' ? null : 'item_use';
-    case 'ShieldUsed':
-      return 'shield';
-    case 'CombatHit':
-      return e.breath ? 'dragon_breath' : 'attack_hit';
-    case 'GameEnded':
-      return isLocalWin(e, controllable) ? null : 'defeat';
-    default:
-      return null;
-  }
-}
 
 const isLocalWin = (
   e: Extract<GameEvent, { type: 'GameEnded' }>,

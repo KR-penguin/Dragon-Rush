@@ -1,7 +1,7 @@
 import { DEFAULT_COMBAT_RULES, type CombatEvent, type CombatEventBody } from '@dragon-rush/combat';
 import { describe, expect, it } from 'vitest';
 import { fightFxFor, type FightFxCommand, type FightFxContext } from '../src/combat/fightFx';
-import { FLOW_MS, finishMs, nextPhase, phaseMs } from '../src/combat/fightFlow';
+import { FLOW_MS, finishMs, nextPhase, phaseAfterResult, phaseMs } from '../src/combat/fightFlow';
 import { GHOST_DRAIN_MS, GHOST_HOLD_MS, ghostAt, trackGhost } from '../src/combat/render/hudModel';
 import { arenaRect, fitCanvas, VIEW_H, VIEW_W } from '../src/combat/render/layout';
 import type { PendingFight } from '../src/services/gameClient';
@@ -180,6 +180,12 @@ describe('sim event → effects', () => {
 });
 
 describe('fight flow', () => {
+  it('settles confirmed results arriving during intro or ready without waiting for another end event', () => {
+    for (const phase of ['intro', 'ready', 'fight'] as const)
+      expect(phaseAfterResult(phase)).toBe('finish');
+    for (const phase of ['finish', 'result', 'done'] as const)
+      expect(phaseAfterResult(phase)).toBe(phase);
+  });
   it('goes VS → READY → fight → KO beat → result → done; highlights skip READY', () => {
     expect(nextPhase('intro', false)).toBe('ready');
     expect(nextPhase('intro', true)).toBe('fight');
@@ -201,6 +207,15 @@ describe('fight flow', () => {
 });
 
 describe('HUD model', () => {
+  it('retains the HP ghost across unchanged render frames until its hold and drain finish', () => {
+    const initial = trackGhost(null, 50, 0);
+    const damaged = trackGhost(initial, 40, 1000);
+    const nextFrame = trackGhost(damaged, 40, 1016);
+    expect(nextFrame).toBe(damaged);
+    expect(ghostAt(nextFrame, 1200)).toBe(50);
+    expect(ghostAt(nextFrame, 1575)).toBe(45);
+    expect(ghostAt(nextFrame, 1750)).toBe(40);
+  });
   it('ghost bar holds 400 ms then drains to the new HP', () => {
     let g = trackGhost(null, 50, 0);
     g = trackGhost(g, 40, 1000);

@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { sfxForEvent, soundCuesForEvent } from '../src/animation/eventSfx';
+import { soundCuesForEvent } from '../src/animation/eventSfx';
 import { LocalGameClient } from '../src/services/LocalGameClient';
 import type { GameClient, GameUpdate, SubmitResult } from '../src/services/gameClient';
 import { createNavStore } from '../src/store/navStore';
@@ -97,39 +97,11 @@ describe('sound mapping', () => {
     outcome: { kind: winner === null ? 'draw' : 'dragon', winner },
   });
 
-  it('voices key events', () => {
-    expect(sfxForEvent({ type: 'DiceRolled', seat: 0, value: 3 }, [0])).toBe('dice_roll');
-    expect(sfxForEvent({ type: 'ShieldUsed', seat: 0, against: 1 }, [0])).toBe('shield');
-    expect(sfxForEvent({ type: 'ItemUsed', seat: 0, item: 'shield' }, [0])).toBeNull();
-    expect(sfxForEvent({ type: 'ItemUsed', seat: 0, item: 'thief', target: 1 }, [0])).toBe(
-      'item_use',
-    );
-    const hit = {
-      type: 'CombatHit',
-      kind: 'dragonFight',
-      attacker: 'dragon',
-      defender: 0,
-      roll: 2,
-      damage: 9,
-      evaded: false,
-      rage: false,
-      firstStrike: false,
-      hpAfter: 3,
-    } as const;
-    expect(sfxForEvent({ ...hit, breath: true }, [0])).toBe('dragon_breath');
-    expect(sfxForEvent({ ...hit, breath: false }, [0])).toBe('attack_hit');
-    expect(
-      sfxForEvent({ type: 'EffectApplied', seat: 0, effect: 'coins', delta: -2, after: 1 }, [0]),
-    ).toBeNull();
-    expect(sfxForEvent({ type: 'TurnEnded', seat: 0 }, [0])).toBeNull();
-  });
-
   it('leaves victory music to the result BGM without an old jingle', () => {
-    expect(sfxForEvent(ended(0), [0])).toBeNull();
     expect(soundCuesForEvent(ended(0), { controllable: [0] })).toEqual([]);
-    expect(sfxForEvent(ended(1), [0])).toBe('defeat');
-    expect(sfxForEvent(ended(null), [0])).toBe('defeat');
-    expect(sfxForEvent(ended(1), [])).toBeNull();
+    expect(soundCuesForEvent(ended(1), { controllable: [0] })).toEqual([{ name: 'defeat' }]);
+    expect(soundCuesForEvent(ended(null), { controllable: [0] })).toEqual([{ name: 'defeat' }]);
+    expect(soundCuesForEvent(ended(1), { controllable: [] })).toEqual([]);
   });
 });
 

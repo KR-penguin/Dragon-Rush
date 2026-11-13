@@ -1,7 +1,5 @@
 import { useEffect, useSyncExternalStore } from 'react';
-import { sfxForEvent } from '../animation/eventSfx';
-import { isMuted, playBgm, playSfx, setMuted, subscribeAudio } from '../services/audio';
-import type { GameStore } from '../store/gameStore';
+import { isMuted, playBgm, setMuted, subscribeAudio } from '../services/audio';
 import type { BgmName } from '../types/assetPaths';
 
 export function useMuted(): { muted: boolean; toggle: () => void } {
@@ -16,18 +14,3 @@ export function useBgm(name: BgmName | null | undefined): void {
   }, [name]);
   useEffect(() => () => playBgm(null), []);
 }
-
-/** Voices each event as the animation queue shows it. */
-export function useEventSfx(store: GameStore): void {
-  useEffect(
-    () =>
-      store.subscribe((s, prev) => {
-        if (!s.current || s.current === prev.current) return;
-        const name = sfxForEvent(s.current, s.latest?.controllableSeats ?? []);
-        if (name) playSfx(name);
-      }),
-    [store],
-  );
-}
-
-export { playSfx };

@@ -128,6 +128,7 @@ export const createOnlineLobbyStore = (deps: OnlineLobbyDeps) => {
         if (reason === 'io client disconnect') return;
         if (reason === 'io server disconnect') {
           // The server only kicks a socket when the same session connects elsewhere; no auto-reconnect follows.
+          get().disconnect();
           set({ connection: 'offline' });
           fail('SESSION_REPLACED');
           return;

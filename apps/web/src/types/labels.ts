@@ -8,15 +8,6 @@ export const JOB_LABEL: Record<JobId, string> = {
   berserker: '광전사',
 };
 
-/** @deprecated Emoji placeholders; the UI draws `components/icons/GameIcon` SVGs instead. */
-export const JOB_ICON: Record<JobId, string> = {
-  swordsman: '⚔️',
-  archer: '🏹',
-  mage: '🔮',
-  ninja: '🥷',
-  berserker: '🪓',
-};
-
 export const JOB_PASSIVE: Record<JobId, string> = {
   swordsman: '불굴: 게임당 1회, 치명상을 HP 1로 버팀',
   archer: '선제 사격: 항상 선공, 첫 공격 +3 · 정찰 보급: 시작 코인 +6',
@@ -30,8 +21,6 @@ export const ITEM_LABEL: Record<ItemId, string> = {
   shield: '방어막',
   thief: '도둑',
 };
-/** @deprecated Emoji placeholders; use `components/icons/GameIcon`. */
-export const ITEM_ICON: Record<ItemId, string> = { teleport: '🌀', shield: '🛡️', thief: '🦝' };
 export const ITEM_DESC: Record<ItemId, string> = {
   teleport:
     '선택한 칸까지 시계 방향으로 이동. 출발 칸을 지나거나 도착하면 출발 보너스 획득 (일회용)',
@@ -44,8 +33,6 @@ export const STAT_LABEL: Record<UpgradeStat | 'atk' | 'def', string> = {
   def: '방어력',
   maxHp: '최대 HP',
 };
-/** @deprecated Emoji placeholders; use `components/icons/GameIcon`. */
-export const STAT_ICON: Record<UpgradeStat, string> = { atk: '⚔️', def: '🛡️', maxHp: '❤️' };
 
 export const TILE_LABEL: Record<TileId, string> = {
   START: '출발',
@@ -78,40 +65,6 @@ export const TILE_LABEL: Record<TileId, string> = {
   TOLL_GATE: '산적 검문소',
   SINKHOLE: '깊은 싱크홀',
   BURNING_RUINS: '불타는 폐허',
-};
-
-/** @deprecated Emoji placeholders; use `components/icons/GameIcon`. */
-export const TILE_ICON: Record<TileId, string> = {
-  START: '🏁',
-  GOBLIN: '👺',
-  POISON_SWAMP: '☠️',
-  HERB: '🌿',
-  BANDIT: '🗡️',
-  TRAINING: '🏋️',
-  SHOP: '🛒',
-  WOLF: '🐺',
-  TRAP: '🪤',
-  TREASURE: '💰',
-  PICKPOCKET: '🫳',
-  BLACKSMITH: '⚒️',
-  INN: '🛏️',
-  ORC: '👹',
-  CURSED_ALTAR: '🕯️',
-  FOUNTAIN: '⛲',
-  ROCKFALL: '🪨',
-  MYSTERY: '❓',
-  TROLL: '🧌',
-  SPIDER_WEB: '🕸️',
-  WANDERING_MERCHANT: '🧳',
-  STORM: '⛈️',
-  MOONWELL: '🌙',
-  RUNESTONE: '🔮',
-  SUPPLY_CARAVAN: '🛒',
-  FORTUNE_IDOL: '🗿',
-  HAUNTED_GROVE: '👻',
-  TOLL_GATE: '🗡️',
-  SINKHOLE: '🕳️',
-  BURNING_RUINS: '🔥',
 };
 
 const CARD_LABEL: Record<string, string> = {
@@ -219,7 +172,3 @@ export const botLabel = (name: string | undefined): string =>
   name ? (BOT_LABEL[name] ?? name) : '봇';
 
 export const DRAGON_NAME = '용';
-/** @deprecated Emoji placeholder; use `components/icons/GameIcon`. */
-export const DRAGON_ICON = '🐉';
-/** @deprecated Emoji placeholder; use `components/icons/GameIcon`. */
-export const COIN_ICON = '🪙';

@@ -35,6 +35,11 @@ export function nextPhase(phase: FightPhase, replay: boolean): FightPhase {
   }
 }
 
+/** A confirmed result may arrive before a late joiner's intro has finished. */
+export function phaseAfterResult(phase: FightPhase): FightPhase {
+  return phase === 'intro' || phase === 'ready' || phase === 'fight' ? 'finish' : phase;
+}
+
 export interface PhaseContext {
   readonly replay: boolean;
   readonly kind: CombatKind;

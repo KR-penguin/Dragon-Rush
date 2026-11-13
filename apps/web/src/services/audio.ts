@@ -356,9 +356,6 @@ export function playSound(name: SoundName, opts: PlayOptions = {}): void {
   });
 }
 
-/** Backwards-compatible alias. */
-export const playSfx = (name: SoundName): void => playSound(name);
-
 /** Music drops to −9 dB, holds 400 ms, then recovers. */
 export function duckMusic(at?: number): void {
   const g = graph;
