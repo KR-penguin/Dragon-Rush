@@ -14,9 +14,10 @@ export function useFightGate(store: GameStore): PendingFight | null {
   if (pending === null && shown !== null) setShown(null);
   else if (
     pending !== null &&
+    !pending.preparingReplay &&
     idle &&
     (shown?.id !== pending.id || (pending.replay !== null && shown?.replay !== pending.replay))
   )
     setShown(pending);
-  return pending === null ? null : shown;
+  return pending === null || pending.preparingReplay ? null : shown;
 }

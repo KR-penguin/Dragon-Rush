@@ -27,8 +27,21 @@
 }
 
 .combat-canvas {
+  position: relative;
   display: block;
   box-shadow: 0 0 0 1px rgba(217, 167, 74, 0.25);
+}
+
+.combat-static-canvas {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.combat-hud-canvas {
+  transform: translateX(-50%);
 }
 
 .combat-bar {

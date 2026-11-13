@@ -11,7 +11,7 @@ import { useFightFlow } from '../../hooks/useFightFlow';
 import { useFightGate } from '../../hooks/useFightGate';
 import { useFightPause } from '../../hooks/useFightPause';
 import { useFightSession } from '../../hooks/useFightSession';
-import { touchControlSide, useTouchCooldowns } from '../../hooks/useTouchCooldowns';
+import { touchControlSide } from '../../hooks/useTouchCooldowns';
 import { useKeyboardTest } from '../../hooks/useKeyboardTest';
 import type { PendingFight, SeatInfo } from '../../services/gameClient';
 import type { FightSession } from '../../services/fight';
@@ -20,6 +20,7 @@ import { BOT_REPLAY_SPEED } from '../../services/fight/LocalFightSession';
 import type { FightNetStats } from '@dragon-rush/netcode';
 import { netDebugEnabled } from '../../services/fight/netDebug';
 import { NetSimPanel } from './NetSimPanel';
+import { FightTouchControls } from './FightTouchControls';
 import type { GameStore } from '../../store/gameStore';
 import { fightCards } from '../../types/fightView';
 import '../../styles/combat.css';
@@ -34,9 +35,11 @@ const NO_SEATS: readonly SeatInfo[] = [];
 export function CombatLayer({
   store,
   onFightLive,
+  onCoveredChange,
 }: {
   store: GameStore;
   onFightLive: (live: boolean) => void;
+  onCoveredChange: (covered: boolean) => void;
 }) {
   const fight = useFightGate(store);
   const client = useStore(store, (s) => s.client);
@@ -55,6 +58,7 @@ export function CombatLayer({
         seats={seats}
         client={client}
         onFightLive={onFightLive}
+        onCoveredChange={onCoveredChange}
         onDone={(r) => report(fight.id, r)}
       />
     </FightErrorBoundary>
@@ -67,13 +71,25 @@ interface FightContainerProps {
   onDone: (result: CombatResult) => void;
   client: NonNullable<ReturnType<GameStore['getState']>['client']>;
   onFightLive: (live: boolean) => void;
+  onCoveredChange: (covered: boolean) => void;
 }
 
-function FightContainer({ fight, seats, client, onDone, onFightLive }: FightContainerProps) {
+function FightContainer({
+  fight,
+  seats,
+  client,
+  onDone,
+  onFightLive,
+  onCoveredChange,
+}: FightContainerProps) {
   const cards = useMemo(() => fightCards(fight, seats), [fight, seats]);
   const bundle = useFightSession(fight, client);
   const session = bundle?.session ?? null;
   const flow = useFightFlow(session, fight, onDone);
+  useEffect(() => {
+    if (flow.phase !== 'intro') onCoveredChange(true);
+  }, [flow.phase, onCoveredChange]);
+  useEffect(() => () => onCoveredChange(false), [onCoveredChange]);
   useEffect(() => {
     if (!session || flow.phase !== 'fight') return;
     let playing = false;
@@ -98,7 +114,6 @@ function FightContainer({ fight, seats, client, onDone, onFightLive }: FightCont
   const pause = useFightPause(session, live, helpOpen);
   const touchSide = touchControlSide(fight.sides);
   const pointerCapable = touchSide !== null;
-  const touchCooldowns = useTouchCooldowns(session, live ? touchSide : null);
   useLayoutEffect(() => {
     if (!live || pause.paused || helpOpen) bundle?.tracker.touch.releaseAll();
   }, [bundle, live, pause.paused, helpOpen]);
@@ -119,17 +134,20 @@ function FightContainer({ fight, seats, client, onDone, onFightLive }: FightCont
       paused={pause.paused}
       pointerCapable={pointerCapable && fight.replay === null}
       online={fight.online !== undefined}
-      touchTracker={
-        live && pointerCapable && !pause.paused && !helpOpen
-          ? (bundle?.tracker.touch ?? null)
-          : null
+      touchControls={
+        live && touchSide && bundle && !pause.paused && !helpOpen ? (
+          <FightTouchControls
+            session={session}
+            side={touchSide}
+            tracker={bundle.tracker.touch}
+            onPause={pause.pause}
+          />
+        ) : null
       }
-      touchCooldowns={touchCooldowns}
       canvasRef={canvasRef}
       stageRef={stageRef}
       onSkip={flow.skip}
       onResume={pause.resume}
-      onPause={pause.pause}
       onOpenControls={() => setHelpOpen(true)}
     >
       {fight.online && <NetStatus session={session} fight={fight} />}

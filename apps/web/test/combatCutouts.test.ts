@@ -15,6 +15,7 @@ function recordingContext(): { ctx: CanvasRenderingContext2D; calls: Call[] } {
         (_target, key) =>
         (...args: unknown[]) => {
           calls.push({ name: String(key), args });
+          if (key === 'getTransform') return { a: 1, b: 0, c: 0, d: 1 };
           return String(key).startsWith('create') ? gradient : undefined;
         },
       set: (_target, key, value: unknown) => {

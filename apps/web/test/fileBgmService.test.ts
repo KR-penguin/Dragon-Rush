@@ -146,6 +146,45 @@ beforeEach(() => {
 });
 
 describe('file BGM through the audio bus', () => {
+  it('keeps two decoded music tracks and reloads an evicted track without stopping current music early', async () => {
+    let releaseMenu: (() => void) | undefined;
+    let menuLoads = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => ({
+        ok: true,
+        arrayBuffer: () =>
+          url.endsWith(MENU_PATH) && ++menuLoads > 1
+            ? new Promise<ArrayBuffer>((resolve) => {
+                releaseMenu = () => resolve(new ArrayBuffer(8));
+              })
+            : Promise.resolve(new ArrayBuffer(8)),
+      })),
+    );
+    const audio = await import('../src/services/audio');
+    audio.playBgm('board');
+    audio.unlockAudio();
+    await vi.waitFor(() => expect(sources).toHaveLength(1));
+    audio.playBgm('dragon_battle');
+    await vi.waitFor(() => expect(sources).toHaveLength(2));
+    audio.playBgm('result_victory');
+    await vi.waitFor(() => expect(sources).toHaveLength(3));
+
+    audio.playBgm('dragon_battle');
+    await vi.waitFor(() => expect(sources).toHaveLength(4));
+    expect(decodeCount).toBe(3);
+
+    audio.playBgm('board');
+    await vi.waitFor(() => expect(releaseMenu).toBeDefined());
+    expect(sources[3]!.stopped).toBe(false);
+    releaseMenu!();
+    await vi.waitFor(() => expect(sources).toHaveLength(5));
+    expect(decodeCount).toBe(4);
+    expect(sources[4]!.startAt).toBeGreaterThanOrEqual(sources[3]!.stopAt);
+    expect(fetch).toHaveBeenCalledTimes(4);
+    audio.disposeAudio();
+  });
+
   it('replaces board music with the selected result file without overlap and obeys mute', async () => {
     const audio = await import('../src/services/audio');
     audio.playBgm('board');

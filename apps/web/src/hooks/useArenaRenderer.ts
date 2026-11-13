@@ -7,7 +7,7 @@ import {
   combatJobImage,
   preloadCombatImages,
 } from '../combat/render/combatImages';
-import { fitCanvas } from '../combat/render/layout';
+import { fitCanvas, HUD_H, VIEW_W } from '../combat/render/layout';
 import { createArenaFx, fxPolicy, fxTime } from '../fx/runtime/fxInstance';
 import type { FightSession } from '../services/fight';
 import type { PendingFight } from '../services/gameClient';
@@ -29,6 +29,22 @@ export function useArenaRenderer(
     const stage = stageRef.current;
     const ctx = canvas?.getContext('2d');
     if (!session || !canvas || !stage || !ctx) return;
+    const background = document.createElement('canvas');
+    const hud = document.createElement('canvas');
+    background.className = 'combat-static-canvas';
+    hud.className = 'combat-static-canvas combat-hud-canvas';
+    background.setAttribute('aria-hidden', 'true');
+    hud.setAttribute('aria-hidden', 'true');
+    const backgroundContext = background.getContext('2d', { alpha: false });
+    const hudContext = hud.getContext('2d');
+    const layers =
+      backgroundContext && hudContext
+        ? { background: backgroundContext, hud: hudContext }
+        : undefined;
+    if (layers) {
+      canvas.before(background);
+      canvas.after(hud);
+    }
     preloadCombatImages(
       fight.setup.b ? [fight.setup.a.job, fight.setup.b.job] : [fight.setup.a.job],
       fight.setup.kind === 'dragonFight',
@@ -67,6 +83,16 @@ export function useArenaRenderer(
       canvas.height = fit.pixelH;
       canvas.style.width = `${fit.cssW}px`;
       canvas.style.height = `${fit.cssH}px`;
+      background.width = fit.pixelW;
+      background.height = fit.pixelH;
+      background.style.width = `${fit.cssW}px`;
+      background.style.height = `${fit.cssH}px`;
+      hud.width = fit.pixelW;
+      hud.height = Math.ceil(HUD_H * fit.scale);
+      hud.style.width = `${fit.cssW}px`;
+      hud.style.height = `${(fit.cssW * HUD_H) / VIEW_W}px`;
+      hud.style.top = `${(stage.clientHeight - fit.cssH) / 2}px`;
+      renderer.invalidateLayers();
     };
     applyFit();
     const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(applyFit);
@@ -80,12 +106,15 @@ export function useArenaRenderer(
         dtMs: fxTime.scaledDelta(Math.min(dt, 100)),
         fx: arenaFx,
         softFlash: !fxPolicy().flash,
+        ...(layers ? { layers } : {}),
       });
     });
     return () => {
       off();
       observer?.disconnect();
       arenaFx.clear();
+      background.remove();
+      hud.remove();
     };
   }, [session, fight, cards, canvasRef, stageRef]);
 }

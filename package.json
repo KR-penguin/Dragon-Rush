@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "pnpm --parallel --filter @dragon-rush/web --filter @dragon-rush/server run dev",
+    "profile:web": "node apps/web/scripts/profile.mjs",
     "build": "pnpm -r run build",
     "start": "node apps/server/dist/main.js",
     "test": "vitest run",

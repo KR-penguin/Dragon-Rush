@@ -104,7 +104,9 @@ export class ArenaFx implements FxSink {
   /** Camera offset/roll/zoom to apply to the arena view (logical px, radians). */
   cameraTransform(): CameraSample {
     const scale = this.policy().shakeScale;
-    return scale > 0 ? this.camera.sample({ scale, telegraph: this.telegraph }) : ZERO_CAMERA;
+    return scale > 0 && !this.camera.isIdle()
+      ? this.camera.sample({ scale, telegraph: this.telegraph })
+      : ZERO_CAMERA;
   }
 
   /** Recoil: 6 px opposite the attack direction, friction 0.85 per tick. */

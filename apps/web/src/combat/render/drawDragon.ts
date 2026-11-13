@@ -1,6 +1,7 @@
 import { Q, type CombatRules, type DragonState, type ProjectileState } from '@dragon-rush/combat';
 import { bamToRad } from './layout';
 import { DRAGON_LOOK, FONT_UI, PAL } from './palette';
+import { drawSprite } from './spritePaint';
 
 export interface DragonPose {
   readonly x: number;
@@ -66,12 +67,10 @@ export function drawDragon(ctx: CanvasRenderingContext2D, p: DragonPose, rules: 
     ctx.rotate(bamToRad(d.facing) - Math.PI / 2);
     if (d.maneuver === 'charge' && d.stage === 'active') ctx.scale(0.9, 1.05);
     if (d.stage === 'roar') ctx.scale(1.03 + 0.02 * Math.sin(now / 100), 1.03);
-    if (d.stage === 'stunned') ctx.filter = 'grayscale(0.65)';
-    ctx.drawImage(image, -w / 2, -h * 0.55, w, h);
+    drawSprite(ctx, image, -w / 2, -h * 0.55, w, h, d.stage === 'stunned' ? 'stunned' : undefined);
     if (p.flash > 0) {
       ctx.globalAlpha = p.flash * (p.softFlash ? 0.5 : 0.85);
-      ctx.filter = p.softFlash ? 'sepia(1) saturate(3)' : 'brightness(0) invert(1)';
-      ctx.drawImage(image, -w / 2, -h * 0.55, w, h);
+      drawSprite(ctx, image, -w / 2, -h * 0.55, w, h, p.softFlash ? 'soft' : 'white');
     }
     ctx.restore();
   } else {

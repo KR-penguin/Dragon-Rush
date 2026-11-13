@@ -7,6 +7,7 @@ import {
   type Side,
 } from '@dragon-rush/combat';
 import type { ArenaFx } from '../../fx/runtime/arenaFx';
+import type { CameraSample } from '../../fx/core/camera';
 import type { JobId } from '@dragon-rush/engine';
 import type { FightFrame } from '../../services/fight/types';
 import { drawDragon, drawDragonShadow, drawProjectile } from './drawDragon';
@@ -26,11 +27,11 @@ import {
   drawZone,
   type HazardPaint,
 } from './drawHazards';
-import { drawHud } from './drawHud';
-import { drawArenaFrame, paintFloor } from './floor';
+import { ArenaPaintCache } from './arenaPaint';
+import type { HudInput } from './drawHud';
 import { ghostAt, trackGhost, type Ghost } from './hudModel';
 import { arenaRect, bamToRad, lerp, VIEW_H, VIEW_W, type ArenaRect } from './layout';
-import { JOB_LOOK, PAL } from './palette';
+import { JOB_LOOK } from './palette';
 
 export interface ArenaLooks {
   readonly a: FighterLookInput;
@@ -49,6 +50,11 @@ export interface RenderEnv {
   readonly fx: ArenaFx;
   /** Photosensitive mode: sprite flashes become tint + outline. */
   readonly softFlash: boolean;
+  /** Browser surfaces retain static pixels instead of copying them into the actor canvas each frame. */
+  readonly layers?: {
+    readonly background: CanvasRenderingContext2D;
+    readonly hud: CanvasRenderingContext2D;
+  };
 }
 
 const FLASH_MS = 100;
@@ -77,8 +83,7 @@ interface Afterimage {
  */
 export class ArenaRenderer {
   readonly rect: ArenaRect;
-  private floor: HTMLCanvasElement | null = null;
-  private floorScale = 0;
+  private readonly layers: ArenaPaintCache;
   private readonly paint: HazardPaint;
   private ghosts: Record<'a' | 'b' | 'dragon', Ghost | null> = { a: null, b: null, dragon: null };
   private readonly flashUntil = new Map<CombatantId, number>();
@@ -90,13 +95,15 @@ export class ArenaRenderer {
     ['b', -1],
   ]);
   private readonly afterimages = new Map<Side, Afterimage[]>();
+  private backgroundStamp = '';
 
   constructor(
-    private readonly doc: Document,
+    doc: Document,
     private readonly looks: ArenaLooks,
     initial: CombatState,
-    private readonly seed: number,
+    seed: number,
   ) {
+    this.layers = new ArenaPaintCache(doc, seed);
     this.rect = arenaRect(initial.arenaW, initial.arenaH);
     this.paint = {
       hatch: createHatch(doc, 'rgba(255, 178, 91, 0.9)'),
@@ -133,26 +140,28 @@ export class ArenaRenderer {
       fx.sustain(0.6, env.dtMs, 0.5);
 
     ctx.setTransform(env.scale, 0, 0, env.scale, 0, 0);
-    ctx.fillStyle = PAL.table0;
-    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
-    const vg = ctx.createRadialGradient(VIEW_W / 2, VIEW_H / 2, 120, VIEW_W / 2, VIEW_H / 2, 560);
-    vg.addColorStop(0, PAL.table1);
-    vg.addColorStop(1, PAL.table0);
-    ctx.fillStyle = vg;
-    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    if (env.layers) ctx.clearRect(0, 0, VIEW_W, VIEW_H);
+    else this.layers.drawBackdrop(ctx, env.scale);
 
     const cam = fx.cameraTransform();
     const r = this.rect;
-    const cx = r.x + r.w / 2;
-    const cy = r.y + r.h / 2;
+    if (env.layers) {
+      const stamp = `${env.scale}:${cam.dx}:${cam.dy}:${cam.rot}:${cam.zoom}`;
+      if (stamp !== this.backgroundStamp) {
+        const background = env.layers.background;
+        background.setTransform(env.scale, 0, 0, env.scale, 0, 0);
+        this.layers.drawBackdrop(background, env.scale);
+        background.save();
+        this.applyCamera(background, cam);
+        this.layers.drawPlane(background, curr, r, env.scale);
+        background.restore();
+        this.backgroundStamp = stamp;
+      }
+    }
     ctx.save();
-    ctx.translate(cx + cam.dx, cy + cam.dy);
-    ctx.rotate(cam.rot);
-    ctx.scale(cam.zoom, cam.zoom);
-    ctx.translate(-cx, -cy);
+    this.applyCamera(ctx, cam);
 
-    drawArenaFrame(ctx, r.x, r.y, r.w, r.h);
-    ctx.drawImage(this.floorFor(curr, env.scale), r.x, r.y, r.w, r.h);
+    if (!env.layers) this.layers.drawPlane(ctx, curr, r, env.scale);
 
     ctx.save();
     ctx.translate(r.x, r.y);
@@ -172,7 +181,7 @@ export class ArenaRenderer {
     fx.draw(ctx);
     ctx.restore();
 
-    drawHud(ctx, {
+    const hud: HudInput = {
       s: curr,
       looks: [this.looks.a, this.looks.b],
       ghosts: {
@@ -181,15 +190,23 @@ export class ArenaRenderer {
         dragon: this.ghostLevel('dragon', curr.dragon?.hp ?? 0, now),
       },
       now,
-    });
+    };
+    if (env.layers) this.layers.drawHudLayer(env.layers.hud, hud, env.scale);
+    else this.layers.drawHud(ctx, hud, env.scale);
   }
 
-  private floorFor(s: CombatState, scale: number): HTMLCanvasElement {
-    if (!this.floor || Math.abs(this.floorScale - scale) > 0.25) {
-      this.floor = paintFloor(this.doc, s.arenaW, s.arenaH, s.kind, this.seed, Math.min(2, scale));
-      this.floorScale = scale;
-    }
-    return this.floor;
+  invalidateLayers(): void {
+    this.backgroundStamp = '';
+    this.layers.invalidateLayers();
+  }
+
+  private applyCamera(ctx: CanvasRenderingContext2D, cam: CameraSample): void {
+    const cx = this.rect.x + this.rect.w / 2;
+    const cy = this.rect.y + this.rect.h / 2;
+    ctx.translate(cx + cam.dx, cy + cam.dy);
+    ctx.rotate(cam.rot);
+    ctx.scale(cam.zoom, cam.zoom);
+    ctx.translate(-cx, -cy);
   }
 
   private trackBars(s: CombatState, now: number): void {

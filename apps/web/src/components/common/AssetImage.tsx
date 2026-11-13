@@ -21,6 +21,7 @@ export function AssetImage({ path, fallback, alt, className = '' }: AssetImagePr
         src={url}
         alt={alt}
         draggable={false}
+        decoding="async"
         onError={() => setFailed(true)}
       />
     );

@@ -1,5 +1,5 @@
 import type { TileDef } from '@dragon-rush/engine';
-import { useMemo, type CSSProperties, type ReactNode, type Ref } from 'react';
+import { memo, useMemo, type CSSProperties, type ReactNode, type Ref } from 'react';
 import {
   GRID_TEMPLATE,
   pawnSpot,
@@ -14,7 +14,7 @@ import { effectChips, tileCategory, type TileCategory } from '../../types/tileVi
 import { BoardTile } from './BoardTile';
 import { Pawn, type PawnView } from './Pawn';
 
-interface BoardProps {
+export interface BoardProps {
   tiles: readonly TileDef[];
   pawns: readonly PawnView[];
   /** Tiles that can be picked right now (teleport destinations), or null. */
@@ -36,6 +36,53 @@ interface BoardProps {
   /** The lair, drawn in the grid centre. */
   children?: ReactNode;
 }
+
+const TileRing = memo(function TileRing({
+  tiles,
+  targets,
+  preview,
+  activeTile,
+  flashTile,
+  onPickTile,
+  onHoverTile,
+}: Pick<
+  BoardProps,
+  'tiles' | 'targets' | 'preview' | 'activeTile' | 'flashTile' | 'onPickTile' | 'onHoverTile'
+>) {
+  const meta = useMemo(
+    () =>
+      tiles.map((tile, index) => ({
+        cell: ringCell(index),
+        side: tileSide(index),
+        category: tileCategory(tile, index),
+        chips: effectChips(tile.effects),
+      })),
+    [tiles],
+  );
+  return tiles.map((tile, index) => {
+    const m = meta[index]!;
+    return (
+      <BoardTile
+        key={index}
+        index={index}
+        tile={tile}
+        category={m.category}
+        chips={m.chips}
+        side={m.side}
+        row={m.cell.row}
+        col={m.cell.col}
+        flags={{
+          target: targets?.has(index) ?? false,
+          preview: preview === index,
+          active: activeTile === index,
+          flash: flashTile === index,
+        }}
+        {...(onPickTile ? { onPick: () => onPickTile(index) } : {})}
+        {...(onHoverTile ? { onHover: onHoverTile } : {})}
+      />
+    );
+  });
+});
 
 /**
  * The war table. Layer tree (decision sheet §1.4): `.stage` (perspective, fit) > `.camera` (WAAPI
@@ -60,16 +107,6 @@ export function Board({
   children,
 }: BoardProps) {
   const slots = useMemo(() => tokenSlots(pawns.filter((p) => !p.out)), [pawns]);
-  const meta = useMemo(
-    () =>
-      tiles.map((tile, index) => ({
-        cell: ringCell(index),
-        side: tileSide(index),
-        category: tileCategory(tile, index),
-        chips: effectChips(tile.effects),
-      })),
-    [tiles],
-  );
   const stageStyle = {
     width: PLANE_SIZE,
     height: PLANE_SIZE,
@@ -92,29 +129,15 @@ export function Board({
             className="board-grid"
             style={{ gridTemplateColumns: GRID_TEMPLATE, gridTemplateRows: GRID_TEMPLATE }}
           >
-            {tiles.map((tile, index) => {
-              const m = meta[index]!;
-              return (
-                <BoardTile
-                  key={index}
-                  index={index}
-                  tile={tile}
-                  category={m.category}
-                  chips={m.chips}
-                  side={m.side}
-                  row={m.cell.row}
-                  col={m.cell.col}
-                  flags={{
-                    target: targets?.has(index) ?? false,
-                    preview: preview === index,
-                    active: activeTile === index,
-                    flash: flashTile === index,
-                  }}
-                  {...(onPickTile ? { onPick: () => onPickTile(index) } : {})}
-                  {...(onHoverTile ? { onHover: onHoverTile } : {})}
-                />
-              );
-            })}
+            <TileRing
+              tiles={tiles}
+              targets={targets}
+              preview={preview}
+              activeTile={activeTile}
+              flashTile={flashTile}
+              onPickTile={onPickTile}
+              onHoverTile={onHoverTile}
+            />
             {children}
           </div>
           <div className="token-layer" aria-hidden="true">

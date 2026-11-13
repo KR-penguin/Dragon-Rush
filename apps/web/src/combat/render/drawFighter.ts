@@ -2,6 +2,7 @@ import type { FighterState, MeleeMoveSpec, CombatRules } from '@dragon-rush/comb
 import type { JobId } from '@dragon-rush/engine';
 import { bamToRad } from './layout';
 import { FONT_UI, JOB_LOOK, PAL, type CrestShape } from './palette';
+import { drawSprite, type SpriteFilter } from './spritePaint';
 
 export interface FighterLookInput {
   readonly name: string;
@@ -122,11 +123,15 @@ function squash(f: FighterState): [number, number] {
 }
 
 /** Source art is a single transparent right-facing cutout with its foot at the bottom. */
-function drawCutout(ctx: CanvasRenderingContext2D, image: HTMLImageElement): void {
+function drawCutout(
+  ctx: CanvasRenderingContext2D,
+  image: HTMLImageElement,
+  filter?: SpriteFilter,
+): void {
   const scale = Math.min(64 / image.naturalWidth, 64 / image.naturalHeight);
   const w = image.naturalWidth * scale;
   const h = image.naturalHeight * scale;
-  ctx.drawImage(image, -w / 2, -h, w, h);
+  drawSprite(ctx, image, -w / 2, -h, w, h, filter);
 }
 
 /** A human silhouette keeps combat readable while its cutout is loading. */
@@ -322,9 +327,7 @@ export function drawFighterBody(
   else drawFighterFallback(ctx, f.job);
   if (p.image && p.flash > 0) {
     ctx.globalAlpha = p.alpha * p.flash * (p.softFlash ? 0.5 : 0.85);
-    ctx.filter = p.softFlash ? 'sepia(1) saturate(3)' : 'brightness(0) invert(1)';
-    drawCutout(ctx, p.image);
-    ctx.filter = 'none';
+    drawCutout(ctx, p.image, p.softFlash ? 'soft' : 'white');
   }
   ctx.restore();
 

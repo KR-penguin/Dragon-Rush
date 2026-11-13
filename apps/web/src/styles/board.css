@@ -5,6 +5,17 @@
  * mix-blend-mode, isolation, contain: paint. They silently flatten the 3D scene.
  */
 
+/* Keep layout and FX anchors intact while the opaque arena covers this presentation. */
+.game[data-board-covered='true'] :is(.board-area, .hud, .spotlight) {
+  visibility: hidden;
+}
+
+.game[data-board-covered='true'] :is(.board-area, .hud) *,
+.game[data-board-covered='true'] :is(.board-area, .hud) *::before,
+.game[data-board-covered='true'] :is(.board-area, .hud) *::after {
+  animation-play-state: paused !important;
+}
+
 /* 3D parent planes can intercept far tiles; leave input to tiles and lair controls. */
 .stage {
   position: absolute;
@@ -395,11 +406,14 @@
 }
 
 .landmark-stand {
+  --landmark-width: 132px;
+  --landmark-height: 122px;
+  --landmark-unit: min(calc(var(--landmark-width) / 140), calc(var(--landmark-height) / 130));
   position: absolute;
-  left: -66px;
+  left: calc(var(--landmark-width) / -2);
   bottom: 0;
-  width: 132px;
-  height: 122px;
+  width: var(--landmark-width);
+  height: var(--landmark-height);
   transform-origin: 50% 100%;
   transform: translateZ(2px) rotateX(calc(-1 * var(--tilt)));
   display: grid;
@@ -413,14 +427,31 @@
 }
 
 .landmark-svg {
+  display: block;
   width: 100%;
   height: 100%;
   overflow: visible;
 }
 
+.landmark-svg-stack {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.landmark-svg-stack > .landmark-svg,
+.landmark-motion-layer {
+  position: absolute;
+  inset: 0;
+}
+
+.landmark-motion-layer {
+  transform-origin: calc(50% + (var(--motion-x) - 70) * var(--landmark-unit))
+    calc(50% + (var(--motion-y) - 65) * var(--landmark-unit));
+}
+
 .landmark-flag {
-  transform-box: fill-box;
-  transform-origin: 0% 100%;
   animation: flag-sway 2.6s ease-in-out infinite;
 }
 
@@ -432,24 +463,25 @@
   animation: lantern-glow 2.2s ease-in-out infinite;
 }
 
-.landmark-smoke circle {
-  fill: rgba(220, 210, 200, 0.55);
-  transform-box: fill-box;
-  transform-origin: 50% 50%;
+.landmark-smoke-puff {
   animation: chimney-smoke 3.2s ease-out infinite;
 }
 
-.landmark-smoke circle:nth-child(2) {
+.landmark-smoke-puff circle {
+  fill: rgba(220, 210, 200, 0.55);
+}
+
+.landmark-smoke-puff-2 {
   animation-delay: -1.07s;
 }
 
-.landmark-smoke circle:nth-child(3) {
+.landmark-smoke-puff-3 {
   animation-delay: -2.14s;
 }
 
 [data-ambient='off'] .landmark-flag,
 [data-ambient='off'] .landmark-lantern-glow,
-[data-ambient='off'] .landmark-smoke circle {
+[data-ambient='off'] .landmark-smoke-puff {
   animation: none;
 }
 
@@ -475,14 +507,15 @@
 
 @keyframes chimney-smoke {
   0% {
-    transform: translate(0, 8px) scale(0.5);
+    transform: translate(0, calc(8 * var(--landmark-unit))) scale(0.5);
     opacity: 0;
   }
   30% {
     opacity: 0.8;
   }
   100% {
-    transform: translate(6px, -16px) scale(1.4);
+    transform: translate(calc(6 * var(--landmark-unit)), calc(-16 * var(--landmark-unit)))
+      scale(1.4);
     opacity: 0;
   }
 }
@@ -743,25 +776,25 @@
   inset: 12%;
   border-radius: 50%;
   opacity: calc(0.55 + var(--ember-boost));
-  background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260' viewBox='0 0 260 260'%3E%3Cg fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 40 L60 70 L90 50 L140 90 L170 80 L210 120 L250 110' stroke='%23ff7a3d' stroke-width='3'/%3E%3Cpath d='M30 170 L70 150 L110 180 L150 160 L190 200 L240 190' stroke='%23ffb25b' stroke-width='2.5'/%3E%3Cpath d='M90 50 L100 10 M140 90 L130 140 L150 160 M210 120 L220 160 M70 150 L60 220 L90 250' stroke='%23c8402a' stroke-width='2'/%3E%3C/g%3E%3C/svg%3E"),
-    radial-gradient(ellipse at 50% 50%, rgba(255, 122, 61, 0.35), transparent 70%);
-  background-size:
-    260px 260px,
-    100% 100%;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 50% 50%, rgba(255, 122, 61, 0.35), transparent 70%);
+}
+
+.lair-lava::before {
+  content: '';
+  position: absolute;
+  inset: -260px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260' viewBox='0 0 260 260'%3E%3Cg fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 40 L60 70 L90 50 L140 90 L170 80 L210 120 L250 110' stroke='%23ff7a3d' stroke-width='3'/%3E%3Cpath d='M30 170 L70 150 L110 180 L150 160 L190 200 L240 190' stroke='%23ffb25b' stroke-width='2.5'/%3E%3Cpath d='M90 50 L100 10 M140 90 L130 140 L150 160 M210 120 L220 160 M70 150 L60 220 L90 250' stroke='%23c8402a' stroke-width='2'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 260px 260px;
   animation: lava-flow 6s linear infinite;
 }
 
 @keyframes lava-flow {
   from {
-    background-position:
-      0 0,
-      0 0;
+    transform: translate3d(0, 0, 0);
   }
   to {
-    background-position:
-      260px 130px,
-      0 0;
+    transform: translate3d(260px, 130px, 0);
   }
 }
 
@@ -939,7 +972,7 @@
   }
 }
 
-[data-ambient='off'] .lair-lava,
+[data-ambient='off'] .lair-lava::before,
 [data-ambient='off'] .lair-embers i,
 [data-ambient='off'] .lair-dragon-art,
 [data-ambient='off'] .lair-zz i {

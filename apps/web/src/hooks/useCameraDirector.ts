@@ -1,9 +1,9 @@
 import { useEffect, useRef, type RefObject } from 'react';
 import type { GameStore } from '../store/gameStore';
+import { animateCameraPose, resetCameraPose } from '../services/cameraMotion';
 import {
   cameraBeat,
   EASE_RETURN,
-  poseTransform,
   REST_POSE,
   type CameraBeat,
   type CameraPose,
@@ -30,22 +30,18 @@ export function useCameraDirector(
 
   useEffect(() => {
     let anim: Animation | null = null;
+    let animatedElement: HTMLElement | null = null;
     let pose: CameraPose = REST_POSE;
     let settle: ReturnType<typeof setTimeout> | null = null;
 
     const go = (beat: CameraBeat, speed: number) => {
       const el = cameraRef.current;
       if (!el || typeof el.animate !== 'function') return;
-      const now = getComputedStyle(el).transform;
-      const next = el.animate(
-        [
-          { transform: now && now !== 'none' ? now : poseTransform(pose) },
-          { transform: poseTransform(beat.pose) },
-        ],
-        { duration: beat.ms / speed, easing: beat.easing, fill: 'forwards' },
-      );
+      const next = animateCameraPose(el, beat, speed, pose);
       anim?.cancel();
+      if (animatedElement && animatedElement !== el) resetCameraPose(animatedElement);
       anim = next;
+      animatedElement = el;
       pose = beat.pose;
     };
 
@@ -54,6 +50,8 @@ export function useCameraDirector(
       settle = null;
       anim?.cancel();
       anim = null;
+      if (animatedElement) resetCameraPose(animatedElement);
+      animatedElement = null;
       pose = REST_POSE;
     };
 

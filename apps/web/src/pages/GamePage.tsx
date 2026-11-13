@@ -1,9 +1,8 @@
 import type { CombatantRef, SeatId } from '@dragon-rush/engine';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from 'zustand';
-import { Board } from '../components/board/Board';
+import { BoardScene } from '../components/board/BoardScene';
 import type { DiceRoll } from '../components/board/DiceTray';
-import { DragonLair } from '../components/board/DragonLair';
 import { TileTooltip, type TileHover } from '../components/board/TileTooltip';
 import { Modal } from '../components/common/Modal';
 import { Chronicle } from '../components/hud/Chronicle';
@@ -103,6 +102,7 @@ export function GamePage({ session, onExit, onRestart }: GamePageProps) {
 
   const [confirmExit, setConfirmExit] = useState(false);
   const [battleLive, setBattleLive] = useState(false);
+  const [boardCovered, setBoardCovered] = useState(false);
   const [chronicleOpen, setChronicleOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [legend, setLegend] = useState<TileCategory | null>(null);
@@ -165,6 +165,12 @@ export function GamePage({ session, onExit, onRestart }: GamePageProps) {
     if (index === null || !el) setHover(null);
     else setHover({ index, rect: el.getBoundingClientRect() });
   }, []);
+  const onPickTile = useCallback(
+    (tile: number) => {
+      void ui.submit({ type: 'USE_TELEPORT', tile });
+    },
+    [ui.submit],
+  );
 
   if (!latest || !display) {
     return (
@@ -210,7 +216,7 @@ export function GamePage({ session, onExit, onRestart }: GamePageProps) {
   const spotlightMode =
     ui.teleportPicking || thiefTargeting
       ? 'targeting'
-      : finished || combat || ui.dialog !== null
+      : boardCovered || finished || combat || ui.dialog !== null
         ? 'off'
         : 'turn';
   const breathLit = breathRunesLit(combat, display.rules.dragon.breathEvery);
@@ -225,11 +231,20 @@ export function GamePage({ session, onExit, onRestart }: GamePageProps) {
     : [];
 
   return (
-    <div className="game" data-players={display.players.length}>
-      <div className="board-area" ref={areaRef}>
+    <div
+      className="game"
+      data-players={display.players.length}
+      data-board-covered={boardCovered || undefined}
+    >
+      <div
+        className="board-area"
+        ref={areaRef}
+        aria-hidden={boardCovered || undefined}
+        inert={boardCovered}
+      >
         {/* `.world-shake`: the FX trauma camera owns its transform; the HUD stays outside it. */}
         <ShakeContainer className="board-shake">
-          <Board
+          <BoardScene
             tiles={display.rules.board}
             pawns={pawns}
             targets={targets}
@@ -242,24 +257,20 @@ export function GamePage({ session, onExit, onRestart }: GamePageProps) {
             reduced={motion.reduced}
             cameraRef={cameraRef}
             backgroundUrl={boardBg}
-            onPickTile={(tile) => void ui.submit({ type: 'USE_TELEPORT', tile })}
+            onPickTile={onPickTile}
             onHoverTile={onHoverTile}
-          >
-            <DragonLair
-              dragon={display.rules.dragon}
-              state={dragonState}
-              round={display.round}
-              breathLit={breathLit}
-              legend={legend}
-              onLegend={setLegend}
-            />
-          </Board>
+            dragon={display.rules.dragon}
+            lairState={dragonState}
+            round={display.round}
+            breathLit={breathLit}
+            onLegend={setLegend}
+          />
         </ShakeContainer>
       </div>
 
       <Spotlight seat={display.current} mode={spotlightMode} />
 
-      <div className="hud">
+      <div className="hud" aria-hidden={boardCovered || undefined} inert={boardCovered}>
         <TopStrip
           order={display.players.map((p) => ({
             seat: p.seat,
@@ -358,7 +369,7 @@ export function GamePage({ session, onExit, onRestart }: GamePageProps) {
 
       <DecisionDialogs ui={ui} state={state} nameOf={nameOf} onPreviewTile={setPreview} />
 
-      <CombatLayer store={store} onFightLive={setBattleLive} />
+      <CombatLayer store={store} onFightLive={setBattleLive} onCoveredChange={setBoardCovered} />
 
       {combat && (
         <CombatOverlay

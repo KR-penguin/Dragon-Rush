@@ -194,15 +194,23 @@ export const isAudioUnlocked = (): boolean => graph?.ctx.state === 'running';
 const buffers = new Map<string, AudioBuffer>();
 const bufferLoads = new Map<string, Promise<AudioBuffer | null>>();
 const failedFiles = new Set<string>();
+// Long decoded music tracks have their own bounded cache; SFX stay preloaded.
+const bgmBuffers = new Map<string, AudioBuffer>();
+const bgmBufferLoads = new Map<string, Promise<AudioBuffer | null>>();
+const BGM_BUFFER_LIMIT = 2;
+
+function fetchBuffer(g: Graph, path: string): Promise<AudioBuffer> {
+  return fetch(assetUrl(path))
+    .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(`HTTP ${r.status}`))))
+    .then((data) => g.ctx.decodeAudioData(data));
+}
 
 function loadBuffer(path: string): Promise<AudioBuffer | null> {
   const g = graph;
   if (!g) return Promise.resolve(null);
   let p = bufferLoads.get(path);
   if (!p) {
-    p = fetch(assetUrl(path))
-      .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then((data) => g.ctx.decodeAudioData(data))
+    p = fetchBuffer(g, path)
       .then((buf) => {
         buffers.set(path, buf);
         return buf;
@@ -214,6 +222,41 @@ function loadBuffer(path: string): Promise<AudioBuffer | null> {
     bufferLoads.set(path, p);
   }
   return p;
+}
+
+function loadBgmBuffer(path: string): Promise<AudioBuffer | null> {
+  const g = graph;
+  if (!g || failedFiles.has(path)) return Promise.resolve(null);
+  const cached = bgmBuffers.get(path);
+  if (cached) {
+    bgmBuffers.delete(path);
+    bgmBuffers.set(path, cached);
+    return Promise.resolve(cached);
+  }
+  let pending = bgmBufferLoads.get(path);
+  if (!pending) {
+    pending = fetchBuffer(g, path)
+      .then((buf) => {
+        if (graph === g) {
+          bgmBuffers.set(path, buf);
+          const active = bgm?.kind === 'buffer' ? `audio/bgm/${bgm.file}` : null;
+          for (const key of bgmBuffers.keys()) {
+            if (bgmBuffers.size <= BGM_BUFFER_LIMIT) break;
+            if (key !== active) bgmBuffers.delete(key);
+          }
+        }
+        return buf;
+      })
+      .catch(() => {
+        failedFiles.add(path);
+        return null;
+      })
+      .finally(() => {
+        if (bgmBufferLoads.get(path) === pending) bgmBufferLoads.delete(path);
+      });
+    bgmBufferLoads.set(path, pending);
+  }
+  return pending;
 }
 
 /** Fetches and decodes every sound file in the manifest (runs after unlock). */
@@ -477,7 +520,7 @@ function syncBgm(force = false): void {
       playingBgm = target;
       return;
     }
-    void Promise.all([loadBuffer(bgmPath(target)), loadLoopPoints()]).then(([buf, loops]) => {
+    void Promise.all([loadBgmBuffer(bgmPath(target)), loadLoopPoints()]).then(([buf, loops]) => {
       if (request !== bgmRequest || !playingBgm || bgmFile(playingBgm) !== bgmFile(target)) return;
       const startAt = stopBgm(target.startsWith('result_'));
       playingBgm = target;
@@ -543,6 +586,8 @@ export function disposeAudio(): void {
   }
   bgm = null;
   playingBgm = null;
+  bgmBuffers.clear();
+  bgmBufferLoads.clear();
   disarmUnlock();
   if (graph) {
     void graph.ctx.close();

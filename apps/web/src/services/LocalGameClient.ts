@@ -18,9 +18,8 @@ import {
   type SeatId,
 } from '@dragon-rush/engine';
 import { createPolicyByName, createPolicyRandom, type Policy } from '@dragon-rush/ai';
-import { createFightBotSource } from './fight/botInput';
 import { buildFightSetup, createSeedStream, fightSides, isBotOnlyFight } from './fight/fightSetup';
-import { simulateFight } from './fight/simProvider';
+import { createFightSimulationRunner, type FightSimulationRunner } from './fight/fightSimulation';
 import type {
   FightBotLevel,
   GameClient,
@@ -99,6 +98,7 @@ export class LocalGameClient implements GameClient {
   private disposed = false;
   private fight: PendingFight | null = null;
   private fightCount = 0;
+  private simulation: FightSimulationRunner | null = null;
 
   constructor(
     private readonly config: LocalGameConfig,
@@ -248,14 +248,38 @@ export class LocalGameClient implements GameClient {
     const setup = buildFightSetup(toPublicState(state), request);
     const seed = this.fightSeed();
     const botLevel = this.config.fightBotLevel?.() ?? 'normal';
-    const replay = isBotOnlyFight(sides)
-      ? simulateFight(setup, seed, [
-          createFightBotSource(botLevel, seed, 'a'),
-          setup.b ? createFightBotSource(botLevel, seed, 'b') : null,
-        ])
-      : null;
     this.fightCount += 1;
-    return { id: this.fightCount, request, setup, seed, sides, botLevel, replay };
+    const id = this.fightCount;
+    const prepared = isBotOnlyFight(sides)
+      ? (this.simulation ??= createFightSimulationRunner()).run({ setup, seed, level: botLevel })
+      : null;
+    if (prepared instanceof Promise) {
+      void prepared.then(
+        (replay) => {
+          if (this.disposed || this.fight?.id !== id) return;
+          this.fight = { ...this.fight, replay, preparingReplay: false };
+          const update = { ...this.buildUpdate(false), events: [], presentationOnly: true };
+          for (const listener of this.listeners) listener(update);
+        },
+        () => {
+          // A failed preparation can still play through the ordinary live bot session.
+          if (this.disposed || this.fight?.id !== id) return;
+          this.fight = { ...this.fight, preparingReplay: false };
+          const update = { ...this.buildUpdate(false), events: [], presentationOnly: true };
+          for (const listener of this.listeners) listener(update);
+        },
+      );
+    }
+    return {
+      id,
+      request,
+      setup,
+      seed,
+      sides,
+      botLevel,
+      replay: prepared instanceof Promise ? null : prepared,
+      preparingReplay: prepared instanceof Promise,
+    };
   }
 
   private scheduleBot(): void {
@@ -286,6 +310,7 @@ export class LocalGameClient implements GameClient {
 
   dispose(): void {
     this.disposed = true;
+    this.simulation?.dispose();
     this.cancelBot?.();
     this.listeners.clear();
   }

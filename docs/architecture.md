@@ -427,6 +427,12 @@ Python (사용자 트레이너) ─┬─ RPGBoardEnv/RPGBoardVecEnv ── stdi
 - `OnlineGameClient`는 수신한 서버 버전과 화면에서 재생 중인 상태를 분리한다. `onlinePresentation.ts`는 보드 전이와 전투별 start/go/replay를 묶어 순서대로 재생하며, 자기 조작이 필요한 새 실시간 전투는 이전 리플레이보다 먼저 연다. 완료 처리는 전투 ID가 일치할 때만 적용하고, 같은 버전의 전투 메타데이터 갱신은 보드 애니메이션 큐를 유지한다. 시작 연출 중 확정 결과를 받으면 바로 종료 연출로 넘어간다.
 - 경계 검증: 객체 메시지는 zod, 빈번한 정수 배열 메시지는 길이·범위 디코더로 검증한다. Socket.IO는 WebSocket만 사용하고 압축을 끈다. 재접속·갭·디싱크는 `fight:sync`로 복구한다. 가상 TCP 시험은 최종 상태 수렴을 보였으나 손실 구간 p95 예측 깊이는 설계 목표보다 크다([combat-design.md §9.5](combat-design.md)).
 
+### 웹 성능 경계
+
+로컬의 봇 전투 리플레이 준비는 `services/fight/fightSimulation.worker.ts`에서 실행한다. `LocalGameClient`는 COMBAT 전이와 준비 상태를 먼저 발행하고, 완료된 입력 기록만 같은 버전의 `presentationOnly` 업데이트로 넘긴다. 준비 중인 전투는 화면 gate에서 기다리며 종료·취소된 전투의 지연 결과는 무시한다. Worker가 불가능하면 작은 비동기 배치로 계산하고 Node 호출은 동기를 유지한다.
+
+아레나는 정적 배경·동적 객체·HUD 캔버스로 분리하고 카메라·해상도·표시 값이 바뀔 때 해당 캐시만 갱신한다. 격리된 브라우저 프로파일링 명령과 수치의 범위는 [performance.md](performance.md)를 본다.
+
 ### 12.4 전투 resolver와 학습 연결
 - §10의 보드·전투 env는 별도 프로세스다. `createCombatResolver`는 보드 env·대량 시뮬의 `COMBAT` 대기를 기본 `sim`(`boardCombatSetup` → 스크립트 봇 `runCombat` → `applyCombatResult`) 또는 선택형 `dice`(엔진 주사위)로 해결한다. 보드 `sim`은 현재 사용자 전투 가중치 모델을 로드하지 않는다.
 - 내부 결과 예측기 파일은 제거됐다. 온라인 `FightRoom`과 로컬 플레이어 전투의 결과 출처는 각각 확정된 전투 sim이며, 인게임 승률 예측은 노출하지 않는다(§5·§10).

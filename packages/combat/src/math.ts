@@ -99,13 +99,10 @@ export function angleDelta(from: number, to: number): number {
 /** Integer square root (floor) for 0 <= n < 2^53, Newton iteration from a power-of-two upper bound. */
 export function isqrt(n: number): number {
   if (n <= 0) return 0;
-  let x = 1;
-  let m = n;
-  while (m >= 4) {
-    m = Math.floor(m / 4);
-    x *= 2;
-  }
-  x *= 2;
+  const high = Math.floor(n / 0x100000000);
+  const bits = high > 0 ? 64 - Math.clz32(high) : 32 - Math.clz32(n);
+  // At most 53 input bits, so the upper root bound fits in a signed 32-bit shift.
+  let x = 1 << Math.ceil(bits / 2);
   for (;;) {
     const y = Math.floor((x + Math.floor(n / x)) / 2);
     if (y >= x) return x;

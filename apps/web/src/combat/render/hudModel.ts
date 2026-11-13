@@ -19,7 +19,7 @@ export function ghostAt(g: Ghost, now: number): number {
 
 /** New damage restarts the hold from wherever the ghost is; healing snaps it. */
 export function trackGhost(g: Ghost | null, value: number, now: number): Ghost {
-  if (!g || value >= g.value) return { value, from: value, since: now };
+  if (!g || value > g.value) return { value, from: value, since: now };
   if (value === g.value) return g;
   return { value, from: Math.max(value, ghostAt(g, now)), since: now };
 }

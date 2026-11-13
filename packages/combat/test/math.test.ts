@@ -36,6 +36,21 @@ describe('integer math', () => {
     }
   });
 
+  it('isqrt stays exact across integer bit boundaries and seeded 53-bit inputs', () => {
+    const values = [Number.MAX_SAFE_INTEGER];
+    for (let bit = 1; bit <= 52; bit++) values.push(2 ** bit - 1, 2 ** bit, 2 ** bit + 1);
+    let seed = 42;
+    for (let i = 0; i < 1000; i++) {
+      seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+      values.push(Math.floor((seed / 0x100000000) * Number.MAX_SAFE_INTEGER));
+    }
+    for (const n of values) {
+      const root = BigInt(isqrt(n));
+      expect(root * root <= BigInt(n), String(n)).toBe(true);
+      expect((root + 1n) * (root + 1n) > BigInt(n), String(n)).toBe(true);
+    }
+  });
+
   it('mulQ14 rounds symmetrically so mirrored motion stays mirrored', () => {
     for (const v of [1, 7, 811, 4096])
       for (let a = 0; a < 256; a++) expect(mulQ14(-v, cosQ14(a)) + mulQ14(v, cosQ14(a))).toBe(0);

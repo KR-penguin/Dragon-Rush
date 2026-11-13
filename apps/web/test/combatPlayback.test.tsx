@@ -59,7 +59,9 @@ function screen(fight: PendingFight): string {
     speed: 4,
   });
   store.getInitialState = store.getState;
-  return renderToStaticMarkup(<CombatLayer store={store} onFightLive={() => undefined} />);
+  return renderToStaticMarkup(
+    <CombatLayer store={store} onFightLive={() => undefined} onCoveredChange={() => undefined} />,
+  );
 }
 
 describe('combat playback', () => {

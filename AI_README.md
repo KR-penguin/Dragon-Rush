@@ -36,6 +36,7 @@ Reading order for any task: this file → `coding_convention.md` → canonical d
 - `combat-9` captures melee attack stats before applying either side of a simultaneous trade. Online clients keep authoritative versions separate from queued fight presentations; fight completion is scoped to its ID. Expired reconnect grace makes board and fight controls read-only, and disconnected roomless sessions expire after the greater of room TTL and reconnect grace. Heuristic bots skip illegal preferences and continue to the next choice. Observation/action layouts are unchanged.
 - Current seeded baseline (`rush-11`/`combat-9`): 1,000 four-seat games (`pnpm sim --games 1000 --players 4 --bots heuristic --seed 2026 --workers 4 --combat sim --json`) averaged 16.391 rounds (median 17, p95 30), 21.2% dragon endings, 31.2% early seat eliminations, and 2.612 PvP fights per game. Archer conditional win rate was 23.09%, versus ninja 36.83%; job balance remains open. These are heuristic-board/scripted-combat bot measurements, not human win rates; see game-design §15.
 
+- Browser performance: local bot-only fight preparation uses a reusable module Worker (small asynchronous batches when blocked); static arena/background/HUD and filtered sprites are cached; covered board animations pause. Moving landmark decorations use HTML overlays over static SVG geometry. Pages are lazy-loaded and decoded BGM is bounded to two tracks. `pnpm profile:web` captures reproducible browser metrics; see `docs/performance.md` for conditions and measured limits.
 
 ## 3. Product in ~10 lines
 - Web roulette board game with light RPG growth. 2–4 seats in any mix of human, bot and user model.
@@ -161,6 +162,7 @@ interface GameClient { mode; subscribe(cb): () => void; submit(action, stateVers
 | Command | Purpose |
 |---|---|
 | `pnpm install` | install workspace deps |
+| `pnpm profile:web [--cpu 4] [--out /tmp/dragon-rush-profile] [--profile]` | profile fixed browser scenes against a running Vite server; Chrome + Node built-ins only |
 | `pnpm dev` | web (Vite :5173) + server (:3001); Vite proxies `/socket.io` and `/api` |
 | `pnpm test` / `pnpm lint` / `pnpm typecheck` / `pnpm build` | Vitest / ESLint / tsc / production build (web dist, server dist, sim dist) |
 | `pnpm start` | run the built single service (serves `apps/web/dist` + Socket.IO) |

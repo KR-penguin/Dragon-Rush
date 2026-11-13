@@ -265,6 +265,27 @@ function dragonThreat(
   });
 }
 
+function meleeThreatFor(
+  s: CombatState,
+  me: FighterState,
+  opponent: FighterState,
+  angle: number,
+  needed: number,
+  ticksLeft: number,
+  parryable: boolean,
+): Threat {
+  return {
+    angle,
+    needed,
+    ticksLeft,
+    parryable,
+    src: atan2i(opponent.y - me.y, opponent.x - me.x),
+    kind: 'melee',
+    homing: false,
+    key: (s.tick - opponent.moveTick) * 4 + 3,
+  };
+}
+
 function meleeThreat(
   s: CombatState,
   me: FighterState,
@@ -273,22 +294,12 @@ function meleeThreat(
 ): Threat | null {
   const o = me.side === 'a' ? s.b : s.a;
   if (!o || o.mode === 'ko' || o.move === null) return best;
-  const melee = (angle: number, needed: number, ticksLeft: number, parryable: boolean): Threat => ({
-    angle,
-    needed,
-    ticksLeft,
-    parryable,
-    src: atan2i(o.y - me.y, o.x - me.x),
-    kind: 'melee',
-    homing: false,
-    key: (s.tick - o.moveTick) * 4 + 3,
-  });
   if (o.mode === 'dash') {
     const dash = s.rules.dashes[o.move as keyof typeof s.rules.dashes];
     if (!dash?.contact) return best;
     const dist = distPx(o.x, o.y, me.x, me.y);
     if (dist > 140 || !aimedAt(o, me.x, me.y, 24)) return best;
-    return pickThreat(s, me, best, melee((o.aim + 64) & 255, 40, 4, false));
+    return pickThreat(s, me, best, meleeThreatFor(s, me, o, (o.aim + 64) & 255, 40, 4, false));
   }
   if ((o.mode !== 'attack' && o.mode !== 'skill') || o.phase === 'recovery') return best;
   const spec = s.rules.moves[o.move as keyof typeof s.rules.moves] as MoveSpec | undefined;
@@ -300,7 +311,10 @@ function meleeThreat(
     s,
     me,
     best,
-    melee(
+    meleeThreatFor(
+      s,
+      me,
+      o,
       atan2i(me.y - o.y, me.x - o.x),
       reach - dist,
       Math.max(0, spec.startup - o.moveTick),

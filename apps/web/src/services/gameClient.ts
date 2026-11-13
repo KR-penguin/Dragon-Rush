@@ -85,6 +85,7 @@ export interface PendingFight {
   readonly botLevel: FightBotLevel;
   /** Set for bot-only fights: show the complete replay, then report `replay.result`. */
   readonly replay: FightReplay | null;
+  readonly preparingReplay?: boolean;
   readonly online?: { readonly start: FightStartMsg; readonly go: FightGoMsg | null };
 }
 

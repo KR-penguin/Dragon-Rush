@@ -1,11 +1,18 @@
-import { useLayoutEffect } from 'react';
+import { lazy, Suspense, useLayoutEffect, type ReactNode } from 'react';
 import { useBgm } from './hooks/useAudio';
 import { useNavActions, useRoute } from './hooks/useNav';
 import { useMotionAttributes } from './hooks/useReducedMotion';
-import { GamePage } from './pages/GamePage';
 import { HomePage } from './pages/HomePage';
-import { LocalSetupPage } from './pages/LocalSetupPage';
-import { OnlinePage } from './pages/OnlinePage';
+
+const GamePage = lazy(() =>
+  import('./pages/GamePage').then((page) => ({ default: page.GamePage })),
+);
+const LocalSetupPage = lazy(() =>
+  import('./pages/LocalSetupPage').then((page) => ({ default: page.LocalSetupPage })),
+);
+const OnlinePage = lazy(() =>
+  import('./pages/OnlinePage').then((page) => ({ default: page.OnlinePage })),
+);
 
 /** State-based navigation: Home → LocalSetup / Online → Game. */
 export function App() {
@@ -18,16 +25,20 @@ export function App() {
   useBgm(route.page === 'game' ? undefined : 'lobby');
   useMotionAttributes();
 
+  let content: ReactNode;
   switch (route.page) {
     case 'home':
-      return <HomePage onLocal={() => nav.go('localSetup')} onOnline={() => nav.go('online')} />;
+      content = <HomePage onLocal={() => nav.go('localSetup')} onOnline={() => nav.go('online')} />;
+      break;
     case 'localSetup':
-      return <LocalSetupPage onBack={() => nav.go('home')} />;
+      content = <LocalSetupPage onBack={() => nav.go('home')} />;
+      break;
     case 'online':
-      return <OnlinePage onBack={() => nav.go('home')} />;
+      content = <OnlinePage onBack={() => nav.go('home')} />;
+      break;
     case 'game': {
       const { session } = route;
-      return (
+      content = (
         <GamePage
           key={session.id}
           session={session}
@@ -35,6 +46,18 @@ export function App() {
           onRestart={session.restart ? nav.restartGame : null}
         />
       );
+      break;
     }
   }
+  return (
+    <Suspense
+      fallback={
+        <main className="game-loading" role="status">
+          게임을 불러오는 중…
+        </main>
+      }
+    >
+      {content}
+    </Suspense>
+  );
 }
